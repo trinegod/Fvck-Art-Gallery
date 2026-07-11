@@ -1,7 +1,7 @@
 const galleryItems = Array.from({ length: 14 }, (_, index) => ({
   title: `Art ${index + 1}`,
   type: "image",
-  src: `/art/Art-${index + 1}.jpeg`,
+  src: `/art/art-${index + 1}.jpeg`,
   model: "AI Generated",
   tags: ["ai-art", "gallery", "original"],
 }));
