@@ -1,9 +1,12 @@
 const galleryItems = Array.from({ length: 14 }, (_, index) => ({
-  title: `Art ${index + 1}`,
+  title: `Dystopia ${String(index + 1).padStart(2, "0")}`,
   type: "image",
   src: `/art/art-${index + 1}.jpeg`,
+  series: "Dystopia",
+  category: "World",
   model: "AI Generated",
-  tags: ["ai-art", "gallery", "original"],
+  mood: "Cinematic future decay",
+  tags: ["dystopia", "ai-art", "future", "worldbuilding"],
 }));
 
 export default function Home() {
