@@ -98,7 +98,7 @@ const gundamWingItems = Array.from({ length: 27 }, (_, index) => ({
   id: `gundam-wing-${index + 1}`,
   title: `Gundam Wing ${String(index + 1).padStart(2, "0")}`,
   type: "image",
-  src: `/art/gun-${index + 1}.${index + 1 === 12 ? "jpg" : "PNG"}`,
+  src: `/art/gun-${index + 1}.${index + 1 === 12 ? "JPG" : "PNG"}`,
   series: "Gundam Wing",
   category: "Mecha World",
   mood: "Armored anime mecha study",
