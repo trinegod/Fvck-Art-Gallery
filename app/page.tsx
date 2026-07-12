@@ -148,7 +148,7 @@ const galleryItems = [
 ];
 
 export default function Home() {
-  const [activeSeries, setActiveSeries] = useState("Dystopia");
+  const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const seriesList = useMemo(
@@ -156,21 +156,42 @@ export default function Home() {
     []
   );
 
-  const filteredItems = galleryItems.filter(
-  (item) => item.series === activeSeries
+  const collections = useMemo(
+    () =>
+      seriesList.map((series, index) => {
+        const items = galleryItems.filter((item) => item.series === series);
+        const coverItem = items[0];
+
+        return {
+          series,
+          world: `World ${String(index + 1).padStart(3, "0")}`,
+          count: items.length,
+          category: coverItem.category,
+          mood: coverItem.mood,
+          cover: coverItem.src,
+          tags: coverItem.tags,
+        };
+      }),
+    [seriesList]
   );
+
+  const filteredItems = activeSeries
+    ? galleryItems.filter((item) => item.series === activeSeries)
+    : [];
 
   const selectedItem =
     galleryItems.find((item) => item.id === selectedId) ?? null;
 
-  
-    const activeTitle = "NODEINE";
+  const activeCollection =
+    collections.find((collection) => collection.series === activeSeries) ?? null;
 
-const activeSubtitle =
-  activeSeries === "All"
-    ? "A living gallery for AI images, videos, prompts, and visual worlds."
-    : `A focused collection from the ${activeSeries} series.`;
-    const selectedIndex = selectedItem
+  const activeTitle = "NODEINE";
+
+  const activeSubtitle = activeSeries
+    ? `${activeCollection?.count ?? 0} pieces from the ${activeSeries} collection.`
+    : "Choose a collection from the archive.";
+
+  const selectedIndex = selectedItem
     ? filteredItems.findIndex((item) => item.id === selectedItem.id)
     : -1;
 
@@ -186,6 +207,12 @@ const activeSubtitle =
     const nextIndex =
       selectedIndex >= 0 ? (selectedIndex + 1) % filteredItems.length : 0;
     setSelectedId(filteredItems[nextIndex].id);
+  }
+
+  function openCollection(series: string) {
+    setActiveSeries(series);
+    setSelectedId(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   useEffect(() => {
@@ -207,75 +234,148 @@ const activeSubtitle =
         <header className="mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
           <div className="text-center">
             <h1 className="text-4xl font-medium uppercase tracking-[0.18em] text-white sm:text-6xl">
-  {activeTitle}
-</h1>
-<p className="mx-auto mt-3 w-fit text-xs font-medium uppercase tracking-[0.32em] text-cyan-200">
-  The TRINE Archive
-</p>
-<p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-400">
-  {activeSubtitle}
-</p>
+              {activeTitle}
+            </h1>
+            <p className="mx-auto mt-3 w-fit text-xs font-medium uppercase tracking-[0.32em] text-cyan-200">
+              The TRINE Archive
+            </p>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-400">
+              {activeSubtitle}
+            </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2">
-            {seriesList.map((series) => (
+          {activeSeries && (
+            <div className="flex flex-col items-center gap-4">
               <button
-                key={series}
                 type="button"
-                onClick={() => setActiveSeries(series)}
-                className={`rounded-lg border px-4 py-2 text-sm transition ${
-                  activeSeries === series
-                    ? "border-cyan-300 bg-cyan-300 text-zinc-950"
-                    : "border-white/15 bg-white/5 text-zinc-300 hover:border-cyan-300/70 hover:text-white"
-                }`}
+                onClick={() => {
+                  setActiveSeries(null);
+                  setSelectedId(null);
+                }}
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-zinc-300 hover:border-cyan-300 hover:text-white"
               >
-                {series}
+                Back to collections
               </button>
-            ))}
-          </div>
+
+              <div className="flex flex-wrap justify-center gap-2">
+                {seriesList.map((series) => (
+                  <button
+                    key={series}
+                    type="button"
+                    onClick={() => openCollection(series)}
+                    className={`rounded-lg border px-4 py-2 text-center text-sm transition ${
+                      activeSeries === series
+                        ? "border-cyan-300 bg-cyan-300 text-zinc-950"
+                        : "border-white/15 bg-white/5 text-zinc-300 hover:border-cyan-300/70 hover:text-white"
+                    }`}
+                  >
+                    {series}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSelectedId(item.id)}
-              className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
-            >
-              <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
-                <img
-                  src={item.src}
-                  alt={item.title}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">
-                    {item.series}
-                  </p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">
-                    {item.title}
-                  </h2>
+        {!activeSeries ? (
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {collections.map((collection) => (
+              <button
+                key={collection.series}
+                type="button"
+                onClick={() => openCollection(collection.series)}
+                className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                  <img
+                    src={collection.cover}
+                    alt={collection.series}
+                    className="h-full w-full object-cover object-[center_35%] transition duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <p className="text-xs uppercase tracking-[0.22em] text-cyan-200">
+                      {collection.world}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-white">
+                      {collection.series}
+                    </h2>
+                    <p className="mt-2 text-sm text-zinc-300">
+                      {collection.count} pieces / {collection.category}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-3 p-4">
-                <p className="text-sm text-zinc-400">{item.mood}</p>
-                <div className="flex flex-wrap gap-2">
-                  {item.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="space-y-3 p-4">
+                  <p className="text-sm text-zinc-400">{collection.mood}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {collection.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
-        </section>
+              </button>
+            ))}
+          </section>
+        ) : (
+          <section>
+            <div className="mb-5 text-center">
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
+                {activeCollection?.world}
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">
+                {activeSeries}
+              </h2>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
+                >
+                  <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
+                    <img
+                      src={item.src}
+                      alt={item.title}
+                      className="h-full w-full object-cover object-[center_38%] transition duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">
+                        {item.series}
+                      </p>
+                      <h2 className="mt-1 text-lg font-semibold text-white">
+                        {item.title}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 p-4">
+                    <p className="text-sm text-zinc-400">{item.mood}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {item.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </section>
 
       {selectedItem && (
