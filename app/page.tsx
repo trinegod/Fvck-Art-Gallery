@@ -146,6 +146,48 @@ const galleryItems = [
   ...streetLifeItems,
   ...edgeRunnersItems,
 ];
+const collectionDetails: Record<string, { order: number; summary: string }> = {
+  "Edge Runners": {
+    order: 1,
+    summary: "Neon cyberpunk studies from a future built on speed, style, and survival.",
+  },
+  "Street Life": {
+    order: 2,
+    summary: "Original urban story studies shaped by pressure, ambition, and escape.",
+  },
+  Dystopia: {
+    order: 3,
+    summary: "Cinematic fragments from a collapsing future world.",
+  },
+  "Anime, Girls & Fashion": {
+    order: 4,
+    summary: "Stylized anime fashion portraits with expressive character energy.",
+  },
+  "Gundam Wing": {
+    order: 5,
+    summary: "Armored mecha studies inspired by war machines and anime futurism.",
+  },
+  Evangelion: {
+    order: 6,
+    summary: "Apocalyptic mecha studies with dramatic anime scale.",
+  },
+  "JoJo: Golden Wind": {
+    order: 7,
+    summary: "Golden action portraits with stylized anime attitude.",
+  },
+  "Sailor Scouts": {
+    order: 8,
+    summary: "Moonlit magical guardian studies from the Sailor Moon collection.",
+  },
+  Renaissance: {
+    order: 9,
+    summary: "Neo-renaissance character studies with portrait archive energy.",
+  },
+  "Cyber X": {
+    order: 10,
+    summary: "Cyber-retro figure studies with doll-like future styling.",
+  },
+};
 
 export default function Home() {
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
@@ -157,23 +199,31 @@ export default function Home() {
   );
 
   const collections = useMemo(
-    () =>
-      seriesList.map((series, index) => {
+  () =>
+    seriesList
+      .map((series, index) => {
         const items = galleryItems.filter((item) => item.series === series);
         const coverItem = items[0];
+        const details = collectionDetails[series] ?? {
+          order: index + 1,
+          summary: coverItem.mood,
+        };
 
         return {
           series,
-          world: `World ${String(index + 1).padStart(3, "0")}`,
+          world: `World ${String(details.order).padStart(3, "0")}`,
+          order: details.order,
           count: items.length,
           category: coverItem.category,
           mood: coverItem.mood,
+          summary: details.summary,
           cover: coverItem.src,
           tags: coverItem.tags,
         };
-      }),
-    [seriesList]
-  );
+      })
+      .sort((a, b) => a.order - b.order),
+  [seriesList]
+);
 
   const filteredItems = activeSeries
     ? galleryItems.filter((item) => item.series === activeSeries)
@@ -277,6 +327,43 @@ export default function Home() {
           )}
         </header>
 
+        {!activeSeries && (
+  <section className="mb-8 grid gap-5 border-b border-white/10 pb-8 md:grid-cols-[1.2fr_0.8fr]">
+    <div>
+      <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
+        Manifesto
+      </p>
+      <h2 className="mt-3 text-2xl font-semibold text-white">
+        Digital worlds, archived before they disappear.
+      </h2>
+      <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
+        NODEINE is a visual archive of AI-generated worlds, characters,
+        fashion studies, street mythologies, and animated futures.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3">
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-2xl font-semibold text-white">{collections.length}</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
+          Worlds
+        </p>
+      </div>
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-2xl font-semibold text-white">{galleryItems.length}</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
+          Pieces
+        </p>
+      </div>
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 sm:col-span-1">
+        <p className="text-2xl font-semibold text-white">AI</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
+          Medium
+        </p>
+      </div>
+    </div>
+  </section>
+)}
         {!activeSeries ? (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((collection) => (
@@ -307,7 +394,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-3 p-4">
-                  <p className="text-sm text-zinc-400">{collection.mood}</p>
+                  <p className="text-sm text-zinc-400">{collection.summary}</p>
                   <div className="flex flex-wrap gap-2">
                     {collection.tags.slice(0, 3).map((tag) => (
                       <span
