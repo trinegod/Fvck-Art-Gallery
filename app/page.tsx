@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const galleryItems = Array.from({ length: 14 }, (_, index) => ({
+const dystopiaItems = Array.from({ length: 14 }, (_, index) => ({
   id: `dystopia-${index + 1}`,
   title: `Dystopia ${String(index + 1).padStart(2, "0")}`,
   type: "image",
@@ -15,6 +15,123 @@ const galleryItems = Array.from({ length: 14 }, (_, index) => ({
     "A fragment from a collapsing future, preserved inside the Dystopia archive.",
   tags: ["dystopia", "future", "worldbuilding", "ai-art"],
 }));
+
+const renaissanceItems = Array.from({ length: 18 }, (_, index) => ({
+  id: `renaissance-${index + 1}`,
+  title: `Renaissance ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/ren-${index + 1}.png`,
+  series: "Renaissance",
+  category: "Character World",
+  mood: "Neo-renaissance character study",
+  model: "AI Generated",
+  description:
+    "A character study from the Renaissance collection, archived as part of the TRINE visual worlds.",
+  tags: ["renaissance", "character", "portrait", "ai-art"],
+}));
+const fashionItems = Array.from({ length: 60 }, (_, index) => ({
+  id: `anime-fashion-${index + 1}`,
+  title: `Anime, Girls & Fashion ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/fash-${index + 1}.png`,
+  series: "Anime, Girls & Fashion",
+  category: "Style World",
+  mood: "Expressive anime fashion study",
+  model: "AI Generated",
+  description:
+    "A fashion-forward character study from the Anime, Girls & Fashion collection inside the TRINE Archive.",
+  tags: ["anime", "girls", "fashion", "ai-art"],
+}));
+const cyberXItems = Array.from({ length: 5 }, (_, index) => ({
+  id: `cyber-x-${index + 1}`,
+  title: `Cyber X ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/cyber-${index + 1}.png`,
+  series: "Cyber X",
+  category: "Cyber Retro",
+  mood: "Retro cyberpunk doll study",
+  model: "AI Generated",
+  description:
+    "A cyber-retro figure study from the Cyber X collection inside the TRINE Archive.",
+  tags: ["cyberpunk", "retro", "figure", "ai-art"],
+}));
+const evangelionItems = Array.from({ length: 19 }, (_, index) => ({
+  id: `evangelion-${index + 1}`,
+  title: `Evangelion ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/eva-${index + 1}.png`,
+  series: "Evangelion",
+  category: "Mecha World",
+  mood: "Apocalyptic anime mecha study",
+  model: "AI Generated",
+  description:
+    "A dramatic mecha-inspired study from the Evangelion collection inside the TRINE Archive.",
+  tags: ["evangelion", "mecha", "anime", "ai-art"],
+}));
+const jojoItems = Array.from({ length: 16 }, (_, index) => ({
+  id: `jojo-golden-wind-${index + 1}`,
+  title: `JoJo: Golden Wind ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/jojo-${index + 1}.png`,
+  series: "JoJo: Golden Wind",
+  category: "Anime World",
+  mood: "Stylized golden action portrait",
+  model: "AI Generated",
+  description:
+    "A stylized anime-inspired study from the JoJo: Golden Wind collection inside the TRINE Archive.",
+  tags: ["jojo", "golden-wind", "anime", "ai-art"],
+}));
+const sailorScoutItems = Array.from({ length: 18 }, (_, index) => ({
+  id: `sailor-scouts-${index + 1}`,
+  title: `Sailor Scouts ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/scout-${index + 1}.png`,
+  series: "Sailor Scouts",
+  category: "Sailor Moon",
+  mood: "Moonlit magical guardian study",
+  model: "AI Generated",
+  description:
+    "A moonlit magical guardian study of the Sailor Scouts from the Sailor Moon collection inside the TRINE Archive.",
+  tags: ["sailor-moon", "sailor-scouts", "magical-girl", "ai-art"],
+}));
+const gundamWingItems = Array.from({ length: 27 }, (_, index) => ({
+  id: `gundam-wing-${index + 1}`,
+  title: `Gundam Wing ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/gun-${index + 1}.${index + 1 === 12 ? "jpg" : "png"}`,
+  series: "Gundam Wing",
+  category: "Mecha World",
+  mood: "Armored anime mecha study",
+  model: "AI Generated",
+  description:
+    "An armored anime mecha study from the Gundam Wing collection inside the TRINE Archive.",
+  tags: ["gundam-wing", "mecha", "anime", "ai-art"],
+}));
+const streetLifeItems = Array.from({ length: 28 }, (_, index) => ({
+  id: `street-life-${index + 1}`,
+  title: `Street Life ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/ots-${index + 1}.png`,
+  series: "Street Life",
+  category: "Original World",
+  mood: "Gritty urban survival study",
+  model: "AI Generated",
+  description:
+    "A gritty urban story study from the Street Life collection inside the TRINE Archive.",
+  tags: ["street-life", "urban", "survival", "ai-art"],
+}));
+
+const galleryItems = [
+  ...dystopiaItems,
+  ...renaissanceItems,
+  ...fashionItems,
+  ...cyberXItems,
+  ...evangelionItems,
+  ...jojoItems,
+  ...sailorScoutItems,
+  ...gundamWingItems,
+  ...streetLifeItems,
+];
 
 export default function Home() {
   const [activeSeries, setActiveSeries] = useState("All");
@@ -33,7 +150,14 @@ export default function Home() {
   const selectedItem =
     galleryItems.find((item) => item.id === selectedId) ?? null;
 
-  const selectedIndex = selectedItem
+  
+    const activeTitle = "NODEINE";
+
+const activeSubtitle =
+  activeSeries === "All"
+    ? "A living gallery for AI images, videos, prompts, and visual worlds."
+    : `A focused collection from the ${activeSeries} series.`;
+    const selectedIndex = selectedItem
     ? filteredItems.findIndex((item) => item.id === selectedItem.id)
     : -1;
 
@@ -68,16 +192,16 @@ export default function Home() {
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
         <header className="mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
-          <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
-              TRINE Archive / World 001
-            </p>
-            <h1 className="text-4xl font-semibold tracking-normal text-white sm:text-6xl">
-              Dystopia
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
-              A living gallery for AI images, videos, prompts, and visual worlds.
-            </p>
+          <div className="text-center">
+            <h1 className="text-4xl font-medium uppercase tracking-[0.18em] text-white sm:text-6xl">
+  {activeTitle}
+</h1>
+<p className="mx-auto mt-3 w-fit text-xs font-medium uppercase tracking-[0.32em] text-cyan-200">
+  The TRINE Archive
+</p>
+<p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-400">
+  {activeSubtitle}
+</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
