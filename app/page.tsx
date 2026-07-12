@@ -233,7 +233,7 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
         <header className="mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
           <div className="text-center">
-            <h1 className="text-4xl font-medium uppercase tracking-[0.18em] text-white sm:text-6xl">
+            <h1 className="text-4xl font-light uppercase tracking-[0.22em] text-white sm:text-6xl">
               {activeTitle}
             </h1>
             <p className="mx-auto mt-3 w-fit text-xs font-medium uppercase tracking-[0.32em] text-cyan-200">
