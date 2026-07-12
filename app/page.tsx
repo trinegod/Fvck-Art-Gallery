@@ -120,6 +120,19 @@ const streetLifeItems = Array.from({ length: 28 }, (_, index) => ({
     "A gritty urban story study from the Street Life collection inside the TRINE Archive.",
   tags: ["street-life", "urban", "survival", "ai-art"],
 }));
+const edgeRunnersItems = Array.from({ length: 38 }, (_, index) => ({
+  id: `edge-runners-${index + 1}`,
+  title: `Edge Runners ${String(index + 1).padStart(2, "0")}`,
+  type: "image",
+  src: `/art/edge-${index + 1}.PNG`,
+  series: "Edge Runners",
+  category: "Cyberpunk World",
+  mood: "Neon street-runner anime study",
+  model: "AI Generated",
+  description:
+    "A neon cyberpunk anime study from the Edge Runners collection inside the TRINE Archive.",
+  tags: ["edge-runners", "cyberpunk", "anime", "ai-art"],
+}));
 
 const galleryItems = [
   ...dystopiaItems,
@@ -131,6 +144,7 @@ const galleryItems = [
   ...sailorScoutItems,
   ...gundamWingItems,
   ...streetLifeItems,
+  ...edgeRunnersItems,
 ];
 
 export default function Home() {
