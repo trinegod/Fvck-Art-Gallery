@@ -148,18 +148,17 @@ const galleryItems = [
 ];
 
 export default function Home() {
-  const [activeSeries, setActiveSeries] = useState("All");
+  const [activeSeries, setActiveSeries] = useState("Dystopia");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const seriesList = useMemo(
-    () => ["All", ...Array.from(new Set(galleryItems.map((item) => item.series)))],
+    () => Array.from(new Set(galleryItems.map((item) => item.series))),
     []
   );
 
-  const filteredItems =
-    activeSeries === "All"
-      ? galleryItems
-      : galleryItems.filter((item) => item.series === activeSeries);
+  const filteredItems = galleryItems.filter(
+  (item) => item.series === activeSeries
+  );
 
   const selectedItem =
     galleryItems.find((item) => item.id === selectedId) ?? null;
@@ -218,7 +217,7 @@ const activeSubtitle =
 </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {seriesList.map((series) => (
               <button
                 key={series}
