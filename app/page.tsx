@@ -146,6 +146,10 @@ const galleryItems = [
   ...streetLifeItems,
   ...edgeRunnersItems,
 ];
+
+function getThumbnail(src: string) {
+  return src.replace("/art/", "/thumbs/");
+}
 const collectionDetails: Record<string, { order: number; summary: string }> = {
   "Edge Runners": {
     order: 1,
@@ -375,7 +379,7 @@ export default function Home() {
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
                   <img
-                    src={collection.cover}
+                    src={getThumbnail(collection.cover)}
                     alt={collection.series}
                     className="h-full w-full object-cover object-[center_35%] transition duration-500 group-hover:scale-105"
                   />
@@ -430,7 +434,7 @@ export default function Home() {
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
                     <img
-                      src={item.src}
+                      src={getThumbnail(item.src)}
                       alt={item.title}
                       className="h-full w-full object-cover object-[center_38%] transition duration-500 group-hover:scale-105"
                     />
