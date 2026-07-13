@@ -469,6 +469,19 @@ export default function Home() {
         )}
       </section>
 
+            <footer className="mx-auto max-w-7xl border-t border-white/10 px-5 py-8 text-center sm:px-8">
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-white">
+          NODEINE
+        </p>
+        <p className="mt-2 text-xs uppercase tracking-[0.22em] text-cyan-200">
+          The TRINE Archive
+        </p>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-zinc-500">
+          A visual archive of AI-generated worlds, characters, fashion studies,
+          street mythologies, and animated futures. Built with Next.js, Vercel,
+          and generative AI workflows.
+        </p>
+      </footer>
       {selectedItem && (
         <div
           className="fixed inset-0 z-50 bg-black/90 p-4 backdrop-blur-sm sm:p-6"
