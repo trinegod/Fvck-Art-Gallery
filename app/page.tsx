@@ -1,6 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+type CollectionRow = {
+  id: string;
+  title: string;
+  sort_order: number | null;
+};
+
+type ArtworkRow = {
+  id: string;
+  collection_id: string;
+  title: string;
+  src: string;
+  thumb_src: string | null;
+  media_type: string | null;
+  mood: string | null;
+  tags: string[] | null;
+  sort_order: number | null;
+};
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const dystopiaItems = Array.from({ length: 14 }, (_, index) => ({
   id: `dystopia-${index + 1}`,
@@ -134,7 +159,7 @@ const edgeRunnersItems = Array.from({ length: 38 }, (_, index) => ({
   tags: ["edge-runners", "cyberpunk", "anime", "ai-art"],
 }));
 
-const galleryItems = [
+const fallbackGalleryItems = [
   ...dystopiaItems,
   ...renaissanceItems,
   ...fashionItems,
@@ -146,6 +171,8 @@ const galleryItems = [
   ...streetLifeItems,
   ...edgeRunnersItems,
 ];
+
+type GalleryItem = (typeof fallbackGalleryItems)[number];
 
 function getThumbnail(src: string) {
   return src.replace("/art/", "/thumbs/");
@@ -196,10 +223,108 @@ const collectionDetails: Record<string, { order: number; summary: string }> = {
 export default function Home() {
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [galleryItems, setGalleryItems] =
+    useState<GalleryItem[]>(fallbackGalleryItems);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGalleryFromSupabase() {
+      if (!supabase) {
+        setGalleryError("Missing Supabase environment variables.");
+        return;
+      }
+
+      try {
+        const [collectionsResult, artworksResult] = await Promise.all([
+          supabase
+            .from("collections")
+            .select("id, title, sort_order")
+            .order("sort_order"),
+          supabase
+            .from("artworks")
+            .select(
+              "id, collection_id, title, src, thumb_src, media_type, mood, tags, sort_order"
+            )
+            .order("sort_order"),
+        ]);
+
+        if (collectionsResult.error) throw collectionsResult.error;
+        if (artworksResult.error) throw artworksResult.error;
+
+        const collectionRows =
+          (collectionsResult.data ?? []) as CollectionRow[];
+        const artworkRows = (artworksResult.data ?? []) as ArtworkRow[];
+        const collectionById = new Map(
+          collectionRows.map((collection) => [collection.id, collection])
+        );
+        const fallbackBySeries = new Map(
+          fallbackGalleryItems.map((item) => [item.series, item])
+        );
+
+        const databaseGalleryItems = artworkRows
+          .map((artwork) => {
+            const collection = collectionById.get(artwork.collection_id);
+            const series = collection?.title ?? "Unknown Collection";
+            const fallbackItem = fallbackBySeries.get(series);
+            const tags = artwork.tags ?? fallbackItem?.tags ?? [];
+
+            return {
+              id: artwork.id,
+              title: artwork.title,
+              type: artwork.media_type ?? "image",
+              src: artwork.src,
+              series,
+              category: fallbackItem?.category ?? "AI World",
+              mood:
+                artwork.mood ??
+                fallbackItem?.mood ??
+                "AI-generated archive study",
+              model: fallbackItem?.model ?? "AI Generated",
+              description: `${artwork.title} from the ${series} collection inside The TRINE Archive.`,
+              tags,
+            };
+          })
+          .sort((a, b) => {
+            const aCollection = collectionRows.find(
+              (collection) => collection.title === a.series
+            );
+            const bCollection = collectionRows.find(
+              (collection) => collection.title === b.series
+            );
+
+            return (
+              (aCollection?.sort_order ?? 0) -
+              (bCollection?.sort_order ?? 0)
+            );
+          });
+
+        if (!cancelled && databaseGalleryItems.length) {
+          setGalleryItems(databaseGalleryItems);
+          setGalleryError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Could not load Supabase gallery data.";
+          setGalleryError(message);
+        }
+      }
+    }
+
+    loadGalleryFromSupabase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const seriesList = useMemo(
     () => Array.from(new Set(galleryItems.map((item) => item.series))),
-    []
+    [galleryItems]
   );
 
   const collections = useMemo(
@@ -226,7 +351,7 @@ export default function Home() {
         };
       })
       .sort((a, b) => a.order - b.order),
-  [seriesList]
+  [seriesList, galleryItems]
 );
 
   const filteredItems = activeSeries
@@ -330,6 +455,13 @@ export default function Home() {
             </div>
           )}
         </header>
+
+        {galleryError && (
+          <div className="mb-6 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            Using local fallback data while Supabase is unavailable:
+            {" "}{galleryError}
+          </div>
+        )}
 
         {!activeSeries && (
   <section className="mb-8 grid gap-5 border-b border-white/10 pb-8 md:grid-cols-[1.2fr_0.8fr]">
