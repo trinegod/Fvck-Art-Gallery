@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 type CollectionRow = {
   id: string;
   title: string;
+  summary: string | null;
+  world_code: string | null;
   sort_order: number | null;
 };
 
@@ -226,6 +228,8 @@ export default function Home() {
   const [galleryItems, setGalleryItems] =
     useState<GalleryItem[]>(fallbackGalleryItems);
   const [galleryError, setGalleryError] = useState<string | null>(null);
+  const [databaseCollections, setDatabaseCollections] =
+    useState<CollectionRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,7 +244,7 @@ export default function Home() {
         const [collectionsResult, artworksResult] = await Promise.all([
           supabase
             .from("collections")
-            .select("id, title, sort_order")
+            .select("id, title, summary, world_code, sort_order")
             .order("sort_order"),
           supabase
             .from("artworks")
@@ -302,6 +306,7 @@ export default function Home() {
 
         if (!cancelled && databaseGalleryItems.length) {
           setGalleryItems(databaseGalleryItems);
+          setDatabaseCollections(collectionRows);
           setGalleryError(null);
         }
       } catch (error) {
@@ -333,6 +338,9 @@ export default function Home() {
       .map((series, index) => {
         const items = galleryItems.filter((item) => item.series === series);
         const coverItem = items[0];
+        const databaseCollection = databaseCollections.find(
+          (collection) => collection.title === series
+        );
         const details = collectionDetails[series] ?? {
           order: index + 1,
           summary: coverItem.mood,
@@ -340,18 +348,20 @@ export default function Home() {
 
         return {
           series,
-          world: `World ${String(details.order).padStart(3, "0")}`,
-          order: details.order,
+          world:
+            databaseCollection?.world_code ??
+            `World ${String(details.order).padStart(3, "0")}`,
+          order: databaseCollection?.sort_order ?? details.order,
           count: items.length,
           category: coverItem.category,
           mood: coverItem.mood,
-          summary: details.summary,
+          summary: databaseCollection?.summary ?? details.summary,
           cover: coverItem.src,
           tags: coverItem.tags,
         };
       })
       .sort((a, b) => a.order - b.order),
-  [seriesList, galleryItems]
+  [seriesList, galleryItems, databaseCollections]
 );
 
   const filteredItems = activeSeries
