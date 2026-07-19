@@ -21,6 +21,14 @@ type Artwork = {
   sort_order: number | null;
 };
 
+type CreatorProfile = {
+  id: string;
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -28,14 +36,16 @@ const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function AdminPage() {
-  const [mode, setMode] = useState<"artwork" | "collection" | "manage">(
-    "artwork"
-  );
+  const [mode, setMode] = useState<
+    "artwork" | "collection" | "manage" | "profile"
+  >("artwork");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authReady, setAuthReady] = useState(!supabase);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [signupDisplayName, setSignupDisplayName] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionId, setCollectionId] = useState("");
   const [title, setTitle] = useState("");
@@ -53,6 +63,13 @@ export default function AdminPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editMood, setEditMood] = useState("");
   const [editTags, setEditTags] = useState("");
+  const [profileUsername, setProfileUsername] = useState("");
+  const [profileDisplayName, setProfileDisplayName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+  const [profileAvatarFile, setProfileAvatarFile] = useState<File | null>(null);
+  const [profileAvatarPreview, setProfileAvatarPreview] = useState("");
+  const [profileAvatarInputKey, setProfileAvatarInputKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
@@ -106,6 +123,39 @@ export default function AdminPage() {
     loadCollections(client);
   }, [userId]);
 
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !userId) return;
+
+    async function loadProfile(database: NonNullable<typeof supabase>) {
+      const { data, error: profileError } = await database
+        .from("profiles")
+        .select("id, username, display_name, bio, avatar_url")
+        .eq("id", userId)
+        .single();
+
+      if (profileError) {
+        setError(profileError.message);
+        return;
+      }
+
+      const profile = data as CreatorProfile;
+      setProfileUsername(profile.username);
+      setProfileDisplayName(profile.display_name);
+      setProfileBio(profile.bio ?? "");
+      setProfileAvatarUrl(profile.avatar_url ?? "");
+      setProfileAvatarPreview(profile.avatar_url ?? "");
+    }
+
+    loadProfile(client);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!profileAvatarPreview.startsWith("blob:")) return;
+
+    return () => URL.revokeObjectURL(profileAvatarPreview);
+  }, [profileAvatarPreview]);
+
   function slugify(value: string) {
     return value
       .toLowerCase()
@@ -113,6 +163,15 @@ export default function AdminPage() {
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
+  }
+
+  function selectProfileAvatar(nextFile: File | null) {
+    setProfileAvatarFile(nextFile);
+    setProfileAvatarPreview(
+      nextFile ? URL.createObjectURL(nextFile) : profileAvatarUrl
+    );
+    setError(null);
+    setMessage(null);
   }
 
   function selectArtwork(artwork: Artwork) {
@@ -175,6 +234,33 @@ export default function AdminPage() {
     });
 
     if (loginError) setError(loginError.message);
+    setBusy(false);
+  }
+
+  async function handleSignup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !signupDisplayName.trim()) return;
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          display_name: signupDisplayName.trim(),
+        },
+      },
+    });
+
+    if (signupError) {
+      setError(signupError.message);
+    } else if (!data.session) {
+      setMessage("Check your email to confirm your creator account.");
+    }
+
     setBusy(false);
   }
 
@@ -375,6 +461,103 @@ export default function AdminPage() {
     setBusy(false);
   }
 
+  async function handleUpdateProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const client = supabase;
+    const username = profileUsername.trim().toLowerCase();
+    const displayName = profileDisplayName.trim();
+
+    if (!client || !userId || !displayName) {
+      setError("Enter a display name and username.");
+      return;
+    }
+
+    if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(username)) {
+      setError(
+        "Username must be 3-30 characters using lowercase letters, numbers, or hyphens."
+      );
+      return;
+    }
+
+    const allowedAvatarTypes = ["image/png", "image/jpeg", "image/webp"];
+
+    if (
+      profileAvatarFile &&
+      !allowedAvatarTypes.includes(profileAvatarFile.type)
+    ) {
+      setError("The profile picture must be a PNG, JPG, or WebP image.");
+      return;
+    }
+
+    if (profileAvatarFile && profileAvatarFile.size > 5 * 1024 * 1024) {
+      setError("The profile picture must be 5 MB or smaller.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    let avatarUrl = profileAvatarUrl || null;
+
+    if (profileAvatarFile) {
+      const avatarPath = `avatars/${userId}/avatar`;
+      const { error: avatarUploadError } = await client.storage
+        .from("artworks")
+        .upload(avatarPath, profileAvatarFile, {
+          cacheControl: "3600",
+          contentType: profileAvatarFile.type,
+          upsert: true,
+        });
+
+      if (avatarUploadError) {
+        setError(avatarUploadError.message);
+        setBusy(false);
+        return;
+      }
+
+      const { data: avatarPublicUrl } = client.storage
+        .from("artworks")
+        .getPublicUrl(avatarPath);
+
+      avatarUrl = `${avatarPublicUrl.publicUrl}?v=${Date.now()}`;
+    }
+
+    const { data, error: profileError } = await client
+      .from("profiles")
+      .update({
+        username,
+        display_name: displayName,
+        bio: profileBio.trim() || null,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
+      .select("id, username, display_name, bio, avatar_url")
+      .single();
+
+    if (profileError) {
+      setError(
+        profileError.code === "23505"
+          ? "That username is already taken."
+          : profileError.message
+      );
+      setBusy(false);
+      return;
+    }
+
+    const profile = data as CreatorProfile;
+    setProfileUsername(profile.username);
+    setProfileDisplayName(profile.display_name);
+    setProfileBio(profile.bio ?? "");
+    setProfileAvatarUrl(profile.avatar_url ?? "");
+    setProfileAvatarPreview(profile.avatar_url ?? "");
+    setProfileAvatarFile(null);
+    setProfileAvatarInputKey((current) => current + 1);
+    setMessage("Creator profile updated.");
+    setBusy(false);
+  }
+
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut({ scope: "local" });
@@ -382,6 +565,12 @@ export default function AdminPage() {
     setUserId(null);
     setManagedArtworks([]);
     setSelectedArtworkId("");
+    setProfileUsername("");
+    setProfileDisplayName("");
+    setProfileBio("");
+    setProfileAvatarUrl("");
+    setProfileAvatarFile(null);
+    setProfileAvatarPreview("");
     setMessage(null);
   }
 
@@ -406,12 +595,62 @@ export default function AdminPage() {
           <p className="mt-12 text-xs uppercase tracking-[0.3em] text-zinc-500">
             The TRINE Archive
           </p>
-          <h1 className="mt-3 text-4xl font-light text-white">Archive access</h1>
+          <h1 className="mt-3 text-4xl font-light text-white">Creator access</h1>
           <p className="mt-3 leading-7 text-zinc-400">
-            Sign in with the private curator account.
+            {authMode === "signin"
+              ? "Sign in to manage your archive."
+              : "Create a profile and begin building your archive."}
           </p>
 
-          <form onSubmit={handleLogin} className="mt-10 space-y-5">
+          <div className="mt-8 grid grid-cols-2 border border-white/15 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("signin");
+                setError(null);
+                setMessage(null);
+              }}
+              className={`px-4 py-3 text-sm transition ${
+                authMode === "signin"
+                  ? "bg-cyan-300 font-medium text-zinc-950"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("signup");
+                setError(null);
+                setMessage(null);
+              }}
+              className={`px-4 py-3 text-sm transition ${
+                authMode === "signup"
+                  ? "bg-cyan-300 font-medium text-zinc-950"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Create account
+            </button>
+          </div>
+
+          <form
+            onSubmit={authMode === "signin" ? handleLogin : handleSignup}
+            className="mt-8 space-y-5"
+          >
+            {authMode === "signup" && (
+              <label className="block text-sm text-zinc-300">
+                Display name
+                <input
+                  value={signupDisplayName}
+                  onChange={(event) => setSignupDisplayName(event.target.value)}
+                  required
+                  autoComplete="name"
+                  className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+                />
+              </label>
+            )}
             <label className="block text-sm text-zinc-300">
               Email
               <input
@@ -430,19 +669,28 @@ export default function AdminPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete={
+                  authMode === "signin" ? "current-password" : "new-password"
+                }
                 className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
               />
             </label>
 
             {error && <p className="text-sm text-red-300">{error}</p>}
+            {message && <p className="text-sm text-emerald-300">{message}</p>}
 
             <button
               type="submit"
               disabled={busy}
               className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy ? "Signing in..." : "Sign in"}
+              {busy
+                ? authMode === "signin"
+                  ? "Signing in..."
+                  : "Creating account..."
+                : authMode === "signin"
+                  ? "Sign in"
+                  : "Create creator account"}
             </button>
           </form>
         </section>
@@ -462,7 +710,7 @@ export default function AdminPage() {
               Back to NODEINE
             </Link>
             <h1 className="mt-4 text-4xl font-light text-white">
-              Publish artwork
+              Creator studio
             </h1>
             <p className="mt-2 text-sm text-zinc-500">Signed in as {userEmail}</p>
           </div>
@@ -475,7 +723,7 @@ export default function AdminPage() {
           </button>
         </header>
 
-        <div className="mt-8 grid grid-cols-3 border border-white/15 p-1">
+        <div className="mt-8 grid grid-cols-2 border border-white/15 p-1 sm:grid-cols-4">
           <button
             type="button"
             onClick={() => {
@@ -531,6 +779,21 @@ export default function AdminPage() {
             }`}
           >
             Manage archive
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("profile");
+              setError(null);
+              setMessage(null);
+            }}
+            className={`px-4 py-3 text-sm transition ${
+              mode === "profile"
+                ? "bg-cyan-300 font-medium text-zinc-950"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Profile
           </button>
         </div>
 
@@ -673,7 +936,7 @@ export default function AdminPage() {
               </button>
             </div>
           </form>
-        ) : (
+        ) : mode === "manage" ? (
           <section className="mt-10">
             <label className="block text-sm text-zinc-300">
               Collection
@@ -799,6 +1062,106 @@ export default function AdminPage() {
               </div>
             </div>
           </section>
+        ) : (
+          <form onSubmit={handleUpdateProfile} className="mt-10 grid gap-6">
+            <div className="border-b border-white/10 pb-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
+                Creator identity
+              </p>
+              <h2 className="mt-2 text-2xl font-light text-white">
+                Public profile
+              </h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                Your profile will live at /creator/
+                {profileUsername || "username"}.
+              </p>
+            </div>
+
+            <div className="grid gap-5 border-b border-white/10 pb-6 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
+              <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-3xl font-light text-cyan-300">
+                {profileAvatarPreview ? (
+                  <img
+                    src={profileAvatarPreview}
+                    alt="Profile picture preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  profileDisplayName.trim().charAt(0).toUpperCase() || "N"
+                )}
+              </div>
+
+              <label className="block text-sm text-zinc-300">
+                Profile picture
+                <input
+                  key={profileAvatarInputKey}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) =>
+                    selectProfileAvatar(event.target.files?.[0] ?? null)
+                  }
+                  className="mt-2 block w-full border border-dashed border-white/20 bg-black p-4 text-sm text-zinc-400 file:mr-4 file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:font-medium file:text-zinc-950"
+                />
+                <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                  PNG, JPG, or WebP. Maximum size 5 MB.
+                </span>
+              </label>
+            </div>
+
+            <label className="block text-sm text-zinc-300">
+              Username
+              <input
+                value={profileUsername}
+                onChange={(event) => setProfileUsername(event.target.value)}
+                required
+                minLength={3}
+                maxLength={30}
+                autoComplete="username"
+                placeholder="your-creator-name"
+                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+              />
+              <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                Use lowercase letters, numbers, or hyphens.
+              </span>
+            </label>
+
+            <label className="block text-sm text-zinc-300">
+              Display name
+              <input
+                value={profileDisplayName}
+                onChange={(event) => setProfileDisplayName(event.target.value)}
+                required
+                maxLength={80}
+                autoComplete="name"
+                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+              />
+            </label>
+
+            <label className="block text-sm text-zinc-300">
+              Bio
+              <textarea
+                value={profileBio}
+                onChange={(event) => setProfileBio(event.target.value)}
+                rows={5}
+                maxLength={500}
+                placeholder="Tell people about the worlds you create."
+                className="mt-2 w-full resize-y border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+              />
+            </label>
+
+            <div>
+              {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
+              {message && (
+                <p className="mb-4 text-sm text-emerald-300">{message}</p>
+              )}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? "Saving..." : "Save creator profile"}
+              </button>
+            </div>
+          </form>
         )}
       </section>
     </main>
