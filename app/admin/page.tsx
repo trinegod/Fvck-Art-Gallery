@@ -11,6 +11,16 @@ type Collection = {
   sort_order: number | null;
 };
 
+type Artwork = {
+  id: string;
+  collection_id: string;
+  title: string;
+  src: string;
+  mood: string | null;
+  tags: string[] | null;
+  sort_order: number | null;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -18,7 +28,9 @@ const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function AdminPage() {
-  const [mode, setMode] = useState<"artwork" | "collection">("artwork");
+  const [mode, setMode] = useState<"artwork" | "collection" | "manage">(
+    "artwork"
+  );
   const [authReady, setAuthReady] = useState(!supabase);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -33,6 +45,12 @@ export default function AdminPage() {
   const [newCollectionSummary, setNewCollectionSummary] = useState("");
   const [newWorldNumber, setNewWorldNumber] = useState("");
   const [newSortOrder, setNewSortOrder] = useState("");
+  const [manageCollectionId, setManageCollectionId] = useState("");
+  const [managedArtworks, setManagedArtworks] = useState<Artwork[]>([]);
+  const [selectedArtworkId, setSelectedArtworkId] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editMood, setEditMood] = useState("");
+  const [editTags, setEditTags] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
@@ -77,6 +95,7 @@ export default function AdminPage() {
       const rows = (data ?? []) as Collection[];
       setCollections(rows);
       setCollectionId((current) => current || rows[0]?.id || "");
+      setManageCollectionId((current) => current || rows[0]?.id || "");
     }
 
     loadCollections(client);
@@ -89,6 +108,52 @@ export default function AdminPage() {
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
+  }
+
+  function selectArtwork(artwork: Artwork) {
+    setSelectedArtworkId(artwork.id);
+    setEditTitle(artwork.title);
+    setEditMood(artwork.mood ?? "");
+    setEditTags((artwork.tags ?? []).join(", "));
+    setError(null);
+    setMessage(null);
+  }
+
+  async function loadManagedArtworks(targetCollectionId: string) {
+    const client = supabase;
+    if (!client || !targetCollectionId) return;
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    const { data, error: artworksError } = await client
+      .from("artworks")
+      .select("id, collection_id, title, src, mood, tags, sort_order")
+      .eq("collection_id", targetCollectionId)
+      .order("sort_order");
+
+    if (artworksError) {
+      setError(artworksError.message);
+      setManagedArtworks([]);
+      setSelectedArtworkId("");
+      setBusy(false);
+      return;
+    }
+
+    const rows = (data ?? []) as Artwork[];
+    setManagedArtworks(rows);
+
+    if (rows.length) {
+      selectArtwork(rows[0]);
+    } else {
+      setSelectedArtworkId("");
+      setEditTitle("");
+      setEditMood("");
+      setEditTags("");
+    }
+
+    setBusy(false);
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -258,10 +323,58 @@ export default function AdminPage() {
     setBusy(false);
   }
 
+  async function handleUpdateArtwork(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const client = supabase;
+
+    if (!client || !selectedArtworkId || !editTitle.trim()) {
+      setError("Select an artwork and enter a title.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    const parsedTags = editTags
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean);
+
+    const { data, error: updateError } = await client
+      .from("artworks")
+      .update({
+        title: editTitle.trim(),
+        mood: editMood.trim() || null,
+        tags: parsedTags,
+      })
+      .eq("id", selectedArtworkId)
+      .select("id, collection_id, title, src, mood, tags, sort_order")
+      .single();
+
+    if (updateError) {
+      setError(updateError.message);
+      setBusy(false);
+      return;
+    }
+
+    const updatedArtwork = data as Artwork;
+    setManagedArtworks((current) =>
+      current.map((artwork) =>
+        artwork.id === updatedArtwork.id ? updatedArtwork : artwork
+      )
+    );
+    selectArtwork(updatedArtwork);
+    setMessage(`${updatedArtwork.title} was updated.`);
+    setBusy(false);
+  }
+
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut({ scope: "local" });
     setCollections([]);
+    setManagedArtworks([]);
+    setSelectedArtworkId("");
     setMessage(null);
   }
 
@@ -355,7 +468,7 @@ export default function AdminPage() {
           </button>
         </header>
 
-        <div className="mt-8 grid grid-cols-2 border border-white/15 p-1">
+        <div className="mt-8 grid grid-cols-3 border border-white/15 p-1">
           <button
             type="button"
             onClick={() => {
@@ -392,6 +505,25 @@ export default function AdminPage() {
             }`}
           >
             Create collection
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("manage");
+              setError(null);
+              setMessage(null);
+              const targetCollectionId =
+                manageCollectionId || collectionId || collections[0]?.id || "";
+              setManageCollectionId(targetCollectionId);
+              loadManagedArtworks(targetCollectionId);
+            }}
+            className={`px-4 py-3 text-sm transition ${
+              mode === "manage"
+                ? "bg-cyan-300 font-medium text-zinc-950"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Manage archive
           </button>
         </div>
 
@@ -468,7 +600,7 @@ export default function AdminPage() {
             </button>
           </div>
         </form>
-        ) : (
+        ) : mode === "collection" ? (
           <form
             onSubmit={handleCreateCollection}
             className="mt-10 grid gap-6 sm:grid-cols-2"
@@ -533,6 +665,132 @@ export default function AdminPage() {
               </button>
             </div>
           </form>
+        ) : (
+          <section className="mt-10">
+            <label className="block text-sm text-zinc-300">
+              Collection
+              <select
+                value={manageCollectionId}
+                onChange={(event) => {
+                  const nextCollectionId = event.target.value;
+                  setManageCollectionId(nextCollectionId);
+                  loadManagedArtworks(nextCollectionId);
+                }}
+                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+              >
+                {collections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.world_code} - {collection.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="mt-8 grid min-h-[520px] border border-white/10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
+              <div className="max-h-[720px] overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r">
+                <div className="sticky top-0 border-b border-white/10 bg-zinc-950 px-4 py-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  {busy
+                    ? "Loading pieces..."
+                    : `${managedArtworks.length} pieces`}
+                </div>
+                {managedArtworks.map((artwork) => (
+                  <button
+                    key={artwork.id}
+                    type="button"
+                    onClick={() => selectArtwork(artwork)}
+                    className={`grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 border-b border-white/10 p-3 text-left transition ${
+                      selectedArtworkId === artwork.id
+                        ? "bg-cyan-300/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <img
+                      src={artwork.src}
+                      alt=""
+                      className="h-16 w-16 object-cover object-center"
+                    />
+                    <span className="min-w-0 self-center">
+                      <span className="block truncate text-sm text-white">
+                        {artwork.title}
+                      </span>
+                      <span className="mt-1 block text-xs text-zinc-500">
+                        Piece {artwork.sort_order ?? "-"}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+                {!busy && !managedArtworks.length && (
+                  <p className="p-5 text-sm leading-6 text-zinc-500">
+                    This collection has no artwork yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="p-5 sm:p-7">
+                {selectedArtworkId ? (
+                  <form onSubmit={handleUpdateArtwork} className="space-y-6">
+                    <div className="aspect-[4/3] overflow-hidden bg-black">
+                      <img
+                        src={
+                          managedArtworks.find(
+                            (artwork) => artwork.id === selectedArtworkId
+                          )?.src ?? ""
+                        }
+                        alt={editTitle}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+
+                    <label className="block text-sm text-zinc-300">
+                      Artwork title
+                      <input
+                        value={editTitle}
+                        onChange={(event) => setEditTitle(event.target.value)}
+                        required
+                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+                      />
+                    </label>
+
+                    <label className="block text-sm text-zinc-300">
+                      Mood
+                      <input
+                        value={editMood}
+                        onChange={(event) => setEditMood(event.target.value)}
+                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+                      />
+                    </label>
+
+                    <label className="block text-sm text-zinc-300">
+                      Tags
+                      <input
+                        value={editTags}
+                        onChange={(event) => setEditTags(event.target.value)}
+                        placeholder="cyberpunk, portrait, neon"
+                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
+                      />
+                    </label>
+
+                    {error && <p className="text-sm text-red-300">{error}</p>}
+                    {message && (
+                      <p className="text-sm text-emerald-300">{message}</p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {busy ? "Saving..." : "Save artwork details"}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="grid min-h-[420px] place-items-center text-center text-sm text-zinc-500">
+                    Select a collection with artwork to begin editing.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         )}
       </section>
     </main>
