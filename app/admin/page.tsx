@@ -1072,8 +1072,18 @@ export default function AdminPage() {
                 Public profile
               </h2>
               <p className="mt-2 text-sm text-zinc-500">
-                Your profile will live at /creator/
-                {profileUsername || "username"}.
+                Your profile lives at{" "}
+                {profileUsername ? (
+                  <Link
+                    href={`/creator/${profileUsername}`}
+                    className="text-cyan-300 hover:text-cyan-200"
+                  >
+                    /creator/{profileUsername}
+                  </Link>
+                ) : (
+                  "/creator/username"
+                )}
+                .
               </p>
             </div>
 
