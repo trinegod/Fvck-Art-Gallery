@@ -33,6 +33,7 @@ export default function AdminPage() {
   );
   const [authReady, setAuthReady] = useState(!supabase);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const [mood, setMood] = useState("");
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [newCollectionTitle, setNewCollectionTitle] = useState("");
   const [newCollectionSummary, setNewCollectionSummary] = useState("");
   const [newWorldNumber, setNewWorldNumber] = useState("");
@@ -64,12 +66,14 @@ export default function AdminPage() {
 
     client.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email ?? null);
+      setUserId(data.user?.id ?? null);
       setAuthReady(true);
     });
 
     const { data: authListener } = client.auth.onAuthStateChange(
       (_event, session) => {
         setUserEmail(session?.user.email ?? null);
+        setUserId(session?.user.id ?? null);
         setAuthReady(true);
       }
     );
@@ -79,12 +83,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     const client = supabase;
-    if (!client || !userEmail) return;
+    if (!client || !userId) return;
 
     async function loadCollections(database: NonNullable<typeof supabase>) {
       const { data, error: collectionsError } = await database
         .from("collections")
         .select("id, title, world_code, sort_order")
+        .eq("owner_id", userId)
         .order("sort_order");
 
       if (collectionsError) {
@@ -99,7 +104,7 @@ export default function AdminPage() {
     }
 
     loadCollections(client);
-  }, [userEmail]);
+  }, [userId]);
 
   function slugify(value: string) {
     return value
@@ -175,7 +180,6 @@ export default function AdminPage() {
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = event.currentTarget;
     const client = supabase;
 
     if (!client || !file || !collectionId || !title.trim()) {
@@ -247,7 +251,7 @@ export default function AdminPage() {
       setMood("");
       setTags("");
       setFile(null);
-      form.reset();
+      setFileInputKey((current) => current + 1);
       setMessage("Artwork published successfully.");
     } catch (uploadError) {
       setError(
@@ -270,6 +274,7 @@ export default function AdminPage() {
 
     if (
       !client ||
+      !userId ||
       !titleValue ||
       !summaryValue ||
       !Number.isInteger(worldNumber) ||
@@ -290,6 +295,7 @@ export default function AdminPage() {
     const { data, error: createError } = await client
       .from("collections")
       .insert({
+        owner_id: userId,
         title: titleValue,
         slug: slugify(titleValue),
         summary: summaryValue,
@@ -373,6 +379,7 @@ export default function AdminPage() {
     if (!supabase) return;
     await supabase.auth.signOut({ scope: "local" });
     setCollections([]);
+    setUserId(null);
     setManagedArtworks([]);
     setSelectedArtworkId("");
     setMessage(null);
@@ -548,6 +555,7 @@ export default function AdminPage() {
           <label className="block text-sm text-zinc-300 sm:col-span-2">
             Image
             <input
+              key={fileInputKey}
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
