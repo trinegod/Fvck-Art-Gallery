@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
+import ArtworkComments from "./components/artwork-comments";
 
 type CollectionRow = {
   id: string;
+  owner_id: string;
   title: string;
   summary: string | null;
   world_code: string | null;
   sort_order: number | null;
+};
+
+type ProfileRow = {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
 };
 
 type ArtworkRow = {
@@ -230,6 +240,7 @@ export default function Home() {
   const [galleryError, setGalleryError] = useState<string | null>(null);
   const [databaseCollections, setDatabaseCollections] =
     useState<CollectionRow[]>([]);
+  const [creatorProfiles, setCreatorProfiles] = useState<ProfileRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,10 +252,11 @@ export default function Home() {
       }
 
       try {
-        const [collectionsResult, artworksResult] = await Promise.all([
+        const [collectionsResult, artworksResult, profilesResult] =
+          await Promise.all([
           supabase
             .from("collections")
-            .select("id, title, summary, world_code, sort_order")
+            .select("id, owner_id, title, summary, world_code, sort_order")
             .order("sort_order"),
           supabase
             .from("artworks")
@@ -252,14 +264,19 @@ export default function Home() {
               "id, collection_id, title, src, thumb_src, media_type, mood, tags, sort_order"
             )
             .order("sort_order"),
-        ]);
+          supabase
+            .from("profiles")
+            .select("id, username, display_name, avatar_url"),
+          ]);
 
         if (collectionsResult.error) throw collectionsResult.error;
         if (artworksResult.error) throw artworksResult.error;
+        if (profilesResult.error) throw profilesResult.error;
 
         const collectionRows =
           (collectionsResult.data ?? []) as CollectionRow[];
         const artworkRows = (artworksResult.data ?? []) as ArtworkRow[];
+        const profileRows = (profilesResult.data ?? []) as ProfileRow[];
         const collectionById = new Map(
           collectionRows.map((collection) => [collection.id, collection])
         );
@@ -307,6 +324,7 @@ export default function Home() {
         if (!cancelled && databaseGalleryItems.length) {
           setGalleryItems(databaseGalleryItems);
           setDatabaseCollections(collectionRows);
+          setCreatorProfiles(profileRows);
           setGalleryError(null);
         }
       } catch (error) {
@@ -358,10 +376,15 @@ export default function Home() {
           summary: databaseCollection?.summary ?? details.summary,
           cover: coverItem.src,
           tags: coverItem.tags,
+          creator: databaseCollection
+            ? creatorProfiles.find(
+                (profile) => profile.id === databaseCollection.owner_id
+              ) ?? null
+            : null,
         };
       })
       .sort((a, b) => a.order - b.order),
-  [seriesList, galleryItems, databaseCollections]
+  [seriesList, galleryItems, databaseCollections, creatorProfiles]
 );
 
   const filteredItems = activeSeries
@@ -513,46 +536,84 @@ export default function Home() {
         {!activeSeries ? (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {collections.map((collection) => (
-              <button
+              <article
                 key={collection.series}
-                type="button"
-                onClick={() => openCollection(collection.series)}
-                className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
+                className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] transition hover:-translate-y-1 hover:border-cyan-300/60"
               >
-                <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                  <img
-                    src={getThumbnail(collection.cover)}
-                    alt={collection.series}
-                    className="h-full w-full object-cover object-[center_35%] transition duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <p className="text-xs uppercase tracking-[0.22em] text-cyan-200">
-                      {collection.world}
-                    </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-white">
-                      {collection.series}
-                    </h2>
-                    <p className="mt-2 text-sm text-zinc-300">
-                      {collection.count} pieces / {collection.category}
-                    </p>
+                <button
+                  type="button"
+                  onClick={() => openCollection(collection.series)}
+                  className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
+                    <img
+                      src={getThumbnail(collection.cover)}
+                      alt={collection.series}
+                      className="h-full w-full object-cover object-[center_35%] transition duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-5">
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200">
+                        {collection.world}
+                      </p>
+                      <h2 className="mt-2 text-2xl font-semibold text-white">
+                        {collection.series}
+                      </h2>
+                      <p className="mt-2 text-sm text-zinc-300">
+                        {collection.count} pieces / {collection.category}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-3 p-4">
-                  <p className="text-sm text-zinc-400">{collection.summary}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {collection.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                  <div className="space-y-3 p-4">
+                    <p className="text-sm text-zinc-400">
+                      {collection.summary}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {collection.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-lg border border-white/10 px-2 py-1 text-xs text-zinc-400"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+
+                {collection.creator && (
+                  <Link
+                    href={`/creator/${collection.creator.username}`}
+                    className="flex items-center gap-3 border-t border-white/10 px-4 py-3 text-sm text-zinc-400 transition hover:bg-white/[0.04] hover:text-white"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-xs text-cyan-300">
+                      {collection.creator.avatar_url ? (
+                        <img
+                          src={collection.creator.avatar_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        collection.creator.display_name
+                          .charAt(0)
+                          .toUpperCase()
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-zinc-200">
+                        {collection.creator.display_name}
+                      </span>
+                      <span className="block truncate text-xs text-zinc-500">
+                        @{collection.creator.username}
+                      </span>
+                    </span>
+                    <span className="ml-auto text-xs uppercase tracking-[0.16em] text-cyan-300">
+                      Profile
+                    </span>
+                  </Link>
+                )}
+              </article>
             ))}
           </section>
         ) : (
@@ -564,6 +625,17 @@ export default function Home() {
               <h2 className="mt-2 text-3xl font-semibold text-white">
                 {activeSeries}
               </h2>
+              {activeCollection?.creator && (
+                <Link
+                  href={`/creator/${activeCollection.creator.username}`}
+                  className="mt-3 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-cyan-200"
+                >
+                  <span>By {activeCollection.creator.display_name}</span>
+                  <span className="text-cyan-300">
+                    @{activeCollection.creator.username}
+                  </span>
+                </Link>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -697,6 +769,11 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+
+              <ArtworkComments
+                key={selectedItem.id}
+                artworkId={selectedItem.id}
+              />
 
               <div className="mt-8 grid grid-cols-2 gap-3">
                 <button

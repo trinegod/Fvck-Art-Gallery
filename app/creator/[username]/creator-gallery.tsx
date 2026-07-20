@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ArtworkComments from "../../components/artwork-comments";
 
 export type CreatorCollection = {
   id: string;
@@ -49,13 +50,26 @@ export default function CreatorGallery({
       }
     }
 
+    for (const collectionArtworks of grouped.values()) {
+      collectionArtworks.sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      );
+    }
+
     return grouped;
   }, [artworks]);
 
-  const selectedIndex = selectedId
-    ? artworks.findIndex((artwork) => artwork.id === selectedId)
+  const selectedArtwork = selectedId
+    ? artworks.find((artwork) => artwork.id === selectedId) ?? null
+    : null;
+  const selectedCollectionArtworks = selectedArtwork
+    ? artworksByCollection.get(selectedArtwork.collection_id) ?? []
+    : [];
+  const selectedIndex = selectedArtwork
+    ? selectedCollectionArtworks.findIndex(
+        (artwork) => artwork.id === selectedArtwork.id
+      )
     : -1;
-  const selectedArtwork = selectedIndex >= 0 ? artworks[selectedIndex] : null;
   const selectedCollection = selectedArtwork
     ? collectionsById.get(selectedArtwork.collection_id)
     : null;
@@ -64,16 +78,23 @@ export default function CreatorGallery({
     (direction: -1 | 1) => {
       setSelectedId((currentId) => {
         if (!currentId || !artworks.length) return currentId;
-        const currentIndex = artworks.findIndex(
+        const currentArtwork = artworks.find(
+          (artwork) => artwork.id === currentId
+        );
+        if (!currentArtwork) return currentId;
+        const collectionArtworks =
+          artworksByCollection.get(currentArtwork.collection_id) ?? [];
+        const currentIndex = collectionArtworks.findIndex(
           (artwork) => artwork.id === currentId
         );
         if (currentIndex < 0) return currentId;
         const nextIndex =
-          (currentIndex + direction + artworks.length) % artworks.length;
-        return artworks[nextIndex].id;
+          (currentIndex + direction + collectionArtworks.length) %
+          collectionArtworks.length;
+        return collectionArtworks[nextIndex].id;
       });
     },
-    [artworks]
+    [artworks, artworksByCollection]
   );
 
   useEffect(() => {
@@ -188,7 +209,7 @@ export default function CreatorGallery({
           >
             <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
               <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
-                {selectedIndex + 1} / {artworks.length}
+                {selectedIndex + 1} / {selectedCollectionArtworks.length}
               </p>
               <button
                 type="button"
@@ -201,15 +222,15 @@ export default function CreatorGallery({
               </button>
             </div>
 
-            <div className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="relative grid min-h-0 place-items-center bg-black p-4 sm:p-8">
+            <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-1">
+              <div className="relative min-h-0 overflow-hidden bg-black">
                 <img
                   src={selectedArtwork.src}
                   alt={selectedArtwork.title}
-                  className="max-h-full max-w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-contain p-4 sm:p-8"
                 />
 
-                {artworks.length > 1 && (
+                {selectedCollectionArtworks.length > 1 && (
                   <>
                     <button
                       type="button"
@@ -270,6 +291,10 @@ export default function CreatorGallery({
                     </div>
                   </div>
                 )}
+                <ArtworkComments
+                  key={selectedArtwork.id}
+                  artworkId={selectedArtwork.id}
+                />
               </aside>
             </div>
           </div>
