@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import CreatorGallery, {
+  type CreatorArtwork,
+  type CreatorCollection,
+} from "./creator-gallery";
 
 type CreatorPageProps = {
   params: Promise<{ username: string }>;
@@ -12,25 +16,6 @@ type CreatorProfile = {
   display_name: string;
   bio: string | null;
   avatar_url: string | null;
-};
-
-type Collection = {
-  id: string;
-  title: string;
-  summary: string | null;
-  world_code: string | null;
-  sort_order: number | null;
-};
-
-type Artwork = {
-  id: string;
-  collection_id: string;
-  title: string;
-  src: string;
-  thumb_src: string | null;
-  mood: string | null;
-  tags: string[] | null;
-  sort_order: number | null;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -69,9 +54,9 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
 
   if (collectionError) throw collectionError;
 
-  const collections = (collectionData ?? []) as Collection[];
+  const collections = (collectionData ?? []) as CreatorCollection[];
   const collectionIds = collections.map((collection) => collection.id);
-  let artworks: Artwork[] = [];
+  let artworks: CreatorArtwork[] = [];
 
   if (collectionIds.length) {
     const { data: artworkData, error: artworkError } = await supabase
@@ -83,17 +68,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
       .order("sort_order");
 
     if (artworkError) throw artworkError;
-    artworks = (artworkData ?? []) as Artwork[];
-  }
-
-  const artworksByCollection = new Map<string, Artwork[]>();
-  for (const artwork of artworks) {
-    const collectionArtworks = artworksByCollection.get(artwork.collection_id);
-    if (collectionArtworks) {
-      collectionArtworks.push(artwork);
-    } else {
-      artworksByCollection.set(artwork.collection_id, [artwork]);
-    }
+    artworks = (artworkData ?? []) as CreatorArtwork[];
   }
 
   const creatorInitial = profile.display_name.charAt(0).toUpperCase() || "N";
@@ -163,76 +138,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
       </section>
 
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
-        {collections.length ? (
-          <div className="space-y-20">
-            {collections.map((collection) => {
-              const collectionArtworks =
-                artworksByCollection.get(collection.id) ?? [];
-
-              return (
-                <section key={collection.id}>
-                  <div className="mb-7 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
-                        {collection.world_code || "Visual world"}
-                      </p>
-                      <h2 className="mt-2 text-2xl font-light text-white sm:text-3xl">
-                        {collection.title}
-                      </h2>
-                      {collection.summary && (
-                        <p className="mt-2 max-w-2xl leading-7 text-zinc-400">
-                          {collection.summary}
-                        </p>
-                      )}
-                    </div>
-                    <p className="shrink-0 text-sm text-zinc-500">
-                      {collectionArtworks.length} pieces
-                    </p>
-                  </div>
-
-                  {collectionArtworks.length ? (
-                    <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
-                      {collectionArtworks.map((artwork) => (
-                        <figure
-                          key={artwork.id}
-                          className="group mb-3 break-inside-avoid overflow-hidden border border-white/10 bg-black"
-                        >
-                          <img
-                            src={artwork.thumb_src || artwork.src}
-                            alt={artwork.title}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-auto w-full transition duration-300 group-hover:opacity-90"
-                          />
-                          <figcaption className="border-t border-white/10 px-3 py-3">
-                            <p className="text-sm text-zinc-200">
-                              {artwork.title}
-                            </p>
-                            {artwork.mood && (
-                              <p className="mt-1 text-xs leading-5 text-zinc-500">
-                                {artwork.mood}
-                              </p>
-                            )}
-                          </figcaption>
-                        </figure>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="py-10 text-sm text-zinc-500">
-                      This collection is waiting for its first piece.
-                    </p>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="border-y border-white/10 py-20 text-center">
-            <p className="text-sm text-zinc-500">
-              This creator has not published a collection yet.
-            </p>
-          </div>
-        )}
+        <CreatorGallery collections={collections} artworks={artworks} />
       </div>
     </main>
   );
