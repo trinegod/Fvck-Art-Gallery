@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
+import CreatorNavigation from "./components/creator-navigation";
 
 type CollectionRow = {
   id: string;
@@ -425,6 +426,24 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function goToArchiveHome() {
+    setActiveSeries(null);
+    setSelectedId(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function browseWorlds() {
+    setActiveSeries(null);
+    setSelectedId(null);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("archive-worlds")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
   useEffect(() => {
     if (!selectedItem || !filteredItems.length) return;
 
@@ -453,9 +472,17 @@ export default function Home() {
   }, [selectedItem, selectedIndex, filteredItems]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main
+      id="archive-home"
+      className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 lg:pb-0"
+    >
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-        <header className="mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
+        <header className="relative mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
+          <CreatorNavigation
+            hidden={Boolean(selectedItem)}
+            onBrowseWorlds={browseWorlds}
+            onGoHome={goToArchiveHome}
+          />
           <div className="text-center">
             <h1 className="text-4xl font-light uppercase tracking-[0.22em] text-white sm:text-6xl">
               {activeTitle}
@@ -546,7 +573,10 @@ export default function Home() {
   </section>
 )}
         {!activeSeries ? (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <section
+            id="archive-worlds"
+            className="scroll-mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {collections.map((collection) => (
               <article
                 key={collection.series}

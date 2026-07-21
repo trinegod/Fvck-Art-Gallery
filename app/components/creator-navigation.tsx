@@ -1,0 +1,273 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  Archive,
+  ChevronDown,
+  ExternalLink,
+  Home,
+  Layers3,
+  LogOut,
+  Plus,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/lib/supabase-browser";
+
+type ViewerProfile = {
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+};
+
+type CreatorNavigationProps = {
+  hidden?: boolean;
+  onBrowseWorlds: () => void;
+  onGoHome: () => void;
+};
+
+export default function CreatorNavigation({
+  hidden = false,
+  onBrowseWorlds,
+  onGoHome,
+}: CreatorNavigationProps) {
+  const [authReady, setAuthReady] = useState(!supabase);
+  const [signedIn, setSignedIn] = useState(false);
+  const [profile, setProfile] = useState<ViewerProfile | null>(null);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+    const database = client;
+
+    let cancelled = false;
+
+    async function syncViewer(userId: string | null) {
+      if (!userId) {
+        if (!cancelled) {
+          setSignedIn(false);
+          setProfile(null);
+          setAuthReady(true);
+        }
+        return;
+      }
+
+      setSignedIn(true);
+
+      const { data } = await database
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!cancelled) {
+        setProfile((data as ViewerProfile | null) ?? null);
+        setAuthReady(true);
+      }
+    }
+
+    database.auth.getUser().then(({ data }) => {
+      syncViewer(data.user?.id ?? null);
+    });
+
+    const { data: authListener } = database.auth.onAuthStateChange(
+      (_event, session) => {
+        syncViewer(session?.user.id ?? null);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (hidden) return null;
+
+  const profileHref = profile ? `/creator/${profile.username}` : "/admin";
+  const creatorName = profile?.display_name ?? "Creator profile";
+  const creatorInitial = creatorName.charAt(0).toUpperCase() || "N";
+
+  async function handleSignOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut({ scope: "local" });
+  }
+
+  const creatorAvatar = (
+    <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-cyan-300/15 bg-cyan-300/8 text-xs font-semibold text-cyan-200">
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt=""
+          className="size-full object-cover"
+        />
+      ) : signedIn ? (
+        creatorInitial
+      ) : (
+        <UserRound className="size-4" />
+      )}
+    </span>
+  );
+
+  return (
+    <>
+      <nav
+        aria-label="Creator controls"
+        className="absolute right-0 top-0 z-20 hidden items-center gap-2 lg:flex"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onBrowseWorlds}
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <Layers3 data-icon="inline-start" />
+          Worlds
+        </Button>
+
+        <Button
+          render={<Link href="/admin" />}
+          nativeButton={false}
+          variant="outline"
+          className="h-10 border-white/12 bg-black/30 px-3 text-zinc-200"
+        >
+          <Plus data-icon="inline-start" />
+          {signedIn ? "Creator Studio" : "Creator access"}
+        </Button>
+
+        {authReady && signedIn ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  className="h-10 border-white/12 bg-black/30 pl-1 pr-2"
+                  aria-label={`${creatorName} creator menu`}
+                />
+              }
+            >
+              {creatorAvatar}
+              <ChevronDown className="size-3.5 text-zinc-500" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-64 border border-white/10 bg-zinc-950/95 p-2 shadow-2xl shadow-black/50"
+            >
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 py-2">
+                  <span className="block truncate text-sm font-medium text-zinc-100">
+                    {creatorName}
+                  </span>
+                  <span className="mt-0.5 block truncate font-normal text-zinc-500">
+                    @{profile?.username ?? "profile-pending"}
+                  </span>
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                render={<Link href="/admin" />}
+                className="px-2 py-2"
+              >
+                <Sparkles />
+                Open Creator Studio
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href={profileHref} />}
+                className="px-2 py-2"
+              >
+                <ExternalLink />
+                View public profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onGoHome}
+                className="px-2 py-2"
+              >
+                <Archive />
+                Archive home
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={handleSignOut}
+                className="px-2 py-2"
+              >
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            render={<Link href="/admin" />}
+            nativeButton={false}
+            variant="ghost"
+            size="icon-lg"
+            aria-label="Open creator access"
+            className="text-zinc-400"
+          >
+            {creatorAvatar}
+          </Button>
+        )}
+      </nav>
+
+      <nav
+        aria-label="Mobile archive navigation"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-white/12 bg-zinc-950/90 p-1.5 shadow-2xl shadow-black/70 backdrop-blur-xl lg:hidden"
+      >
+        <button
+          type="button"
+          onClick={onGoHome}
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          <Home className="size-4" />
+          Home
+        </button>
+        <button
+          type="button"
+          onClick={onBrowseWorlds}
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          <Layers3 className="size-4" />
+          Worlds
+        </button>
+        <Link
+          href="/admin"
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-cyan-200 transition hover:bg-cyan-300/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          <span className="grid size-8 place-items-center rounded-xl bg-cyan-300 text-zinc-950 shadow-[0_0_18px_rgba(103,232,249,.25)]">
+            <Plus className="size-4" />
+          </span>
+          Publish
+        </Link>
+        <Link
+          href={profileHref}
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          <span className="grid size-5 place-items-center overflow-hidden rounded-md">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="size-full object-cover"
+              />
+            ) : (
+              <UserRound className="size-4" />
+            )}
+          </span>
+          Profile
+        </Link>
+      </nav>
+    </>
+  );
+}
