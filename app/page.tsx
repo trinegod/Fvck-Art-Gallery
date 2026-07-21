@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
 
 type CollectionRow = {
@@ -32,12 +32,6 @@ type ArtworkRow = {
   tags: string[] | null;
   sort_order: number | null;
 };
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const dystopiaItems = Array.from({ length: 14 }, (_, index) => ({
   id: `dystopia-${index + 1}`,
@@ -387,9 +381,13 @@ export default function Home() {
   [seriesList, galleryItems, databaseCollections, creatorProfiles]
 );
 
-  const filteredItems = activeSeries
-    ? galleryItems.filter((item) => item.series === activeSeries)
-    : [];
+  const filteredItems = useMemo(
+    () =>
+      activeSeries
+        ? galleryItems.filter((item) => item.series === activeSeries)
+        : [],
+    [activeSeries, galleryItems]
+  );
 
   const selectedItem =
     galleryItems.find((item) => item.id === selectedId) ?? null;
@@ -428,16 +426,30 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!selectedItem) return;
+    if (!selectedItem || !filteredItems.length) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setSelectedId(null);
-      if (event.key === "ArrowLeft") showPrevious();
-      if (event.key === "ArrowRight") showNext();
+      if (event.key === "ArrowLeft") {
+        const previousIndex =
+          selectedIndex > 0 ? selectedIndex - 1 : filteredItems.length - 1;
+        setSelectedId(filteredItems[previousIndex].id);
+      }
+      if (event.key === "ArrowRight") {
+        const nextIndex =
+          selectedIndex >= 0 ? (selectedIndex + 1) % filteredItems.length : 0;
+        setSelectedId(filteredItems[nextIndex].id);
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [selectedItem, selectedIndex, filteredItems]);
 
   return (
@@ -701,6 +713,7 @@ export default function Home() {
           className="fixed inset-0 z-50 bg-black/90 p-4 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
+          aria-label={selectedItem.title}
           onClick={() => setSelectedId(null)}
         >
           <div
@@ -720,6 +733,9 @@ export default function Home() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
                     {selectedItem.series}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Artwork {selectedIndex + 1} of {filteredItems.length}
                   </p>
                   <h2 className="mt-2 text-3xl font-semibold text-white">
                     {selectedItem.title}
@@ -770,6 +786,16 @@ export default function Home() {
                 </div>
               </div>
 
+              <a
+                href={selectedItem.src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
+              >
+                Open full-size artwork
+                <span aria-hidden="true">↗</span>
+              </a>
+
               <ArtworkComments
                 key={selectedItem.id}
                 artworkId={selectedItem.id}
@@ -791,6 +817,9 @@ export default function Home() {
                   Next
                 </button>
               </div>
+              <p className="mt-3 text-center text-xs text-zinc-600">
+                Use ← → to browse · Esc to close
+              </p>
             </aside>
           </div>
         </div>

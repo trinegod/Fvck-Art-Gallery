@@ -1,8 +1,66 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  Archive,
+  BadgeCheck,
+  ChevronDown,
+  CircleHelp,
+  ExternalLink,
+  FolderPlus,
+  ImagePlus,
+  Layers3,
+  LogOut,
+  Sparkles,
+  UploadCloud,
+  UserRound,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Toaster } from "@/components/ui/sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase-browser";
+
+type StudioMode = "artwork" | "collection" | "manage" | "profile";
 
 type Collection = {
   id: string;
@@ -29,16 +87,31 @@ type CreatorProfile = {
   avatar_url: string | null;
 };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+function StudioFeedback({
+  error,
+  message,
+}: {
+  error: string | null;
+  message: string | null;
+}) {
+  if (!error && !message) return null;
 
-const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+  return (
+    <div
+      role="status"
+      className={`rounded-xl border px-4 py-3 text-sm leading-6 ${
+        error
+          ? "border-rose-400/25 bg-rose-400/8 text-rose-200"
+          : "border-cyan-300/20 bg-cyan-300/8 text-cyan-100"
+      }`}
+    >
+      {error ?? message}
+    </div>
+  );
+}
 
 export default function AdminPage() {
-  const [mode, setMode] = useState<
-    "artwork" | "collection" | "manage" | "profile"
-  >("artwork");
+  const [mode, setMode] = useState<StudioMode>("artwork");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authReady, setAuthReady] = useState(!supabase);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -97,6 +170,14 @@ export default function AdminPage() {
 
     return () => authListener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
+  useEffect(() => {
+    if (message) toast.success(message);
+  }, [message]);
 
   useEffect(() => {
     const client = supabase;
@@ -574,606 +655,984 @@ export default function AdminPage() {
     setMessage(null);
   }
 
+  function handleModeChange(nextMode: StudioMode) {
+    setMode(nextMode);
+    setError(null);
+    setMessage(null);
+
+    if (nextMode === "collection") {
+      const nextNumber =
+        Math.max(
+          0,
+          ...collections.map((collection) => collection.sort_order ?? 0)
+        ) + 1;
+      setNewWorldNumber((current) => current || String(nextNumber));
+      setNewSortOrder((current) => current || String(nextNumber));
+    }
+
+    if (nextMode === "manage") {
+      const targetCollectionId =
+        manageCollectionId || collectionId || collections[0]?.id || "";
+      setManageCollectionId(targetCollectionId);
+      loadManagedArtworks(targetCollectionId);
+    }
+  }
+
   if (!authReady) {
     return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-400">
-        Loading archive access...
-      </main>
+      <>
+        <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-400">
+          <div className="flex items-center gap-3 text-sm uppercase tracking-[0.24em]">
+            <Sparkles className="size-4 animate-pulse text-cyan-300" />
+            Loading archive access
+          </div>
+        </main>
+        <Toaster position="top-right" theme="dark" />
+      </>
     );
   }
 
   if (!userEmail) {
     return (
-      <main className="min-h-screen bg-zinc-950 px-5 py-16 text-zinc-100">
-        <section className="mx-auto max-w-md">
-          <Link
-            href="/"
-            className="text-xs uppercase tracking-[0.24em] text-cyan-300 hover:text-cyan-200"
-          >
-            Back to NODEINE
-          </Link>
-          <p className="mt-12 text-xs uppercase tracking-[0.3em] text-zinc-500">
-            The TRINE Archive
-          </p>
-          <h1 className="mt-3 text-4xl font-light text-white">Creator access</h1>
-          <p className="mt-3 leading-7 text-zinc-400">
-            {authMode === "signin"
-              ? "Sign in to manage your archive."
-              : "Create a profile and begin building your archive."}
-          </p>
+      <>
+        <main className="relative min-h-screen overflow-hidden bg-zinc-950 px-5 py-12 text-zinc-100 sm:py-20">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_85%_90%,rgba(8,145,178,0.08),transparent_32%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:52px_52px]" />
 
-          <div className="mt-8 grid grid-cols-2 border border-white/15 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("signin");
-                setError(null);
-                setMessage(null);
-              }}
-              className={`px-4 py-3 text-sm transition ${
-                authMode === "signin"
-                  ? "bg-cyan-300 font-medium text-zinc-950"
-                  : "text-zinc-400 hover:text-white"
-              }`}
+          <section className="relative mx-auto max-w-md">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-cyan-300 transition hover:text-cyan-100"
             >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("signup");
-                setError(null);
-                setMessage(null);
-              }}
-              className={`px-4 py-3 text-sm transition ${
-                authMode === "signup"
-                  ? "bg-cyan-300 font-medium text-zinc-950"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Create account
-            </button>
-          </div>
+              <ArrowLeft className="size-3.5" />
+              NODEINE archive
+            </Link>
 
-          <form
-            onSubmit={authMode === "signin" ? handleLogin : handleSignup}
-            className="mt-8 space-y-5"
-          >
-            {authMode === "signup" && (
-              <label className="block text-sm text-zinc-300">
-                Display name
-                <input
-                  value={signupDisplayName}
-                  onChange={(event) => setSignupDisplayName(event.target.value)}
-                  required
-                  autoComplete="name"
-                  className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-                />
-              </label>
-            )}
-            <label className="block text-sm text-zinc-300">
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                autoComplete="email"
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
-            <label className="block text-sm text-zinc-300">
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                autoComplete={
-                  authMode === "signin" ? "current-password" : "new-password"
-                }
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
+            <div className="mt-10 flex items-center justify-between">
+              <Badge className="border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
+                Creator channel
+              </Badge>
+              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">
+                NDN / 001
+              </span>
+            </div>
 
-            {error && <p className="text-sm text-red-300">{error}</p>}
-            {message && <p className="text-sm text-emerald-300">{message}</p>}
+            <Card className="mt-4 border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/50 ring-0 backdrop-blur-xl">
+              <CardHeader className="border-b border-white/8 px-6 pb-6 pt-2">
+                <div className="mb-3 grid size-11 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/8 text-cyan-300">
+                  <Archive className="size-5" />
+                </div>
+                <CardTitle className="text-3xl font-light tracking-tight text-white">
+                  Creator access
+                </CardTitle>
+                <CardDescription className="max-w-sm leading-6 text-zinc-400">
+                  {authMode === "signin"
+                    ? "Enter the Studio and continue building your visual worlds."
+                    : "Create your identity and open a new channel in the archive."}
+                </CardDescription>
+              </CardHeader>
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy
-                ? authMode === "signin"
-                  ? "Signing in..."
-                  : "Creating account..."
-                : authMode === "signin"
-                  ? "Sign in"
-                  : "Create creator account"}
-            </button>
-          </form>
-        </section>
-      </main>
+              <CardContent className="px-6 pb-2">
+                <Tabs
+                  value={authMode}
+                  onValueChange={(nextMode) => {
+                    setAuthMode(nextMode as "signin" | "signup");
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="gap-6"
+                >
+                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl border border-white/8 bg-black/45 p-1 group-data-horizontal/tabs:h-11">
+                    <TabsTrigger
+                      value="signin"
+                      className="h-full rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
+                    >
+                      Sign in
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="signup"
+                      className="h-full rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
+                    >
+                      Create account
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <form
+                    onSubmit={
+                      authMode === "signin" ? handleLogin : handleSignup
+                    }
+                  >
+                    <FieldGroup>
+                      {authMode === "signup" && (
+                        <Field>
+                          <FieldLabel htmlFor="signup-display-name">
+                            Display name
+                          </FieldLabel>
+                          <Input
+                            id="signup-display-name"
+                            value={signupDisplayName}
+                            onChange={(event) =>
+                              setSignupDisplayName(event.target.value)
+                            }
+                            required
+                            autoComplete="name"
+                            className="h-11 border-white/12 bg-black/45"
+                          />
+                        </Field>
+                      )}
+
+                      <Field>
+                        <FieldLabel htmlFor="creator-email">Email</FieldLabel>
+                        <Input
+                          id="creator-email"
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          required
+                          autoComplete="email"
+                          className="h-11 border-white/12 bg-black/45"
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="creator-password">
+                          Password
+                        </FieldLabel>
+                        <Input
+                          id="creator-password"
+                          type="password"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          required
+                          autoComplete={
+                            authMode === "signin"
+                              ? "current-password"
+                              : "new-password"
+                          }
+                          className="h-11 border-white/12 bg-black/45"
+                        />
+                      </Field>
+
+                      <StudioFeedback error={error} message={message} />
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={busy}
+                        className="h-11 w-full shadow-lg shadow-cyan-950/30"
+                      >
+                        {busy
+                          ? authMode === "signin"
+                            ? "Opening Studio..."
+                            : "Creating channel..."
+                          : authMode === "signin"
+                            ? "Enter Creator Studio"
+                            : "Create creator account"}
+                      </Button>
+                    </FieldGroup>
+                  </form>
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            <p className="mt-6 text-center text-xs leading-5 text-zinc-600">
+              Independent archive tools for artists building impossible worlds.
+            </p>
+          </section>
+        </main>
+        <Toaster position="top-right" theme="dark" richColors />
+      </>
     );
   }
 
+  const creatorInitial = (profileDisplayName || userEmail)
+    .charAt(0)
+    .toUpperCase();
+
   return (
-    <main className="min-h-screen bg-zinc-950 px-5 py-10 text-zinc-100 sm:px-8">
-      <section className="mx-auto max-w-3xl">
-        <header className="flex flex-col gap-5 border-b border-white/10 pb-8 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link
-              href="/"
-              className="text-xs uppercase tracking-[0.24em] text-cyan-300 hover:text-cyan-200"
-            >
-              Back to NODEINE
-            </Link>
-            <h1 className="mt-4 text-4xl font-light text-white">
-              Creator studio
-            </h1>
-            <p className="mt-2 text-sm text-zinc-500">Signed in as {userEmail}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-fit border border-white/15 px-4 py-2 text-sm text-zinc-300 hover:border-white/30 hover:text-white"
-          >
-            Sign out
-          </button>
-        </header>
+    <>
+      <main className="relative min-h-screen overflow-hidden bg-zinc-950 px-4 py-6 text-zinc-100 sm:px-8 sm:py-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(34,211,238,0.11),transparent_25%),radial-gradient(circle_at_100%_40%,rgba(8,145,178,0.07),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:56px_56px]" />
 
-        <div className="mt-8 grid grid-cols-2 border border-white/15 p-1 sm:grid-cols-4">
-          <button
-            type="button"
-            onClick={() => {
-              setMode("artwork");
-              setError(null);
-              setMessage(null);
-            }}
-            className={`px-4 py-3 text-sm transition ${
-              mode === "artwork"
-                ? "bg-cyan-300 font-medium text-zinc-950"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Publish artwork
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("collection");
-              setError(null);
-              setMessage(null);
-              const nextNumber =
-                Math.max(
-                  0,
-                  ...collections.map((collection) => collection.sort_order ?? 0)
-                ) + 1;
-              setNewWorldNumber((current) => current || String(nextNumber));
-              setNewSortOrder((current) => current || String(nextNumber));
-            }}
-            className={`px-4 py-3 text-sm transition ${
-              mode === "collection"
-                ? "bg-cyan-300 font-medium text-zinc-950"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Create collection
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("manage");
-              setError(null);
-              setMessage(null);
-              const targetCollectionId =
-                manageCollectionId || collectionId || collections[0]?.id || "";
-              setManageCollectionId(targetCollectionId);
-              loadManagedArtworks(targetCollectionId);
-            }}
-            className={`px-4 py-3 text-sm transition ${
-              mode === "manage"
-                ? "bg-cyan-300 font-medium text-zinc-950"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Manage archive
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("profile");
-              setError(null);
-              setMessage(null);
-            }}
-            className={`px-4 py-3 text-sm transition ${
-              mode === "profile"
-                ? "bg-cyan-300 font-medium text-zinc-950"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Profile
-          </button>
-        </div>
-
-        {mode === "artwork" ? (
-        <form onSubmit={handleUpload} className="mt-10 grid gap-6 sm:grid-cols-2">
-          <label className="block text-sm text-zinc-300 sm:col-span-2">
-            Collection
-            <select
-              value={collectionId}
-              onChange={(event) => setCollectionId(event.target.value)}
-              required
-              className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-            >
-              {collections.map((collection) => (
-                <option key={collection.id} value={collection.id}>
-                  {collection.world_code} - {collection.title}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm text-zinc-300 sm:col-span-2">
-            Image
-            <input
-              key={fileInputKey}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              required
-              className="mt-2 block w-full border border-dashed border-white/20 bg-black p-5 text-sm text-zinc-400 file:mr-4 file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:font-medium file:text-zinc-950"
-            />
-          </label>
-
-          <label className="block text-sm text-zinc-300 sm:col-span-2">
-            Artwork title
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-            />
-          </label>
-
-          <label className="block text-sm text-zinc-300">
-            Mood
-            <input
-              value={mood}
-              onChange={(event) => setMood(event.target.value)}
-              placeholder="Neon city solitude"
-              className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-            />
-          </label>
-
-          <label className="block text-sm text-zinc-300">
-            Tags
-            <input
-              value={tags}
-              onChange={(event) => setTags(event.target.value)}
-              placeholder="cyberpunk, portrait, neon"
-              className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-            />
-          </label>
-
-          <div className="sm:col-span-2">
-            {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
-            {message && (
-              <p className="mb-4 text-sm text-emerald-300">{message}</p>
-            )}
-            <button
-              type="submit"
-              disabled={busy || !file || !collections.length}
-              className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy ? "Publishing..." : "Publish to archive"}
-            </button>
-          </div>
-        </form>
-        ) : mode === "collection" ? (
-          <form
-            onSubmit={handleCreateCollection}
-            className="mt-10 grid gap-6 sm:grid-cols-2"
-          >
-            <label className="block text-sm text-zinc-300 sm:col-span-2">
-              Collection name
-              <input
-                value={newCollectionTitle}
-                onChange={(event) => setNewCollectionTitle(event.target.value)}
-                required
-                placeholder="New visual world"
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
-
-            <label className="block text-sm text-zinc-300">
-              World number
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={newWorldNumber}
-                onChange={(event) => setNewWorldNumber(event.target.value)}
-                required
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
-
-            <label className="block text-sm text-zinc-300">
-              Display order
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={newSortOrder}
-                onChange={(event) => setNewSortOrder(event.target.value)}
-                required
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
-
-            <label className="block text-sm text-zinc-300 sm:col-span-2">
-              Collection summary
-              <textarea
-                value={newCollectionSummary}
-                onChange={(event) => setNewCollectionSummary(event.target.value)}
-                required
-                rows={4}
-                placeholder="Describe the visual world and its atmosphere."
-                className="mt-2 w-full resize-y border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
-
-            <div className="sm:col-span-2">
-              {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+        <section className="relative mx-auto max-w-6xl">
+          <header className="flex flex-col gap-6 border-b border-white/10 pb-7 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-cyan-300 transition hover:text-cyan-100"
               >
-                {busy ? "Creating..." : "Create collection"}
-              </button>
-            </div>
-          </form>
-        ) : mode === "manage" ? (
-          <section className="mt-10">
-            <label className="block text-sm text-zinc-300">
-              Collection
-              <select
-                value={manageCollectionId}
-                onChange={(event) => {
-                  const nextCollectionId = event.target.value;
-                  setManageCollectionId(nextCollectionId);
-                  loadManagedArtworks(nextCollectionId);
-                }}
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              >
-                {collections.map((collection) => (
-                  <option key={collection.id} value={collection.id}>
-                    {collection.world_code} - {collection.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="mt-8 grid min-h-[520px] border border-white/10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
-              <div className="max-h-[720px] overflow-y-auto border-b border-white/10 lg:border-b-0 lg:border-r">
-                <div className="sticky top-0 border-b border-white/10 bg-zinc-950 px-4 py-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
-                  {busy
-                    ? "Loading pieces..."
-                    : `${managedArtworks.length} pieces`}
-                </div>
-                {managedArtworks.map((artwork) => (
-                  <button
-                    key={artwork.id}
-                    type="button"
-                    onClick={() => selectArtwork(artwork)}
-                    className={`grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 border-b border-white/10 p-3 text-left transition ${
-                      selectedArtworkId === artwork.id
-                        ? "bg-cyan-300/10"
-                        : "hover:bg-white/5"
-                    }`}
-                  >
-                    <img
-                      src={artwork.src}
-                      alt=""
-                      className="h-16 w-16 object-cover object-center"
-                    />
-                    <span className="min-w-0 self-center">
-                      <span className="block truncate text-sm text-white">
-                        {artwork.title}
-                      </span>
-                      <span className="mt-1 block text-xs text-zinc-500">
-                        Piece {artwork.sort_order ?? "-"}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-                {!busy && !managedArtworks.length && (
-                  <p className="p-5 text-sm leading-6 text-zinc-500">
-                    This collection has no artwork yet.
-                  </p>
-                )}
+                <ArrowLeft className="size-3.5" />
+                NODEINE archive
+              </Link>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <h1 className="text-4xl font-light tracking-tight text-white sm:text-5xl">
+                  Creator Studio
+                </h1>
+                <Badge className="border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
+                  <span className="mr-1 size-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,.8)]" />
+                  Online
+                </Badge>
               </div>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500">
+                Publish new pieces, shape visual worlds, and control how your
+                identity appears across the archive.
+              </p>
+            </div>
 
-              <div className="p-5 sm:p-7">
-                {selectedArtworkId ? (
-                  <form onSubmit={handleUpdateArtwork} className="space-y-6">
-                    <div className="aspect-[4/3] overflow-hidden bg-black">
+            <div className="flex flex-wrap items-center gap-2">
+              <Dialog>
+                <DialogTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="h-10 border-white/12 bg-black/30 px-3 text-zinc-300"
+                    />
+                  }
+                >
+                  <CircleHelp data-icon="inline-start" />
+                  Studio guide
+                </DialogTrigger>
+                <DialogContent className="border border-white/10 bg-zinc-950/95 p-6 shadow-2xl shadow-black/60 ring-0 sm:max-w-md">
+                  <DialogHeader>
+                    <Badge className="mb-2 border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
+                      NODEINE workflow
+                    </Badge>
+                    <DialogTitle className="text-xl text-white">
+                      Build one world at a time.
+                    </DialogTitle>
+                    <DialogDescription className="leading-6 text-zinc-400">
+                      Create a collection first, publish pieces into it, then
+                      use Manage to refine titles, moods, and discovery tags.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-2 grid gap-3">
+                    {[
+                      ["01", "Collections", "Define the world and its order."],
+                      ["02", "Publish", "Add the strongest image and metadata."],
+                      ["03", "Manage", "Review the sequence and tune details."],
+                      ["04", "Profile", "Keep your public creator identity sharp."],
+                    ].map(([number, label, detail]) => (
+                      <div
+                        key={number}
+                        className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-3"
+                      >
+                        <span className="font-mono text-xs text-cyan-300">
+                          {number}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            {label}
+                          </p>
+                          <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                            {detail}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="h-10 border-white/12 bg-black/30 pl-2 pr-3"
+                    />
+                  }
+                >
+                  <span className="grid size-7 place-items-center overflow-hidden rounded-lg bg-cyan-300/12 text-xs font-semibold text-cyan-200">
+                    {profileAvatarPreview ? (
                       <img
-                        src={
-                          managedArtworks.find(
-                            (artwork) => artwork.id === selectedArtworkId
-                          )?.src ?? ""
-                        }
-                        alt={editTitle}
-                        className="h-full w-full object-contain"
+                        src={profileAvatarPreview}
+                        alt=""
+                        className="size-full object-cover"
                       />
+                    ) : (
+                      creatorInitial
+                    )}
+                  </span>
+                  <span className="hidden max-w-40 truncate sm:inline">
+                    {profileDisplayName || userEmail}
+                  </span>
+                  <ChevronDown className="size-3.5 text-zinc-500" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-64 border border-white/10 bg-zinc-950/95 p-2 shadow-2xl shadow-black/50"
+                >
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="px-2 py-2">
+                      <span className="block truncate text-sm font-medium text-zinc-100">
+                        {profileDisplayName || "NODEINE creator"}
+                      </span>
+                      <span className="mt-0.5 block truncate font-normal text-zinc-500">
+                        {userEmail}
+                      </span>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleModeChange("profile")}
+                    className="px-2 py-2"
+                  >
+                    <UserRound />
+                    Edit creator profile
+                  </DropdownMenuItem>
+                  {profileUsername && (
+                    <DropdownMenuItem
+                      render={<Link href={`/creator/${profileUsername}`} />}
+                      className="px-2 py-2"
+                    >
+                      <ExternalLink />
+                      View public profile
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    render={<Link href="/" />}
+                    className="px-2 py-2"
+                  >
+                    <Archive />
+                    Return to archive
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={handleSignOut}
+                    className="px-2 py-2"
+                  >
+                    <LogOut />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <Card size="sm" className="border-white/8 bg-black/25 ring-0">
+              <CardContent className="flex items-center justify-between px-4">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                    Visual worlds
+                  </p>
+                  <p className="mt-1 text-2xl font-light text-white">
+                    {collections.length.toString().padStart(2, "0")}
+                  </p>
+                </div>
+                <Layers3 className="size-5 text-cyan-300/70" />
+              </CardContent>
+            </Card>
+            <Card size="sm" className="border-white/8 bg-black/25 ring-0">
+              <CardContent className="flex items-center justify-between px-4">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                    Loaded pieces
+                  </p>
+                  <p className="mt-1 text-2xl font-light text-white">
+                    {managedArtworks.length.toString().padStart(2, "0")}
+                  </p>
+                </div>
+                <ImagePlus className="size-5 text-cyan-300/70" />
+              </CardContent>
+            </Card>
+            <Card size="sm" className="border-white/8 bg-black/25 ring-0">
+              <CardContent className="flex items-center justify-between px-4">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                    Creator channel
+                  </p>
+                  <p className="mt-2 truncate text-sm text-white">
+                    {profileUsername ? `@${profileUsername}` : "Profile pending"}
+                  </p>
+                </div>
+                <BadgeCheck className="size-5 shrink-0 text-cyan-300/70" />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs
+            value={mode}
+            onValueChange={(nextMode) =>
+              handleModeChange(nextMode as StudioMode)
+            }
+            className="mt-6 gap-5"
+          >
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/35 p-1 group-data-horizontal/tabs:h-auto md:grid-cols-4">
+              <TabsTrigger
+                value="artwork"
+                className="min-h-12 rounded-lg px-3 text-xs data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950 sm:text-sm"
+              >
+                <UploadCloud />
+                Publish artwork
+              </TabsTrigger>
+              <TabsTrigger
+                value="collection"
+                className="min-h-12 rounded-lg px-3 text-xs data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950 sm:text-sm"
+              >
+                <FolderPlus />
+                Create collection
+              </TabsTrigger>
+              <TabsTrigger
+                value="manage"
+                className="min-h-12 rounded-lg px-3 text-xs data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950 sm:text-sm"
+              >
+                <Archive />
+                Manage archive
+              </TabsTrigger>
+              <TabsTrigger
+                value="profile"
+                className="min-h-12 rounded-lg px-3 text-xs data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950 sm:text-sm"
+              >
+                <UserRound />
+                Profile
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="artwork">
+              <Card className="border-white/10 bg-zinc-950/80 shadow-2xl shadow-black/30 ring-0 backdrop-blur-xl">
+                <CardHeader className="border-b border-white/8 px-5 pb-5 sm:px-7">
+                  <Badge className="mb-2 border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
+                    Publish / New transmission
+                  </Badge>
+                  <CardTitle className="text-2xl font-light text-white">
+                    Add a piece to the archive
+                  </CardTitle>
+                  <CardDescription className="max-w-2xl leading-6 text-zinc-500">
+                    Select the world it belongs to, upload the final image, and
+                    add enough context for it to be discoverable.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-5 sm:px-7">
+                  <form onSubmit={handleUpload}>
+                    <FieldGroup className="grid gap-5 sm:grid-cols-2">
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="publish-collection">
+                          Collection
+                        </FieldLabel>
+                        <NativeSelect
+                          id="publish-collection"
+                          value={collectionId}
+                          onChange={(event) =>
+                            setCollectionId(event.target.value)
+                          }
+                          required
+                          className="w-full"
+                        >
+                          {collections.map((collection) => (
+                            <NativeSelectOption
+                              key={collection.id}
+                              value={collection.id}
+                            >
+                              {collection.world_code} — {collection.title}
+                            </NativeSelectOption>
+                          ))}
+                        </NativeSelect>
+                        {!collections.length && (
+                          <FieldDescription>
+                            Create your first collection before publishing.
+                          </FieldDescription>
+                        )}
+                      </Field>
+
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="artwork-file">Image</FieldLabel>
+                        <Input
+                          id="artwork-file"
+                          key={fileInputKey}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) =>
+                            setFile(event.target.files?.[0] ?? null)
+                          }
+                          required
+                          className="h-auto min-h-24 border-dashed border-white/15 bg-black/35 px-4 py-5 file:mr-3 file:rounded-lg file:bg-cyan-300 file:px-3 file:text-zinc-950"
+                        />
+                        <FieldDescription>
+                          PNG, JPG, or WebP. Maximum size 10 MB.
+                        </FieldDescription>
+                      </Field>
+
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="artwork-title">
+                          Artwork title
+                        </FieldLabel>
+                        <Input
+                          id="artwork-title"
+                          value={title}
+                          onChange={(event) => setTitle(event.target.value)}
+                          required
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="artwork-mood">Mood</FieldLabel>
+                        <Input
+                          id="artwork-mood"
+                          value={mood}
+                          onChange={(event) => setMood(event.target.value)}
+                          placeholder="Neon city solitude"
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="artwork-tags">Tags</FieldLabel>
+                        <Input
+                          id="artwork-tags"
+                          value={tags}
+                          onChange={(event) => setTags(event.target.value)}
+                          placeholder="cyberpunk, portrait, neon"
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <div className="grid gap-4 sm:col-span-2">
+                        <StudioFeedback error={error} message={message} />
+                        <Button
+                          type="submit"
+                          size="lg"
+                          disabled={busy || !file || !collections.length}
+                          className="h-11 w-full"
+                        >
+                          <UploadCloud data-icon="inline-start" />
+                          {busy ? "Publishing..." : "Publish to archive"}
+                        </Button>
+                      </div>
+                    </FieldGroup>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="collection">
+              <Card className="border-white/10 bg-zinc-950/80 shadow-2xl shadow-black/30 ring-0 backdrop-blur-xl">
+                <CardHeader className="border-b border-white/8 px-5 pb-5 sm:px-7">
+                  <Badge className="mb-2 border border-violet-300/20 bg-violet-300/10 text-violet-200">
+                    Worldbuilding / New collection
+                  </Badge>
+                  <CardTitle className="text-2xl font-light text-white">
+                    Open a new visual world
+                  </CardTitle>
+                  <CardDescription className="max-w-2xl leading-6 text-zinc-500">
+                    Collections give each body of work its own atmosphere,
+                    sequence, and numbered place in the archive.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-5 sm:px-7">
+                  <form onSubmit={handleCreateCollection}>
+                    <FieldGroup className="grid gap-5 sm:grid-cols-2">
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="collection-name">
+                          Collection name
+                        </FieldLabel>
+                        <Input
+                          id="collection-name"
+                          value={newCollectionTitle}
+                          onChange={(event) =>
+                            setNewCollectionTitle(event.target.value)
+                          }
+                          required
+                          placeholder="New visual world"
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="world-number">
+                          World number
+                        </FieldLabel>
+                        <Input
+                          id="world-number"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={newWorldNumber}
+                          onChange={(event) =>
+                            setNewWorldNumber(event.target.value)
+                          }
+                          required
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="display-order">
+                          Display order
+                        </FieldLabel>
+                        <Input
+                          id="display-order"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={newSortOrder}
+                          onChange={(event) =>
+                            setNewSortOrder(event.target.value)
+                          }
+                          required
+                          className="h-11 bg-black/35"
+                        />
+                      </Field>
+
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="collection-summary">
+                          Collection summary
+                        </FieldLabel>
+                        <Textarea
+                          id="collection-summary"
+                          value={newCollectionSummary}
+                          onChange={(event) =>
+                            setNewCollectionSummary(event.target.value)
+                          }
+                          required
+                          rows={5}
+                          placeholder="Describe the visual world and its atmosphere."
+                          className="resize-y bg-black/35"
+                        />
+                      </Field>
+
+                      <div className="grid gap-4 sm:col-span-2">
+                        <StudioFeedback error={error} message={message} />
+                        <Button
+                          type="submit"
+                          size="lg"
+                          disabled={busy}
+                          className="h-11 w-full"
+                        >
+                          <FolderPlus data-icon="inline-start" />
+                          {busy ? "Creating..." : "Create collection"}
+                        </Button>
+                      </div>
+                    </FieldGroup>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="manage">
+              <Card className="border-white/10 bg-zinc-950/80 shadow-2xl shadow-black/30 ring-0 backdrop-blur-xl">
+                <CardHeader className="border-b border-white/8 px-5 pb-5 sm:px-7">
+                  <Badge className="mb-2 border border-amber-300/20 bg-amber-300/10 text-amber-200">
+                    Archive control / Metadata
+                  </Badge>
+                  <CardTitle className="text-2xl font-light text-white">
+                    Tune the archive
+                  </CardTitle>
+                  <CardDescription className="max-w-2xl leading-6 text-zinc-500">
+                    Review a collection piece by piece and sharpen the details
+                    people use to understand and discover the work.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-0 pb-0">
+                  <div className="px-5 sm:px-7">
+                    <Field>
+                      <FieldLabel htmlFor="manage-collection">
+                        Collection
+                      </FieldLabel>
+                      <NativeSelect
+                        id="manage-collection"
+                        value={manageCollectionId}
+                        onChange={(event) => {
+                          const nextCollectionId = event.target.value;
+                          setManageCollectionId(nextCollectionId);
+                          loadManagedArtworks(nextCollectionId);
+                        }}
+                        className="w-full"
+                      >
+                        {collections.map((collection) => (
+                          <NativeSelectOption
+                            key={collection.id}
+                            value={collection.id}
+                          >
+                            {collection.world_code} — {collection.title}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                  </div>
+
+                  <div className="mt-6 grid min-h-[540px] border-t border-white/10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.35fr)]">
+                    <div className="max-h-[760px] overflow-y-auto border-b border-white/10 bg-black/20 lg:border-b-0 lg:border-r">
+                      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur">
+                        <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                          {busy
+                            ? "Loading pieces..."
+                            : `${managedArtworks.length} pieces`}
+                        </span>
+                        <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,.7)]" />
+                      </div>
+                      {managedArtworks.map((artwork) => (
+                        <button
+                          key={artwork.id}
+                          type="button"
+                          onClick={() => selectArtwork(artwork)}
+                          className={`grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 border-b border-white/8 p-3 text-left transition ${
+                            selectedArtworkId === artwork.id
+                              ? "bg-cyan-300/10 shadow-[inset_3px_0_0_#67e8f9]"
+                              : "hover:bg-white/[0.035]"
+                          }`}
+                        >
+                          <img
+                            src={artwork.src}
+                            alt=""
+                            className="size-16 rounded-lg object-cover object-center"
+                          />
+                          <span className="min-w-0 self-center">
+                            <span className="block truncate text-sm text-white">
+                              {artwork.title}
+                            </span>
+                            <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-600">
+                              Piece {artwork.sort_order ?? "—"}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                      {!busy && !managedArtworks.length && (
+                        <div className="grid min-h-48 place-items-center p-6 text-center">
+                          <div>
+                            <ImagePlus className="mx-auto size-5 text-zinc-700" />
+                            <p className="mt-3 text-sm leading-6 text-zinc-500">
+                              This collection has no artwork yet.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <label className="block text-sm text-zinc-300">
-                      Artwork title
-                      <input
-                        value={editTitle}
-                        onChange={(event) => setEditTitle(event.target.value)}
-                        required
-                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-                      />
-                    </label>
+                    <div className="p-5 sm:p-7">
+                      {selectedArtworkId ? (
+                        <form onSubmit={handleUpdateArtwork}>
+                          <FieldGroup>
+                            <div className="aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-black">
+                              <img
+                                src={
+                                  managedArtworks.find(
+                                    (artwork) =>
+                                      artwork.id === selectedArtworkId
+                                  )?.src ?? ""
+                                }
+                                alt={editTitle}
+                                className="size-full object-contain"
+                              />
+                            </div>
 
-                    <label className="block text-sm text-zinc-300">
-                      Mood
-                      <input
-                        value={editMood}
-                        onChange={(event) => setEditMood(event.target.value)}
-                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-                      />
-                    </label>
+                            <Field>
+                              <FieldLabel htmlFor="edit-artwork-title">
+                                Artwork title
+                              </FieldLabel>
+                              <Input
+                                id="edit-artwork-title"
+                                value={editTitle}
+                                onChange={(event) =>
+                                  setEditTitle(event.target.value)
+                                }
+                                required
+                                className="h-11 bg-black/35"
+                              />
+                            </Field>
 
-                    <label className="block text-sm text-zinc-300">
-                      Tags
-                      <input
-                        value={editTags}
-                        onChange={(event) => setEditTags(event.target.value)}
-                        placeholder="cyberpunk, portrait, neon"
-                        className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-                      />
-                    </label>
+                            <div className="grid gap-5 sm:grid-cols-2">
+                              <Field>
+                                <FieldLabel htmlFor="edit-artwork-mood">
+                                  Mood
+                                </FieldLabel>
+                                <Input
+                                  id="edit-artwork-mood"
+                                  value={editMood}
+                                  onChange={(event) =>
+                                    setEditMood(event.target.value)
+                                  }
+                                  className="h-11 bg-black/35"
+                                />
+                              </Field>
 
-                    {error && <p className="text-sm text-red-300">{error}</p>}
-                    {message && (
-                      <p className="text-sm text-emerald-300">{message}</p>
-                    )}
+                              <Field>
+                                <FieldLabel htmlFor="edit-artwork-tags">
+                                  Tags
+                                </FieldLabel>
+                                <Input
+                                  id="edit-artwork-tags"
+                                  value={editTags}
+                                  onChange={(event) =>
+                                    setEditTags(event.target.value)
+                                  }
+                                  placeholder="cyberpunk, portrait, neon"
+                                  className="h-11 bg-black/35"
+                                />
+                              </Field>
+                            </div>
 
-                    <button
-                      type="submit"
-                      disabled={busy}
-                      className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busy ? "Saving..." : "Save artwork details"}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="grid min-h-[420px] place-items-center text-center text-sm text-zinc-500">
-                    Select a collection with artwork to begin editing.
+                            <StudioFeedback error={error} message={message} />
+
+                            <Button
+                              type="submit"
+                              size="lg"
+                              disabled={busy}
+                              className="h-11 w-full"
+                            >
+                              {busy ? "Saving..." : "Save artwork details"}
+                            </Button>
+                          </FieldGroup>
+                        </form>
+                      ) : (
+                        <div className="grid min-h-[420px] place-items-center text-center">
+                          <div className="max-w-xs">
+                            <Archive className="mx-auto size-7 text-zinc-700" />
+                            <p className="mt-4 text-sm leading-6 text-zinc-500">
+                              Select a collection with artwork to begin editing.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : (
-          <form onSubmit={handleUpdateProfile} className="mt-10 grid gap-6">
-            <div className="border-b border-white/10 pb-6">
-              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
-                Creator identity
-              </p>
-              <h2 className="mt-2 text-2xl font-light text-white">
-                Public profile
-              </h2>
-              <p className="mt-2 text-sm text-zinc-500">
-                Your profile lives at{" "}
-                {profileUsername ? (
-                  <Link
-                    href={`/creator/${profileUsername}`}
-                    className="text-cyan-300 hover:text-cyan-200"
-                  >
-                    /creator/{profileUsername}
-                  </Link>
-                ) : (
-                  "/creator/username"
-                )}
-                .
-              </p>
-            </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-            <div className="grid gap-5 border-b border-white/10 pb-6 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
-              <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-3xl font-light text-cyan-300">
-                {profileAvatarPreview ? (
-                  <img
-                    src={profileAvatarPreview}
-                    alt="Profile picture preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  profileDisplayName.trim().charAt(0).toUpperCase() || "N"
-                )}
-              </div>
+            <TabsContent value="profile">
+              <Card className="border-white/10 bg-zinc-950/80 shadow-2xl shadow-black/30 ring-0 backdrop-blur-xl">
+                <CardHeader className="border-b border-white/8 px-5 pb-5 sm:px-7">
+                  <Badge className="mb-2 border border-fuchsia-300/20 bg-fuchsia-300/10 text-fuchsia-200">
+                    Creator identity / Public
+                  </Badge>
+                  <CardTitle className="text-2xl font-light text-white">
+                    Shape your public profile
+                  </CardTitle>
+                  <CardDescription className="max-w-2xl leading-6 text-zinc-500">
+                    Your name, image, and statement connect every world you
+                    publish under one recognizable identity.
+                  </CardDescription>
+                  {profileUsername && (
+                    <Link
+                      href={`/creator/${profileUsername}`}
+                      className="mt-2 inline-flex w-fit items-center gap-1.5 text-xs text-cyan-300 hover:text-cyan-100"
+                    >
+                      /creator/{profileUsername}
+                      <ExternalLink className="size-3" />
+                    </Link>
+                  )}
+                </CardHeader>
+                <CardContent className="px-5 sm:px-7">
+                  <form onSubmit={handleUpdateProfile}>
+                    <FieldGroup>
+                      <div className="grid gap-5 rounded-xl border border-white/8 bg-black/20 p-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
+                        <div className="grid size-28 place-items-center overflow-hidden rounded-2xl border border-cyan-300/15 bg-cyan-300/5 text-3xl font-light text-cyan-300 shadow-inner shadow-black/50">
+                          {profileAvatarPreview ? (
+                            <img
+                              src={profileAvatarPreview}
+                              alt="Profile picture preview"
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            creatorInitial || "N"
+                          )}
+                        </div>
 
-              <label className="block text-sm text-zinc-300">
-                Profile picture
-                <input
-                  key={profileAvatarInputKey}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) =>
-                    selectProfileAvatar(event.target.files?.[0] ?? null)
-                  }
-                  className="mt-2 block w-full border border-dashed border-white/20 bg-black p-4 text-sm text-zinc-400 file:mr-4 file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:font-medium file:text-zinc-950"
-                />
-                <span className="mt-2 block text-xs leading-5 text-zinc-500">
-                  PNG, JPG, or WebP. Maximum size 5 MB.
-                </span>
-              </label>
-            </div>
+                        <Field>
+                          <FieldLabel htmlFor="profile-picture">
+                            Profile picture
+                          </FieldLabel>
+                          <Input
+                            id="profile-picture"
+                            key={profileAvatarInputKey}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) =>
+                              selectProfileAvatar(
+                                event.target.files?.[0] ?? null
+                              )
+                            }
+                            className="h-auto border-dashed bg-black/35 py-3 file:mr-3 file:rounded-lg file:bg-cyan-300 file:px-3 file:text-zinc-950"
+                          />
+                          <FieldDescription>
+                            PNG, JPG, or WebP. Maximum size 5 MB.
+                          </FieldDescription>
+                        </Field>
+                      </div>
 
-            <label className="block text-sm text-zinc-300">
-              Username
-              <input
-                value={profileUsername}
-                onChange={(event) => setProfileUsername(event.target.value)}
-                required
-                minLength={3}
-                maxLength={30}
-                autoComplete="username"
-                placeholder="your-creator-name"
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-              <span className="mt-2 block text-xs leading-5 text-zinc-500">
-                Use lowercase letters, numbers, or hyphens.
-              </span>
-            </label>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor="profile-username">
+                            Username
+                          </FieldLabel>
+                          <Input
+                            id="profile-username"
+                            value={profileUsername}
+                            onChange={(event) =>
+                              setProfileUsername(event.target.value)
+                            }
+                            required
+                            minLength={3}
+                            maxLength={30}
+                            autoComplete="username"
+                            placeholder="your-creator-name"
+                            className="h-11 bg-black/35"
+                          />
+                          <FieldDescription>
+                            Lowercase letters, numbers, or hyphens.
+                          </FieldDescription>
+                        </Field>
 
-            <label className="block text-sm text-zinc-300">
-              Display name
-              <input
-                value={profileDisplayName}
-                onChange={(event) => setProfileDisplayName(event.target.value)}
-                required
-                maxLength={80}
-                autoComplete="name"
-                className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
+                        <Field>
+                          <FieldLabel htmlFor="profile-display-name">
+                            Display name
+                          </FieldLabel>
+                          <Input
+                            id="profile-display-name"
+                            value={profileDisplayName}
+                            onChange={(event) =>
+                              setProfileDisplayName(event.target.value)
+                            }
+                            required
+                            maxLength={80}
+                            autoComplete="name"
+                            className="h-11 bg-black/35"
+                          />
+                        </Field>
+                      </div>
 
-            <label className="block text-sm text-zinc-300">
-              Bio
-              <textarea
-                value={profileBio}
-                onChange={(event) => setProfileBio(event.target.value)}
-                rows={5}
-                maxLength={500}
-                placeholder="Tell people about the worlds you create."
-                className="mt-2 w-full resize-y border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-cyan-300"
-              />
-            </label>
+                      <Field>
+                        <FieldLabel htmlFor="profile-bio">Bio</FieldLabel>
+                        <Textarea
+                          id="profile-bio"
+                          value={profileBio}
+                          onChange={(event) =>
+                            setProfileBio(event.target.value)
+                          }
+                          rows={6}
+                          maxLength={500}
+                          placeholder="Tell people about the worlds you create."
+                          className="resize-y bg-black/35"
+                        />
+                        <FieldDescription className="text-right">
+                          {profileBio.length}/500
+                        </FieldDescription>
+                      </Field>
 
-            <div>
-              {error && <p className="mb-4 text-sm text-red-300">{error}</p>}
-              {message && (
-                <p className="mb-4 text-sm text-emerald-300">{message}</p>
-              )}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full bg-cyan-300 px-5 py-3 font-medium text-zinc-950 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busy ? "Saving..." : "Save creator profile"}
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-    </main>
+                      <StudioFeedback error={error} message={message} />
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={busy}
+                        className="h-11 w-full"
+                      >
+                        <BadgeCheck data-icon="inline-start" />
+                        {busy ? "Saving..." : "Save creator profile"}
+                      </Button>
+                    </FieldGroup>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </section>
+      </main>
+      <Toaster position="top-right" theme="dark" richColors />
+    </>
   );
 }

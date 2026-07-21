@@ -129,13 +129,44 @@ export default function CreatorGallery({
 
   return (
     <>
+      <nav
+        id="world-directory"
+        aria-label="Creator worlds"
+        className="sticky top-0 z-20 mb-14 min-w-0 max-w-full overflow-hidden border-y border-white/10 bg-zinc-950/95 py-4 backdrop-blur"
+      >
+        <div className="mb-3 flex items-center justify-between gap-4 px-1">
+          <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
+            Explore worlds
+          </p>
+          <p className="text-xs text-zinc-600">{collections.length} total</p>
+        </div>
+        <div className="flex w-full max-w-full gap-2 overflow-x-auto pb-1">
+          {collections.map((collection) => (
+            <a
+              key={collection.id}
+              href={`#world-${collection.id}`}
+              className="inline-flex shrink-0 items-center gap-2 border border-white/15 px-3 py-2 text-xs text-zinc-300 transition hover:border-cyan-300 hover:text-white"
+            >
+              <span className="text-cyan-300">
+                {collection.world_code || "World"}
+              </span>
+              {collection.title}
+            </a>
+          ))}
+        </div>
+      </nav>
+
       <div className="space-y-20">
         {collections.map((collection) => {
           const collectionArtworks =
             artworksByCollection.get(collection.id) ?? [];
 
           return (
-            <section key={collection.id}>
+            <section
+              key={collection.id}
+              id={`world-${collection.id}`}
+              className="scroll-mt-28"
+            >
               <div className="mb-7 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
@@ -291,6 +322,15 @@ export default function CreatorGallery({
                     </div>
                   </div>
                 )}
+                <a
+                  href={selectedArtwork.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-7 inline-flex items-center gap-2 border border-white/15 px-3.5 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
+                >
+                  Open full-size artwork
+                  <span aria-hidden="true">↗</span>
+                </a>
                 <ArtworkComments
                   key={selectedArtwork.id}
                   artworkId={selectedArtwork.id}
