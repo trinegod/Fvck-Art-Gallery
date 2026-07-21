@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
+import ArtworkFocusView from "./components/artwork-focus-view";
 import CreatorNavigation from "./components/creator-navigation";
 
 type CollectionRow = {
@@ -230,6 +231,7 @@ const collectionDetails: Record<string, { order: number; summary: string }> = {
 export default function Home() {
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
   const [galleryItems, setGalleryItems] =
     useState<GalleryItem[]>(fallbackGalleryItems);
   const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -422,18 +424,21 @@ export default function Home() {
 
   function openCollection(series: string) {
     setActiveSeries(series);
+    setFocusMode(false);
     setSelectedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function goToArchiveHome() {
     setActiveSeries(null);
+    setFocusMode(false);
     setSelectedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function browseWorlds() {
     setActiveSeries(null);
+    setFocusMode(false);
     setSelectedId(null);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -451,7 +456,13 @@ export default function Home() {
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedId(null);
+      if (event.key === "Escape") {
+        if (focusMode) {
+          setFocusMode(false);
+        } else {
+          setSelectedId(null);
+        }
+      }
       if (event.key === "ArrowLeft") {
         const previousIndex =
           selectedIndex > 0 ? selectedIndex - 1 : filteredItems.length - 1;
@@ -469,7 +480,7 @@ export default function Home() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedItem, selectedIndex, filteredItems]);
+  }, [focusMode, selectedItem, selectedIndex, filteredItems]);
 
   return (
     <main
@@ -685,7 +696,10 @@ export default function Home() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => {
+                    setFocusMode(false);
+                    setSelectedId(item.id);
+                  }}
                   className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
@@ -744,22 +758,54 @@ export default function Home() {
           role="dialog"
           aria-modal="true"
           aria-label={selectedItem.title}
-          onClick={() => setSelectedId(null)}
+          onClick={() => {
+            setFocusMode(false);
+            setSelectedId(null);
+          }}
         >
           <div
-            className="mx-auto grid h-full max-w-7xl gap-4 lg:grid-cols-[1fr_360px]"
+            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-zinc-950"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="relative min-h-0 overflow-hidden rounded-lg border border-white/10 bg-black">
-              <img
-                src={selectedItem.src}
-                alt={selectedItem.title}
-                className="h-full w-full object-contain"
-              />
+            <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
+              <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Artwork {selectedIndex + 1} of {filteredItems.length} · {selectedItem.series}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFocusMode(false);
+                  setSelectedId(null);
+                }}
+                className="grid h-10 w-10 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white"
+                aria-label="Close artwork"
+                title="Close"
+              >
+                ×
+              </button>
             </div>
 
-            <aside className="overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 p-5">
-              <div className="mb-6 flex items-start justify-between gap-4">
+            {focusMode ? (
+              <ArtworkFocusView
+                key={selectedItem.id}
+                src={selectedItem.src}
+                alt={selectedItem.title}
+                onBack={() => setFocusMode(false)}
+                onPrevious={filteredItems.length > 1 ? showPrevious : undefined}
+                onNext={filteredItems.length > 1 ? showNext : undefined}
+              />
+            ) : (
+              <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
+                <div className="relative h-[62svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
+                  <img
+                    src={selectedItem.src}
+                    alt={selectedItem.title}
+                    className="absolute inset-0 h-full w-full object-contain p-3 sm:p-6"
+                  />
+                </div>
+
+                <aside className="border-t border-white/10 bg-zinc-950 p-5 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-t-0">
+              <div className="mb-6">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
                     {selectedItem.series}
@@ -771,14 +817,6 @@ export default function Home() {
                     {selectedItem.title}
                   </h2>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(null)}
-                  className="rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-300 hover:border-cyan-300 hover:text-white"
-                >
-                  Close
-                </button>
               </div>
 
               <p className="mb-6 text-sm leading-6 text-zinc-400">
@@ -816,15 +854,14 @@ export default function Home() {
                 </div>
               </div>
 
-              <a
-                href={selectedItem.src}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setFocusMode(true)}
                 className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
               >
-                Open full-size artwork
-                <span aria-hidden="true">↗</span>
-              </a>
+                View full artwork
+                <span aria-hidden="true">⛶</span>
+              </button>
 
               <ArtworkComments
                 key={selectedItem.id}
@@ -850,7 +887,9 @@ export default function Home() {
               <p className="mt-3 text-center text-xs text-zinc-600">
                 Use ← → to browse · Esc to close
               </p>
-            </aside>
+                </aside>
+              </div>
+            )}
           </div>
         </div>
       )}

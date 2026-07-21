@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
+import ArtworkFocusView from "../../components/artwork-focus-view";
 
 export type CreatorCollection = {
   id: string;
@@ -32,6 +33,7 @@ export default function CreatorGallery({
   artworks,
 }: CreatorGalleryProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
 
   const collectionsById = useMemo(
     () => new Map(collections.map((collection) => [collection.id, collection])),
@@ -104,7 +106,13 @@ export default function CreatorGallery({
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedId(null);
+      if (event.key === "Escape") {
+        if (focusMode) {
+          setFocusMode(false);
+        } else {
+          setSelectedId(null);
+        }
+      }
       if (event.key === "ArrowLeft") moveSelection(-1);
       if (event.key === "ArrowRight") moveSelection(1);
     }
@@ -115,7 +123,7 @@ export default function CreatorGallery({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [moveSelection, selectedId]);
+  }, [focusMode, moveSelection, selectedId]);
 
   if (!collections.length) {
     return (
@@ -192,7 +200,10 @@ export default function CreatorGallery({
                     <button
                       key={artwork.id}
                       type="button"
-                      onClick={() => setSelectedId(artwork.id)}
+                      onClick={() => {
+                        setFocusMode(false);
+                        setSelectedId(artwork.id);
+                      }}
                       className="group mb-3 w-full break-inside-avoid overflow-hidden border border-white/10 bg-black text-left outline-none transition focus:border-cyan-300"
                       aria-label={`Open ${artwork.title}`}
                     >
@@ -232,7 +243,10 @@ export default function CreatorGallery({
           role="dialog"
           aria-modal="true"
           aria-label={selectedArtwork.title}
-          onClick={() => setSelectedId(null)}
+          onClick={() => {
+            setFocusMode(false);
+            setSelectedId(null);
+          }}
         >
           <div
             className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden border border-white/15 bg-zinc-950"
@@ -244,7 +258,10 @@ export default function CreatorGallery({
               </p>
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={() => {
+                  setFocusMode(false);
+                  setSelectedId(null);
+                }}
                 className="grid h-10 w-10 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white"
                 aria-label="Close artwork"
                 title="Close"
@@ -253,39 +270,57 @@ export default function CreatorGallery({
               </button>
             </div>
 
-            <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-1">
-              <div className="relative min-h-0 overflow-hidden bg-black">
-                <img
-                  src={selectedArtwork.src}
-                  alt={selectedArtwork.title}
-                  className="absolute inset-0 h-full w-full object-contain p-4 sm:p-8"
-                />
+            {focusMode ? (
+              <ArtworkFocusView
+                key={selectedArtwork.id}
+                src={selectedArtwork.src}
+                alt={selectedArtwork.title}
+                onBack={() => setFocusMode(false)}
+                onPrevious={
+                  selectedCollectionArtworks.length > 1
+                    ? () => moveSelection(-1)
+                    : undefined
+                }
+                onNext={
+                  selectedCollectionArtworks.length > 1
+                    ? () => moveSelection(1)
+                    : undefined
+                }
+              />
+            ) : (
+              <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:overflow-hidden">
+                <div className="relative h-[62svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
+                  <img
+                    src={selectedArtwork.src}
+                    alt={selectedArtwork.title}
+                    className="absolute inset-0 h-full w-full object-contain p-4 sm:p-8"
+                  />
 
-                {selectedCollectionArtworks.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => moveSelection(-1)}
-                      className="absolute left-2 grid h-11 w-11 place-items-center bg-black/70 text-3xl text-white hover:bg-black sm:left-4"
-                      aria-label="Previous artwork"
-                      title="Previous"
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveSelection(1)}
-                      className="absolute right-2 grid h-11 w-11 place-items-center bg-black/70 text-3xl text-white hover:bg-black sm:right-4"
-                      aria-label="Next artwork"
-                      title="Next"
-                    >
-                      ›
-                    </button>
-                  </>
-                )}
-              </div>
+                  {selectedCollectionArtworks.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => moveSelection(-1)}
+                        className="absolute left-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center bg-black/70 text-3xl text-white hover:bg-black sm:left-4"
+                        aria-label="Previous artwork"
+                        title="Previous"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveSelection(1)}
+                        className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center bg-black/70 text-3xl text-white hover:bg-black sm:right-4"
+                        aria-label="Next artwork"
+                        title="Next"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+                </div>
 
-              <aside className="overflow-y-auto border-t border-white/10 p-5 lg:border-l lg:border-t-0 lg:p-7">
+                <aside className="border-t border-white/10 p-5 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-7">
                 <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
                   {selectedCollection?.world_code || "Visual world"}
                 </p>
@@ -322,21 +357,21 @@ export default function CreatorGallery({
                     </div>
                   </div>
                 )}
-                <a
-                  href={selectedArtwork.src}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setFocusMode(true)}
                   className="mt-7 inline-flex items-center gap-2 border border-white/15 px-3.5 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
                 >
-                  Open full-size artwork
-                  <span aria-hidden="true">↗</span>
-                </a>
+                  View full artwork
+                  <span aria-hidden="true">⛶</span>
+                </button>
                 <ArtworkComments
                   key={selectedArtwork.id}
                   artworkId={selectedArtwork.id}
                 />
-              </aside>
-            </div>
+                </aside>
+              </div>
+            )}
           </div>
         </div>
       )}
