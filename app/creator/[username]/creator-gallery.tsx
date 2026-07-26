@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
+import ArtworkLikeButton from "../../components/artwork-like-button";
 import PolishedImage from "../../components/polished-image";
 
 export type CreatorCollection = {
@@ -361,14 +362,23 @@ export default function CreatorGallery({
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setFocusMode(true)}
-                  className="mt-7 inline-flex items-center gap-2 border border-white/15 px-3.5 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
+                <div
+                  className="mt-7 flex flex-wrap items-start gap-3"
+                  aria-label="Artwork actions"
                 >
-                  View full artwork
-                  <span aria-hidden="true">⛶</span>
-                </button>
+                  <ArtworkLikeButton
+                    key={selectedArtwork.id}
+                    artworkId={selectedArtwork.id}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFocusMode(true)}
+                    className="inline-flex min-h-11 items-center gap-2 border border-white/15 px-3.5 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
+                  >
+                    View full artwork
+                    <span aria-hidden="true">⛶</span>
+                  </button>
+                </div>
                 <ArtworkComments
                   key={selectedArtwork.id}
                   artworkId={selectedArtwork.id}
