@@ -174,8 +174,11 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             NODEINE
           </Link>
           <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
-            <Link href="/" className="text-zinc-400 hover:text-white">
+            <Link href="/" className="hidden text-zinc-400 hover:text-white sm:inline">
               Archive
+            </Link>
+            <Link href="/discover" className="text-zinc-400 hover:text-white">
+              Discover
             </Link>
             <Link href="/saved" className="text-zinc-400 hover:text-white">
               Saved

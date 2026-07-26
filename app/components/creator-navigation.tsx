@@ -11,6 +11,7 @@ import {
   Layers3,
   LogOut,
   Plus,
+  Search,
   Sparkles,
   UserRound,
 } from "lucide-react";
@@ -130,6 +131,16 @@ export default function CreatorNavigation({
         className="absolute right-0 top-0 z-20 hidden items-center gap-2 lg:flex"
       >
         <Button
+          render={<Link href="/discover" />}
+          nativeButton={false}
+          variant="ghost"
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <Search data-icon="inline-start" />
+          Discover
+        </Button>
+
+        <Button
           type="button"
           variant="ghost"
           onClick={onBrowseWorlds}
@@ -193,6 +204,13 @@ export default function CreatorNavigation({
                 View public profile
               </DropdownMenuItem>
               <DropdownMenuItem
+                render={<Link href="/discover" />}
+                className="px-2 py-2"
+              >
+                <Search />
+                Discover artwork
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 render={<Link href="/saved" />}
                 className="px-2 py-2"
               >
@@ -243,14 +261,13 @@ export default function CreatorNavigation({
           <Home className="size-4" />
           Home
         </button>
-        <button
-          type="button"
-          onClick={onBrowseWorlds}
+        <Link
+          href="/discover"
           className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 transition active:scale-95 active:bg-white/8 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
         >
-          <Layers3 className="size-4" />
-          Worlds
-        </button>
+          <Search className="size-4" />
+          Discover
+        </Link>
         <Link
           href="/admin"
           className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-semibold text-cyan-200 transition active:scale-95 hover:bg-cyan-300/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"

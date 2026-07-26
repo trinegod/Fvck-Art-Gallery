@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Archive, Bookmark, Plus, UserRound } from "lucide-react";
+import { Archive, Bookmark, Search, Plus, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
@@ -301,7 +301,10 @@ export default function SavedArtworkView() {
             <Link href="/" className="text-zinc-400 hover:text-white">
               Archive
             </Link>
-            <Link href={profileHref} className="text-zinc-400 hover:text-white">
+            <Link href="/discover" className="text-zinc-400 hover:text-white">
+              Discover
+            </Link>
+            <Link href={profileHref} className="hidden text-zinc-400 hover:text-white sm:inline">
               Profile
             </Link>
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
@@ -442,7 +445,7 @@ export default function SavedArtworkView() {
 
       <nav
         aria-label="Saved artwork navigation"
-        className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-4 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
+        className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
       >
         <Link
           href="/"
@@ -450,6 +453,13 @@ export default function SavedArtworkView() {
         >
           <Archive className="size-4" />
           Archive
+        </Link>
+        <Link
+          href="/discover"
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 active:scale-95 hover:bg-white/5 hover:text-white"
+        >
+          <Search className="size-4" />
+          Discover
         </Link>
         <span className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-cyan-300/10 text-[10px] font-semibold text-cyan-200">
           <Bookmark className="size-4" fill="currentColor" />
