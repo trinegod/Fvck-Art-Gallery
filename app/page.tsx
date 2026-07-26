@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
 import ArtworkLikeButton from "./components/artwork-like-button";
+import ArtworkSaveButton from "./components/artwork-save-button";
 import CreatorNavigation from "./components/creator-navigation";
 import PolishedImage from "./components/polished-image";
 
@@ -871,6 +872,10 @@ export default function Home() {
               >
                 <ArtworkLikeButton
                   key={selectedItem.id}
+                  artworkId={selectedItem.id}
+                />
+                <ArtworkSaveButton
+                  key={`save-${selectedItem.id}`}
                   artworkId={selectedItem.id}
                 />
                 <button

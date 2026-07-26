@@ -89,6 +89,9 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
               <span className="sm:hidden">Archive</span>
               <span className="hidden sm:inline">Browse archive</span>
             </Link>
+            <Link href="/saved" className="text-zinc-400 hover:text-white">
+              Saved
+            </Link>
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
               <span className="sm:hidden">Studio</span>
               <span className="hidden sm:inline">Creator studio</span>

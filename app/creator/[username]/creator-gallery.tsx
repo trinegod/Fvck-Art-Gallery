@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
 import ArtworkLikeButton from "../../components/artwork-like-button";
+import ArtworkSaveButton from "../../components/artwork-save-button";
 import PolishedImage from "../../components/polished-image";
 
 export type CreatorCollection = {
@@ -368,6 +369,10 @@ export default function CreatorGallery({
                 >
                   <ArtworkLikeButton
                     key={selectedArtwork.id}
+                    artworkId={selectedArtwork.id}
+                  />
+                  <ArtworkSaveButton
+                    key={`save-${selectedArtwork.id}`}
                     artworkId={selectedArtwork.id}
                   />
                   <button
