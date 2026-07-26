@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase-browser";
+import PolishedImage from "./polished-image";
 
 type CommentProfile = {
   username: string;
@@ -225,9 +226,10 @@ export default function ArtworkComments({ artworkId }: ArtworkCommentsProps) {
               <article key={comment.id} className="flex gap-3">
                 <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-xs text-cyan-300">
                   {profile?.avatar_url ? (
-                    <img
+                    <PolishedImage
                       src={profile.avatar_url}
                       alt=""
+                      wrapperClassName="h-full w-full"
                       className="h-full w-full object-cover"
                     />
                   ) : (

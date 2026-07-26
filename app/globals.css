@@ -103,3 +103,23 @@
   background: rgb(103 232 249 / 28%);
   color: #ecfeff;
 }
+
+@keyframes nodeine-image-shimmer {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+.nodeine-image-shimmer {
+  animation: nodeine-image-shimmer 1.55s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nodeine-image-shimmer {
+    animation: none;
+    opacity: 0.35;
+  }
+}

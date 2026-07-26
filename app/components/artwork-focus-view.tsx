@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PolishedImage from "./polished-image";
 
 type ArtworkFocusViewProps = {
   src: string;
@@ -47,13 +48,17 @@ export default function ArtworkFocusView({
             : "relative h-full w-full overflow-hidden"
         }
       >
-        {/* A native image preserves its intrinsic dimensions for actual-size zoom. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <PolishedImage
+          key={src}
           src={src}
           alt={alt}
           draggable={false}
           onClick={() => setActualSize((current) => !current)}
+          wrapperClassName={
+            actualSize
+              ? "relative min-h-full min-w-full bg-black"
+              : "absolute inset-0 bg-black"
+          }
           className={
             actualSize
               ? "mx-auto block h-auto w-auto max-w-none cursor-zoom-out select-none"

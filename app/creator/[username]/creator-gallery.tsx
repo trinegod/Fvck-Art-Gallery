@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
+import PolishedImage from "../../components/polished-image";
 
 export type CreatorCollection = {
   id: string;
@@ -140,7 +141,7 @@ export default function CreatorGallery({
       <nav
         id="world-directory"
         aria-label="Creator worlds"
-        className="sticky top-0 z-20 mb-14 min-w-0 max-w-full overflow-hidden border-y border-white/10 bg-zinc-950/95 py-4 backdrop-blur"
+        className="sticky top-0 z-20 mb-10 min-w-0 max-w-full overflow-hidden border-y border-white/10 bg-zinc-950/95 py-3.5 backdrop-blur sm:mb-14 sm:py-4"
       >
         <div className="mb-3 flex items-center justify-between gap-4 px-1">
           <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
@@ -164,7 +165,7 @@ export default function CreatorGallery({
         </div>
       </nav>
 
-      <div className="space-y-20">
+      <div className="space-y-14 sm:space-y-20">
         {collections.map((collection) => {
           const collectionArtworks =
             artworksByCollection.get(collection.id) ?? [];
@@ -175,7 +176,7 @@ export default function CreatorGallery({
               id={`world-${collection.id}`}
               className="scroll-mt-28"
             >
-              <div className="mb-7 flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-5 flex flex-col gap-3 border-b border-white/10 pb-5 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
                     {collection.world_code || "Visual world"}
@@ -195,7 +196,7 @@ export default function CreatorGallery({
               </div>
 
               {collectionArtworks.length ? (
-                <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {collectionArtworks.map((artwork) => (
                     <button
                       key={artwork.id}
@@ -204,22 +205,23 @@ export default function CreatorGallery({
                         setFocusMode(false);
                         setSelectedId(artwork.id);
                       }}
-                      className="group mb-3 w-full break-inside-avoid overflow-hidden border border-white/10 bg-black text-left outline-none transition focus:border-cyan-300"
+                      className="group w-full overflow-hidden rounded-xl border border-white/10 bg-black text-left outline-none transition active:scale-[0.985] focus:border-cyan-300 sm:rounded-lg"
                       aria-label={`Open ${artwork.title}`}
                     >
-                      <img
+                      <PolishedImage
                         src={artwork.thumb_src || artwork.src}
                         alt={artwork.title}
                         loading="lazy"
                         decoding="async"
-                        className="h-auto w-full transition duration-300 group-hover:opacity-90"
+                        wrapperClassName="aspect-[4/5] w-full"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
-                      <span className="block border-t border-white/10 px-3 py-3">
-                        <span className="block text-sm text-zinc-200">
+                      <span className="block border-t border-white/10 px-3 py-2.5 sm:py-3">
+                        <span className="block truncate text-xs text-zinc-200 sm:text-sm">
                           {artwork.title}
                         </span>
                         {artwork.mood && (
-                          <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                          <span className="mt-1 hidden text-xs leading-5 text-zinc-500 sm:block">
                             {artwork.mood}
                           </span>
                         )}
@@ -239,7 +241,7 @@ export default function CreatorGallery({
 
       {selectedArtwork && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 p-3 sm:p-6"
+          className="fixed inset-0 z-50 bg-black/95 p-0 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label={selectedArtwork.title}
@@ -249,7 +251,7 @@ export default function CreatorGallery({
           }}
         >
           <div
-            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden border border-white/15 bg-zinc-950"
+            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-950 sm:border sm:border-white/15"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
@@ -289,10 +291,12 @@ export default function CreatorGallery({
               />
             ) : (
               <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:overflow-hidden">
-                <div className="relative h-[62svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
-                  <img
+                <div className="relative h-[60svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
+                  <PolishedImage
+                    key={selectedArtwork.src}
                     src={selectedArtwork.src}
                     alt={selectedArtwork.title}
+                    wrapperClassName="absolute inset-0"
                     className="absolute inset-0 h-full w-full object-contain p-4 sm:p-8"
                   />
 

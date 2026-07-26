@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
 import CreatorNavigation from "./components/creator-navigation";
+import PolishedImage from "./components/polished-image";
 
 type CollectionRow = {
   id: string;
@@ -485,10 +486,10 @@ export default function Home() {
   return (
     <main
       id="archive-home"
-      className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 lg:pb-0"
+      className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0"
     >
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-12">
-        <header className="relative mb-8 flex flex-col gap-6 border-b border-white/10 pb-8">
+        <header className="relative mb-7 flex flex-col gap-5 border-b border-white/10 pb-7 sm:mb-8 sm:gap-6 sm:pb-8">
           <CreatorNavigation
             hidden={Boolean(selectedItem)}
             onBrowseWorlds={browseWorlds}
@@ -507,7 +508,7 @@ export default function Home() {
           </div>
 
           {activeSeries && (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex min-w-0 flex-col items-center gap-4">
               <button
                 type="button"
                 onClick={() => {
@@ -519,13 +520,13 @@ export default function Home() {
                 Back to collections
               </button>
 
-              <div className="flex flex-wrap justify-center gap-2">
+              <div className="-mx-5 flex w-[calc(100%+2.5rem)] snap-x gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:w-auto sm:flex-wrap sm:justify-center sm:px-0">
                 {seriesList.map((series) => (
                   <button
                     key={series}
                     type="button"
                     onClick={() => openCollection(series)}
-                    className={`rounded-lg border px-4 py-2 text-center text-sm transition ${
+                    className={`shrink-0 snap-start rounded-lg border px-4 py-2.5 text-center text-sm transition ${
                       activeSeries === series
                         ? "border-cyan-300 bg-cyan-300 text-zinc-950"
                         : "border-white/15 bg-white/5 text-zinc-300 hover:border-cyan-300/70 hover:text-white"
@@ -540,7 +541,7 @@ export default function Home() {
         </header>
 
         {galleryError && (
-          <div className="mb-6 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          <div className="mb-6 rounded-xl border border-amber-300/25 bg-amber-300/8 px-4 py-3 text-sm leading-6 text-amber-100/90">
             Using local fallback data while Supabase is unavailable:
             {" "}{galleryError}
           </div>
@@ -561,20 +562,20 @@ export default function Home() {
       </p>
     </div>
 
-    <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3">
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+    <div className="grid grid-cols-3 gap-2.5 text-center sm:gap-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-4 sm:p-4">
         <p className="text-2xl font-semibold text-white">{collections.length}</p>
         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
           Worlds
         </p>
       </div>
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-4 sm:p-4">
         <p className="text-2xl font-semibold text-white">{galleryItems.length}</p>
         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
           Pieces
         </p>
       </div>
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 sm:col-span-1">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-4 sm:p-4">
         <p className="text-2xl font-semibold text-white">AI</p>
         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
           Medium
@@ -599,9 +600,12 @@ export default function Home() {
                   className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
-                    <img
+                    <PolishedImage
                       src={getThumbnail(collection.cover)}
                       alt={collection.series}
+                      loading="lazy"
+                      decoding="async"
+                      wrapperClassName="absolute inset-0"
                       className="h-full w-full object-cover object-[center_35%] transition duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
@@ -642,9 +646,10 @@ export default function Home() {
                   >
                     <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-xs text-cyan-300">
                       {collection.creator.avatar_url ? (
-                        <img
+                        <PolishedImage
                           src={collection.creator.avatar_url}
                           alt=""
+                          wrapperClassName="h-full w-full"
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -691,7 +696,7 @@ export default function Home() {
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {filteredItems.map((item) => (
                 <button
                   key={item.id}
@@ -700,26 +705,29 @@ export default function Home() {
                     setFocusMode(false);
                     setSelectedId(item.id);
                   }}
-                  className="group overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-cyan-300/60"
+                  className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-left transition active:scale-[0.985] sm:rounded-lg sm:hover:-translate-y-1 sm:hover:border-cyan-300/60"
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
-                    <img
+                    <PolishedImage
                       src={getThumbnail(item.src)}
                       alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                      wrapperClassName="absolute inset-0"
                       className="h-full w-full object-cover object-[center_38%] transition duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+                      <p className="text-[10px] uppercase tracking-[0.17em] text-cyan-200 sm:text-xs sm:tracking-[0.2em]">
                         {item.series}
                       </p>
-                      <h2 className="mt-1 text-lg font-semibold text-white">
+                      <h2 className="mt-1 text-sm font-semibold leading-5 text-white sm:text-lg">
                         {item.title}
                       </h2>
                     </div>
                   </div>
 
-                  <div className="space-y-3 p-4">
+                  <div className="hidden space-y-3 p-4 sm:block">
                     <p className="text-sm text-zinc-400">{item.mood}</p>
                     <div className="flex flex-wrap gap-2">
                       {item.tags.slice(0, 3).map((tag) => (
@@ -754,7 +762,7 @@ export default function Home() {
       </footer>
       {selectedItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 p-4 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-50 bg-black/95 p-0 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label={selectedItem.title}
@@ -764,7 +772,7 @@ export default function Home() {
           }}
         >
           <div
-            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-zinc-950"
+            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-white/10 bg-zinc-950 sm:rounded-lg sm:border"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
@@ -796,10 +804,12 @@ export default function Home() {
               />
             ) : (
               <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
-                <div className="relative h-[62svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
-                  <img
+                <div className="relative h-[60svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
+                  <PolishedImage
+                    key={selectedItem.src}
                     src={selectedItem.src}
                     alt={selectedItem.title}
+                    wrapperClassName="absolute inset-0"
                     className="absolute inset-0 h-full w-full object-contain p-3 sm:p-6"
                   />
                 </div>

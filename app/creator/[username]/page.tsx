@@ -5,6 +5,7 @@ import CreatorGallery, {
   type CreatorArtwork,
   type CreatorCollection,
 } from "./creator-gallery";
+import PolishedImage from "../../components/polished-image";
 
 type CreatorPageProps = {
   params: Promise<{ username: string }>;
@@ -83,24 +84,27 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
           >
             NODEINE
           </Link>
-          <nav className="flex items-center gap-5 text-xs uppercase tracking-[0.18em]">
+          <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
             <Link href="/" className="text-zinc-400 hover:text-white">
-              Browse archive
+              <span className="sm:hidden">Archive</span>
+              <span className="hidden sm:inline">Browse archive</span>
             </Link>
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
-              Creator studio
+              <span className="sm:hidden">Studio</span>
+              <span className="hidden sm:inline">Creator studio</span>
             </Link>
           </nav>
         </div>
       </header>
 
-      <section className="border-b border-white/10 px-5 py-12 sm:px-8 sm:py-16">
+      <section className="border-b border-white/10 px-5 py-10 sm:px-8 sm:py-16">
         <div className="mx-auto grid max-w-7xl gap-7 sm:grid-cols-[144px_minmax(0,1fr)] sm:items-center">
-          <div className="grid h-36 w-36 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-5xl font-light text-cyan-300">
+          <div className="mx-auto grid h-32 w-32 place-items-center overflow-hidden rounded-full border border-white/15 bg-black text-5xl font-light text-cyan-300 shadow-[0_0_50px_rgba(34,211,238,.08)] sm:mx-0 sm:h-36 sm:w-36">
             {profile.avatar_url ? (
-              <img
+              <PolishedImage
                 src={profile.avatar_url}
                 alt={`${profile.display_name} profile picture`}
+                wrapperClassName="h-full w-full"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -108,7 +112,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             )}
           </div>
 
-          <div className="max-w-3xl">
+          <div className="max-w-3xl text-center sm:text-left">
             <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
               Creator archive
             </p>
@@ -121,7 +125,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
                 {profile.bio}
               </p>
             )}
-            <div className="mt-6 flex gap-8 text-sm">
+            <div className="mt-6 flex justify-center gap-10 text-sm sm:justify-start sm:gap-8">
               <p>
                 <span className="block text-xl text-white">
                   {collections.length}
@@ -137,7 +141,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-9 sm:px-8 sm:py-12">
         <CreatorGallery collections={collections} artworks={artworks} />
       </div>
     </main>
