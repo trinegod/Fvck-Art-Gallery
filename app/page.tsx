@@ -7,6 +7,7 @@ import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
 import ArtworkLikeButton from "./components/artwork-like-button";
 import ArtworkSaveButton from "./components/artwork-save-button";
+import ArtworkShareButton from "./components/artwork-share-button";
 import CreatorNavigation from "./components/creator-navigation";
 import PolishedImage from "./components/polished-image";
 
@@ -877,6 +878,11 @@ export default function Home() {
                 <ArtworkSaveButton
                   key={`save-${selectedItem.id}`}
                   artworkId={selectedItem.id}
+                />
+                <ArtworkShareButton
+                  key={`share-${selectedItem.id}`}
+                  artworkId={selectedItem.id}
+                  artworkTitle={selectedItem.title}
                 />
                 <button
                   type="button"

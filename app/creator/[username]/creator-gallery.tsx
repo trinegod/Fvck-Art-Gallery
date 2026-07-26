@@ -5,6 +5,7 @@ import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
 import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkSaveButton from "../../components/artwork-save-button";
+import ArtworkShareButton from "../../components/artwork-share-button";
 import PolishedImage from "../../components/polished-image";
 
 export type CreatorCollection = {
@@ -374,6 +375,11 @@ export default function CreatorGallery({
                   <ArtworkSaveButton
                     key={`save-${selectedArtwork.id}`}
                     artworkId={selectedArtwork.id}
+                  />
+                  <ArtworkShareButton
+                    key={`share-${selectedArtwork.id}`}
+                    artworkId={selectedArtwork.id}
+                    artworkTitle={selectedArtwork.title}
                   />
                   <button
                     type="button"

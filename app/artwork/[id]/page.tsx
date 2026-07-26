@@ -1,0 +1,292 @@
+import { cache } from "react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+import ArtworkComments from "../../components/artwork-comments";
+import ArtworkLikeButton from "../../components/artwork-like-button";
+import ArtworkSaveButton from "../../components/artwork-save-button";
+import ArtworkShareButton from "../../components/artwork-share-button";
+import PolishedImage from "../../components/polished-image";
+
+type ArtworkPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+type ArtworkRecord = {
+  id: string;
+  collection_id: string;
+  title: string;
+  src: string;
+  thumb_src: string | null;
+  media_type: string | null;
+  mood: string | null;
+  tags: string[] | null;
+  sort_order: number | null;
+};
+
+type CollectionRecord = {
+  id: string;
+  owner_id: string;
+  title: string;
+  summary: string | null;
+  world_code: string | null;
+};
+
+type CreatorRecord = {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+};
+
+type ArtworkPageData = {
+  artwork: ArtworkRecord;
+  collection: CollectionRecord;
+  creator: CreatorRecord | null;
+};
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+export const dynamic = "force-dynamic";
+
+function getSiteOrigin() {
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  const vercelUrl =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  return vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000";
+}
+
+const getArtworkPageData = cache(
+  async (artworkId: string): Promise<ArtworkPageData | null> => {
+    if (!supabaseUrl || !supabaseKey || !uuidPattern.test(artworkId)) {
+      return null;
+    }
+
+    const database = createClient(supabaseUrl, supabaseKey);
+    const { data: artworkData, error: artworkError } = await database
+      .from("artworks")
+      .select(
+        "id, collection_id, title, src, thumb_src, media_type, mood, tags, sort_order"
+      )
+      .eq("id", artworkId)
+      .maybeSingle();
+
+    if (artworkError) throw artworkError;
+    if (!artworkData) return null;
+
+    const artwork = artworkData as ArtworkRecord;
+    const { data: collectionData, error: collectionError } = await database
+      .from("collections")
+      .select("id, owner_id, title, summary, world_code")
+      .eq("id", artwork.collection_id)
+      .maybeSingle();
+
+    if (collectionError) throw collectionError;
+    if (!collectionData) return null;
+
+    const collection = collectionData as CollectionRecord;
+    const { data: creatorData, error: creatorError } = await database
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .eq("id", collection.owner_id)
+      .maybeSingle();
+
+    if (creatorError) throw creatorError;
+
+    return {
+      artwork,
+      collection,
+      creator: (creatorData as CreatorRecord | null) ?? null,
+    };
+  }
+);
+
+function getDescription(data: ArtworkPageData) {
+  return (
+    data.artwork.mood ||
+    data.collection.summary ||
+    `${data.artwork.title}, a piece from ${data.collection.title} on NODEINE.`
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: ArtworkPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const data = await getArtworkPageData(id);
+
+  if (!data) {
+    return {
+      title: "Artwork not found — NODEINE",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = `${data.artwork.title} — NODEINE`;
+  const description = getDescription(data);
+  const origin = getSiteOrigin();
+  const canonicalUrl = `${origin}/artwork/${data.artwork.id}`;
+  const imageUrl = new URL(data.artwork.src, origin).toString();
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: canonicalUrl,
+      siteName: "NODEINE",
+      images: [{ url: imageUrl, alt: data.artwork.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
+
+export default async function ArtworkPage({ params }: ArtworkPageProps) {
+  const { id } = await params;
+  const data = await getArtworkPageData(id);
+  if (!data) notFound();
+
+  const { artwork, collection, creator } = data;
+
+  return (
+    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <header className="border-b border-white/10 px-5 py-5 sm:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
+          >
+            NODEINE
+          </Link>
+          <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
+            <Link href="/" className="text-zinc-400 hover:text-white">
+              Archive
+            </Link>
+            <Link href="/saved" className="text-zinc-400 hover:text-white">
+              Saved
+            </Link>
+            {creator && (
+              <Link
+                href={`/creator/${creator.username}`}
+                className="text-cyan-300 hover:text-cyan-200"
+              >
+                Creator
+              </Link>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-7xl gap-0 lg:min-h-[calc(100svh-73px)] lg:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="relative grid min-h-[58svh] place-items-center overflow-hidden bg-black p-4 sm:min-h-[70svh] sm:p-8 lg:min-h-0">
+          <PolishedImage
+            src={artwork.src}
+            alt={artwork.title}
+            wrapperClassName="absolute inset-0"
+            className="absolute inset-0 size-full object-contain p-4 sm:p-8"
+          />
+          <Link
+            href="/"
+            className="absolute left-4 top-4 z-10 inline-flex min-h-10 items-center rounded-lg border border-white/15 bg-black/70 px-3 py-2 text-xs text-zinc-200 backdrop-blur hover:border-cyan-300 hover:text-white"
+          >
+            ← Back to archive
+          </Link>
+        </section>
+
+        <aside className="border-t border-white/10 p-5 lg:max-h-[calc(100svh-73px)] lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-7">
+          <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
+            {collection.world_code || "Visual world"}
+          </p>
+          <p className="mt-2 text-sm text-zinc-500">{collection.title}</p>
+          <h1 className="mt-6 text-3xl font-light text-white">
+            {artwork.title}
+          </h1>
+
+          {creator && (
+            <Link
+              href={`/creator/${creator.username}`}
+              className="mt-4 flex items-center gap-3 border-y border-white/10 py-4 text-sm text-zinc-400 hover:text-cyan-200"
+            >
+              <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-black text-xs text-cyan-300">
+                {creator.avatar_url ? (
+                  <PolishedImage
+                    src={creator.avatar_url}
+                    alt=""
+                    wrapperClassName="size-full"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  creator.display_name.charAt(0).toUpperCase()
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-zinc-200">
+                  {creator.display_name}
+                </span>
+                <span className="block truncate text-xs text-zinc-500">
+                  @{creator.username}
+                </span>
+              </span>
+            </Link>
+          )}
+
+          {artwork.mood && (
+            <div className="mt-7">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Mood
+              </p>
+              <p className="mt-2 leading-7 text-zinc-300">{artwork.mood}</p>
+            </div>
+          )}
+
+          {!!artwork.tags?.length && (
+            <div className="mt-7 border-t border-white/10 pt-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Tags
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {artwork.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="border border-white/15 px-2.5 py-1.5 text-xs text-zinc-300"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div
+            className="mt-7 flex flex-wrap items-start gap-3"
+            aria-label="Artwork actions"
+          >
+            <ArtworkLikeButton artworkId={artwork.id} />
+            <ArtworkSaveButton artworkId={artwork.id} />
+            <ArtworkShareButton
+              artworkId={artwork.id}
+              artworkTitle={artwork.title}
+            />
+          </div>
+
+          <ArtworkComments artworkId={artwork.id} />
+        </aside>
+      </div>
+    </main>
+  );
+}
