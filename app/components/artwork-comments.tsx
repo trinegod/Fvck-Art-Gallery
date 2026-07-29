@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
 import PolishedImage from "./polished-image";
 
@@ -127,12 +128,16 @@ export default function ArtworkComments({ artworkId }: ArtworkCommentsProps) {
 
     if (insertError) {
       setError(insertError.message);
+      toast.error("Comment wasn't posted", {
+        description: insertError.message,
+      });
     } else {
       setComments((current) => [
         ...current,
         data as unknown as ArtworkComment,
       ]);
       setDraft("");
+      toast.success("Comment posted");
     }
 
     setSubmitting(false);
@@ -153,10 +158,14 @@ export default function ArtworkComments({ artworkId }: ArtworkCommentsProps) {
 
     if (deleteError) {
       setError(deleteError.message);
+      toast.error("Comment wasn't deleted", {
+        description: deleteError.message,
+      });
     } else {
       setComments((current) =>
         current.filter((comment) => comment.id !== commentId)
       );
+      toast.success("Comment deleted");
     }
 
     setDeletingId(null);
@@ -192,7 +201,7 @@ export default function ArtworkComments({ artworkId }: ArtworkCommentsProps) {
             <button
               type="submit"
               disabled={submitting || !draft.trim()}
-              className="bg-cyan-300 px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+              className="nodeine-action rounded-lg bg-cyan-300 px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? "Posting..." : "Post"}
             </button>
@@ -263,7 +272,7 @@ export default function ArtworkComments({ artworkId }: ArtworkCommentsProps) {
                       type="button"
                       onClick={() => handleDelete(comment.id)}
                       disabled={deletingId === comment.id}
-                      className="mt-2 text-xs text-zinc-600 hover:text-rose-300 disabled:opacity-50"
+                      className="nodeine-action mt-2 text-xs text-zinc-600 hover:text-rose-300 disabled:opacity-50"
                     >
                       {deletingId === comment.id ? "Deleting..." : "Delete"}
                     </button>

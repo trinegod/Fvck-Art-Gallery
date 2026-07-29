@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, LoaderCircle } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
 
 type ArtworkLikeButtonProps = {
@@ -17,7 +18,7 @@ function isMissingTableError(code?: string) {
 }
 
 const baseClassName =
-  "inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+  "nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
 export default function ArtworkLikeButton({
   artworkId,
@@ -148,6 +149,11 @@ export default function ArtworkLikeButton({
       setLiked(wasLiked);
       setLikeCount((current) => Math.max(0, current + (wasLiked ? 1 : -1)));
       setError(result.error.message);
+      toast.error("Like wasn't updated", {
+        description: result.error.message,
+      });
+    } else {
+      toast.success(wasLiked ? "Like removed" : "Artwork liked");
     }
 
     setSaving(false);

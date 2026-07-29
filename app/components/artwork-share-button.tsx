@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Link as LinkIcon, LoaderCircle, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 type ArtworkShareButtonProps = {
   artworkId: string;
@@ -11,7 +12,7 @@ type ArtworkShareButtonProps = {
 type ShareStatus = "idle" | "working" | "shared" | "copied" | "error";
 
 const baseClassName =
-  "inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+  "nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
 async function copyToClipboard(value: string) {
   if (navigator.clipboard?.writeText) {
@@ -70,9 +71,11 @@ export default function ArtworkShareButton({
       if (useNativeShare) {
         await navigator.share(shareData);
         setStatus("shared");
+        toast.success("Artwork shared");
       } else {
         await copyToClipboard(shareUrl);
         setStatus("copied");
+        toast.success("Artwork link copied");
       }
       scheduleReset();
     } catch (error) {
@@ -81,6 +84,9 @@ export default function ArtworkShareButton({
         return;
       }
       setStatus("error");
+      toast.error("Couldn't share artwork", {
+        description: "Please try again.",
+      });
       scheduleReset();
     }
   }

@@ -117,9 +117,49 @@
   animation: nodeine-image-shimmer 1.55s ease-in-out infinite;
 }
 
+@keyframes nodeine-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nodeine-orbit {
+  animation: nodeine-orbit 18s linear infinite;
+}
+
+.nodeine-action {
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.nodeine-action:not(:disabled):active {
+  transform: scale(0.965);
+}
+
+.cn-toast {
+  border-color: rgb(255 255 255 / 12%) !important;
+  background: rgb(9 9 11 / 94%) !important;
+  color: #f4f4f5 !important;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 55%) !important;
+  backdrop-filter: blur(22px);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .nodeine-image-shimmer {
+  .nodeine-image-shimmer,
+  .nodeine-orbit {
     animation: none;
     opacity: 0.35;
+  }
+
+  .nodeine-action {
+    transition: none;
+  }
+
+  .nodeine-action:not(:disabled):active {
+    transform: none;
   }
 }

@@ -55,7 +55,6 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
@@ -687,7 +686,6 @@ export default function AdminPage() {
             Loading archive access
           </div>
         </main>
-        <Toaster position="top-right" theme="dark" />
       </>
     );
   }
@@ -840,7 +838,6 @@ export default function AdminPage() {
             </p>
           </section>
         </main>
-        <Toaster position="top-right" theme="dark" richColors />
       </>
     );
   }
@@ -1632,7 +1629,6 @@ export default function AdminPage() {
           </Tabs>
         </section>
       </main>
-      <Toaster position="top-right" theme="dark" richColors />
     </>
   );
 }

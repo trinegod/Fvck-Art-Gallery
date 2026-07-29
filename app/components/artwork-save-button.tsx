@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bookmark, LoaderCircle } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
 
 type ArtworkSaveButtonProps = {
@@ -18,7 +19,7 @@ function isMissingTableError(code?: string) {
 }
 
 const baseClassName =
-  "inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+  "nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
 export default function ArtworkSaveButton({
   artworkId,
@@ -114,7 +115,13 @@ export default function ArtworkSaveButton({
     if (result.error) {
       setSaved(wasSaved);
       setError(result.error.message);
+      toast.error("Save wasn't updated", {
+        description: result.error.message,
+      });
     } else {
+      toast.success(
+        wasSaved ? "Removed from saved artwork" : "Saved to your collection"
+      );
       setSaving(false);
       onSavedChange?.(!wasSaved);
       return;

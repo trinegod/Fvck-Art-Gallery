@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, LoaderCircle, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
 
 type ProfileFollowControlProps = {
@@ -217,6 +218,15 @@ export default function ProfileFollowControl({
         Math.max(0, current + (wasFollowing ? 1 : -1))
       );
       setError(result.error.message);
+      toast.error("Follow wasn't updated", {
+        description: result.error.message,
+      });
+    } else {
+      toast.success(
+        wasFollowing
+          ? `Unfollowed ${creatorName}`
+          : `Now following ${creatorName}`
+      );
     }
 
     setSaving(false);
@@ -229,8 +239,8 @@ export default function ProfileFollowControl({
   }`;
   const buttonClassName =
     variant === "compact"
-      ? "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-      : "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+      ? "nodeine-action inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      : "nodeine-action inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
   let action;
 

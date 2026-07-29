@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CircleHelp } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
@@ -9,6 +10,7 @@ import ArtworkLikeButton from "./components/artwork-like-button";
 import ArtworkSaveButton from "./components/artwork-save-button";
 import ArtworkShareButton from "./components/artwork-share-button";
 import CreatorNavigation from "./components/creator-navigation";
+import { NODEINE_WELCOME_EVENT } from "./components/nodeine-welcome";
 import PolishedImage from "./components/polished-image";
 
 type CollectionRow = {
@@ -508,6 +510,18 @@ export default function Home() {
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-400">
               {activeSubtitle}
             </p>
+            {!activeSeries && (
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new Event(NODEINE_WELCOME_EVENT))
+                }
+                className="nodeine-action mx-auto mt-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs uppercase tracking-[0.15em] text-zinc-500 hover:border-cyan-300/35 hover:text-cyan-200"
+              >
+                <CircleHelp className="size-3.5" aria-hidden="true" />
+                Quick tour
+              </button>
+            )}
           </div>
 
           {activeSeries && (
