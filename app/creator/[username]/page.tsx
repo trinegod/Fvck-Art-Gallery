@@ -134,6 +134,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             <ProfileFollowControl
               profileId={profile.id}
               creatorName={profile.display_name}
+              creatorUsername={profile.username}
               collectionCount={collections.length}
               artworkCount={artworks.length}
             />

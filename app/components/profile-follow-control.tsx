@@ -5,10 +5,12 @@ import Link from "next/link";
 import { Check, LoaderCircle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
+import ProfileShareButton from "./profile-share-button";
 
 type ProfileFollowControlProps = {
   profileId: string;
   creatorName: string;
+  creatorUsername?: string;
   variant?: "profile" | "compact";
   collectionCount?: number;
   artworkCount?: number;
@@ -33,6 +35,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 export default function ProfileFollowControl({
   profileId,
   creatorName,
+  creatorUsername,
   variant = "profile",
   collectionCount = 0,
   artworkCount = 0,
@@ -337,7 +340,15 @@ export default function ProfileFollowControl({
         <Stat value={followerCount} label="Followers" />
         <Stat value={followingCount} label="Following" />
       </div>
-      {action}
+      <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+        {action}
+        {creatorUsername && (
+          <ProfileShareButton
+            creatorName={creatorName}
+            creatorUsername={creatorUsername}
+          />
+        )}
+      </div>
       {error && available && (
         <span className="max-w-md text-xs leading-5 text-rose-300" role="alert">
           {error}
