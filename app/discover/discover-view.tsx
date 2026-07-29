@@ -4,15 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Archive,
-  Bookmark,
   Compass,
-  Plus,
   Search,
   Shuffle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
 
 export type DiscoverArtwork = {
@@ -84,7 +82,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
           >
             NODEINE
           </Link>
-          <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
+          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
             <Link href="/" className="text-zinc-400 hover:text-white">
               Archive
             </Link>
@@ -229,38 +227,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
         )}
       </section>
 
-      <nav
-        aria-label="Discover navigation"
-        className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-4 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
-      >
-        <Link
-          href="/"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 active:scale-95 hover:bg-white/5 hover:text-white"
-        >
-          <Archive className="size-4" />
-          Archive
-        </Link>
-        <span className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-cyan-300/10 text-[10px] font-semibold text-cyan-200">
-          <Compass className="size-4" />
-          Discover
-        </span>
-        <Link
-          href="/saved"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 active:scale-95 hover:bg-white/5 hover:text-white"
-        >
-          <Bookmark className="size-4" />
-          Saved
-        </Link>
-        <Link
-          href="/admin"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-semibold text-cyan-200 active:scale-95 hover:bg-cyan-300/8"
-        >
-          <span className="grid size-8 place-items-center rounded-xl bg-cyan-300 text-zinc-950">
-            <Plus className="size-4" />
-          </span>
-          Publish
-        </Link>
-      </nav>
+      <MobileAppNavigation />
     </main>
   );
 }

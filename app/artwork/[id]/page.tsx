@@ -7,6 +7,7 @@ import ArtworkComments from "../../components/artwork-comments";
 import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
+import MobileAppNavigation from "../../components/mobile-app-navigation";
 import PolishedImage from "../../components/polished-image";
 import ProfileFollowControl from "../../components/profile-follow-control";
 
@@ -165,7 +166,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const { artwork, collection, creator } = data;
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <header className="border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
@@ -174,8 +175,8 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
           >
             NODEINE
           </Link>
-          <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
-            <Link href="/" className="hidden text-zinc-400 hover:text-white sm:inline">
+          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
+            <Link href="/" className="text-zinc-400 hover:text-white">
               Archive
             </Link>
             <Link href="/discover" className="text-zinc-400 hover:text-white">
@@ -298,6 +299,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
           <ArtworkComments artworkId={artwork.id} />
         </aside>
       </div>
+      <MobileAppNavigation />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import CreatorGallery, {
   type CreatorCollection,
 } from "./creator-gallery";
 import PolishedImage from "../../components/polished-image";
+import MobileAppNavigation from "../../components/mobile-app-navigation";
 import ProfileFollowControl from "../../components/profile-follow-control";
 
 type CreatorPageProps = {
@@ -76,7 +77,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
   const creatorInitial = profile.display_name.charAt(0).toUpperCase() || "N";
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <header className="border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
@@ -85,10 +86,9 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
           >
             NODEINE
           </Link>
-          <nav className="flex items-center gap-3 text-[10px] uppercase tracking-[0.14em] sm:gap-5 sm:text-xs sm:tracking-[0.18em]">
-            <Link href="/" className="hidden text-zinc-400 hover:text-white sm:inline">
-              <span className="sm:hidden">Archive</span>
-              <span className="hidden sm:inline">Browse archive</span>
+          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
+            <Link href="/" className="text-zinc-400 hover:text-white">
+              Archive
             </Link>
             <Link href="/discover" className="text-zinc-400 hover:text-white">
               Discover
@@ -97,8 +97,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
               Saved
             </Link>
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
-              <span className="sm:hidden">Studio</span>
-              <span className="hidden sm:inline">Creator studio</span>
+              Studio
             </Link>
           </nav>
         </div>
@@ -145,6 +144,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
       <div className="mx-auto max-w-7xl px-4 py-9 sm:px-8 sm:py-12">
         <CreatorGallery collections={collections} artworks={artworks} />
       </div>
+      <MobileAppNavigation profileHref={`/creator/${profile.username}`} />
     </main>
   );
 }

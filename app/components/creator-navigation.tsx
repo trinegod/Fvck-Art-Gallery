@@ -7,7 +7,6 @@ import {
   Bookmark,
   ChevronDown,
   ExternalLink,
-  Home,
   Layers3,
   LogOut,
   Plus,
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase-browser";
 import PolishedImage from "./polished-image";
+import MobileAppNavigation from "./mobile-app-navigation";
 
 type ViewerProfile = {
   username: string;
@@ -249,60 +249,7 @@ export default function CreatorNavigation({
         )}
       </nav>
 
-      <nav
-        aria-label="Mobile archive navigation"
-        className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
-      >
-        <button
-          type="button"
-          onClick={onGoHome}
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 transition active:scale-95 active:bg-white/8 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          <Home className="size-4" />
-          Home
-        </button>
-        <Link
-          href="/discover"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 transition active:scale-95 active:bg-white/8 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          <Search className="size-4" />
-          Discover
-        </Link>
-        <Link
-          href="/admin"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-semibold text-cyan-200 transition active:scale-95 hover:bg-cyan-300/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          <span className="grid size-8 place-items-center rounded-xl bg-cyan-300 text-zinc-950 shadow-[0_0_18px_rgba(103,232,249,.25)]">
-            <Plus className="size-4" />
-          </span>
-          Publish
-        </Link>
-        <Link
-          href="/saved"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 transition active:scale-95 active:bg-white/8 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          <Bookmark className="size-4" />
-          Saved
-        </Link>
-        <Link
-          href={profileHref}
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium text-zinc-400 transition active:scale-95 active:bg-white/8 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          <span className="grid size-5 place-items-center overflow-hidden rounded-md">
-            {profile?.avatar_url ? (
-              <PolishedImage
-                src={profile.avatar_url}
-                alt=""
-                wrapperClassName="size-full"
-                className="size-full object-cover"
-              />
-            ) : (
-              <UserRound className="size-4" />
-            )}
-          </span>
-          Profile
-        </Link>
-      </nav>
+      <MobileAppNavigation onHome={onGoHome} profileHref={profileHref} />
     </>
   );
 }
