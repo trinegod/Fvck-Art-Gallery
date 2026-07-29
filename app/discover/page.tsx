@@ -88,6 +88,7 @@ export default async function DiscoverPage() {
           tags: artwork.tags,
           collectionTitle: collection.title,
           worldCode: collection.world_code,
+          creatorId: creator?.id ?? null,
           creatorName: creator?.display_name ?? "NODEINE",
           creatorUsername: creator?.username ?? null,
         },
