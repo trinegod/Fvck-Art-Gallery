@@ -6,6 +6,7 @@ import CreatorGallery, {
   type CreatorCollection,
 } from "./creator-gallery";
 import PolishedImage from "../../components/polished-image";
+import ProfileFollowControl from "../../components/profile-follow-control";
 
 type CreatorPageProps = {
   params: Promise<{ username: string }>;
@@ -131,18 +132,12 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
                 {profile.bio}
               </p>
             )}
-            <div className="mt-6 flex justify-center gap-10 text-sm sm:justify-start sm:gap-8">
-              <p>
-                <span className="block text-xl text-white">
-                  {collections.length}
-                </span>
-                <span className="text-zinc-500">Collections</span>
-              </p>
-              <p>
-                <span className="block text-xl text-white">{artworks.length}</span>
-                <span className="text-zinc-500">Artworks</span>
-              </p>
-            </div>
+            <ProfileFollowControl
+              profileId={profile.id}
+              creatorName={profile.display_name}
+              collectionCount={collections.length}
+              artworkCount={artworks.length}
+            />
           </div>
         </div>
       </section>

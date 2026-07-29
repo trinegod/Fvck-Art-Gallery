@@ -8,6 +8,7 @@ import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
 import PolishedImage from "../../components/polished-image";
+import ProfileFollowControl from "../../components/profile-follow-control";
 
 type ArtworkPageProps = {
   params: Promise<{ id: string }>;
@@ -221,31 +222,38 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
           </h1>
 
           {creator && (
-            <Link
-              href={`/creator/${creator.username}`}
-              className="mt-4 flex items-center gap-3 border-y border-white/10 py-4 text-sm text-zinc-400 hover:text-cyan-200"
-            >
-              <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-black text-xs text-cyan-300">
-                {creator.avatar_url ? (
-                  <PolishedImage
-                    src={creator.avatar_url}
-                    alt=""
-                    wrapperClassName="size-full"
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  creator.display_name.charAt(0).toUpperCase()
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-zinc-200">
-                  {creator.display_name}
+            <div className="mt-4 flex items-center gap-3 border-y border-white/10 py-4 text-sm text-zinc-400">
+              <Link
+                href={`/creator/${creator.username}`}
+                className="flex min-w-0 flex-1 items-center gap-3 hover:text-cyan-200"
+              >
+                <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-black text-xs text-cyan-300">
+                  {creator.avatar_url ? (
+                    <PolishedImage
+                      src={creator.avatar_url}
+                      alt=""
+                      wrapperClassName="size-full"
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    creator.display_name.charAt(0).toUpperCase()
+                  )}
                 </span>
-                <span className="block truncate text-xs text-zinc-500">
-                  @{creator.username}
+                <span className="min-w-0">
+                  <span className="block truncate text-zinc-200">
+                    {creator.display_name}
+                  </span>
+                  <span className="block truncate text-xs text-zinc-500">
+                    @{creator.username}
+                  </span>
                 </span>
-              </span>
-            </Link>
+              </Link>
+              <ProfileFollowControl
+                profileId={creator.id}
+                creatorName={creator.display_name}
+                variant="compact"
+              />
+            </div>
           )}
 
           {artwork.mood && (
