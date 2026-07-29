@@ -305,6 +305,9 @@ export default function SavedArtworkView() {
             <Link href="/discover" className="text-zinc-400 hover:text-white">
               Discover
             </Link>
+            <Link href="/messages" className="text-zinc-400 hover:text-white">
+              Inbox
+            </Link>
             <Link href={profileHref} className="hidden text-zinc-400 hover:text-white sm:inline">
               Profile
             </Link>

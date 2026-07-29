@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Layers3,
   LogOut,
+  MessageCircle,
   Plus,
   Search,
   Sparkles,
@@ -141,6 +142,16 @@ export default function CreatorNavigation({
         </Button>
 
         <Button
+          render={<Link href="/messages" />}
+          nativeButton={false}
+          variant="ghost"
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <MessageCircle data-icon="inline-start" />
+          Inbox
+        </Button>
+
+        <Button
           type="button"
           variant="ghost"
           onClick={onBrowseWorlds}
@@ -209,6 +220,13 @@ export default function CreatorNavigation({
               >
                 <Search />
                 Discover artwork
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/messages" />}
+                className="px-2 py-2"
+              >
+                <MessageCircle />
+                Open inbox
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/saved" />}

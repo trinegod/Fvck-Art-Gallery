@@ -13,6 +13,7 @@ import {
   ImagePlus,
   Layers3,
   LogOut,
+  MessageCircle,
   Sparkles,
   UploadCloud,
   UserRound,
@@ -878,6 +879,15 @@ export default function AdminPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                render={<Link href="/messages" />}
+                nativeButton={false}
+                variant="outline"
+                className="h-10 border-white/12 bg-black/30 px-3 text-zinc-300"
+              >
+                <MessageCircle data-icon="inline-start" />
+                Inbox
+              </Button>
               <Dialog>
                 <DialogTrigger
                   render={

@@ -96,6 +96,9 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             <Link href="/saved" className="text-zinc-400 hover:text-white">
               Saved
             </Link>
+            <Link href="/messages" className="text-zinc-400 hover:text-white">
+              Inbox
+            </Link>
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
               Studio
             </Link>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Home, Plus, Search, UserRound } from "lucide-react";
+import { Home, MessageCircle, Plus, Search, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
 
 type MobileAppNavigationProps = {
@@ -74,7 +74,7 @@ export default function MobileAppNavigation({
   const homeActive = pathname === "/";
   const discoverActive = pathname.startsWith("/discover");
   const publishActive = pathname.startsWith("/admin");
-  const savedActive = pathname.startsWith("/saved");
+  const messagesActive = pathname.startsWith("/messages");
   const profileActive = pathname.startsWith("/creator");
   const profileHref = suppliedProfileHref ?? resolvedProfileHref;
 
@@ -82,6 +82,7 @@ export default function MobileAppNavigation({
     <nav
       aria-label="Primary app navigation"
       className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
+      style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}
     >
       {onHome ? (
         <button
@@ -127,16 +128,16 @@ export default function MobileAppNavigation({
       </Link>
 
       <Link
-        href="/saved"
-        aria-current={savedActive ? "page" : undefined}
-        className={`${itemClassName} ${itemState(savedActive)}`}
+        href="/messages"
+        aria-current={messagesActive ? "page" : undefined}
+        className={`${itemClassName} ${itemState(messagesActive)}`}
       >
-        <Bookmark
+        <MessageCircle
           className="size-4"
-          fill={savedActive ? "currentColor" : "none"}
+          fill={messagesActive ? "currentColor" : "none"}
           aria-hidden="true"
         />
-        Saved
+        Inbox
       </Link>
 
       <Link

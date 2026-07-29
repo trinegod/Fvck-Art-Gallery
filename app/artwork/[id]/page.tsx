@@ -185,6 +185,9 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             <Link href="/saved" className="text-zinc-400 hover:text-white">
               Saved
             </Link>
+            <Link href="/messages" className="text-zinc-400 hover:text-white">
+              Inbox
+            </Link>
             {creator && (
               <Link
                 href={`/creator/${creator.username}`}

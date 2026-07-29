@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, LoaderCircle, UserPlus } from "lucide-react";
+import { Bookmark, Check, LoaderCircle, MessageCircle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-browser";
 import ProfileShareButton from "./profile-share-button";
@@ -342,6 +342,37 @@ export default function ProfileFollowControl({
       </div>
       <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
         {action}
+        {isSelf ? (
+          <>
+            <Link
+              href="/messages"
+              className={`${buttonClassName} border-white/15 text-zinc-200 hover:border-cyan-300/60 hover:text-cyan-200`}
+            >
+              <MessageCircle className="size-4" aria-hidden="true" />
+              Inbox
+            </Link>
+            <Link
+              href="/saved"
+              className={`${buttonClassName} border-white/15 text-zinc-200 hover:border-cyan-300/60 hover:text-cyan-200`}
+            >
+              <Bookmark className="size-4" aria-hidden="true" />
+              Saved
+            </Link>
+          </>
+        ) : (
+          <Link
+            href={viewerId ? `/messages?with=${profileId}` : "/admin"}
+            className={`${buttonClassName} border-white/15 text-zinc-200 hover:border-cyan-300/60 hover:text-cyan-200`}
+            aria-label={
+              viewerId
+                ? `Message ${creatorName}`
+                : `Sign in to message ${creatorName}`
+            }
+          >
+            <MessageCircle className="size-4" aria-hidden="true" />
+            Message
+          </Link>
+        )}
         {creatorUsername && (
           <ProfileShareButton
             creatorName={creatorName}
