@@ -129,7 +129,7 @@ export default function CreatorNavigation({
     <>
       <nav
         aria-label="Creator controls"
-        className="absolute right-0 top-0 z-20 hidden items-center gap-2 lg:flex"
+        className="relative z-20 hidden w-full items-center justify-end gap-2 lg:flex"
       >
         <Button
           render={<Link href="/discover" />}
