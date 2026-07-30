@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
+import ActivityNavLink from "../components/activity-nav-link";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
 
@@ -172,6 +173,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             <Link href="/messages" className="text-zinc-400 hover:text-white">
               Inbox
             </Link>
+            <ActivityNavLink />
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
               Studio
             </Link>

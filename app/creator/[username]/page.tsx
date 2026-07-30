@@ -5,6 +5,7 @@ import CreatorGallery, {
   type CreatorArtwork,
   type CreatorCollection,
 } from "./creator-gallery";
+import ActivityNavLink from "../../components/activity-nav-link";
 import PolishedImage from "../../components/polished-image";
 import MobileAppNavigation from "../../components/mobile-app-navigation";
 import ProfileFollowControl from "../../components/profile-follow-control";
@@ -99,6 +100,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
             <Link href="/messages" className="text-zinc-400 hover:text-white">
               Inbox
             </Link>
+            <ActivityNavLink />
             <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
               Studio
             </Link>

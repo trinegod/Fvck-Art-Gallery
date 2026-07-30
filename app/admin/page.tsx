@@ -6,7 +6,10 @@ import {
   ArrowLeft,
   Archive,
   BadgeCheck,
+  Bell,
   ChevronDown,
+  CheckCircle2,
+  Circle,
   CircleHelp,
   ExternalLink,
   FolderPlus,
@@ -59,6 +62,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
+import {
+  formatActivityCount,
+  useUnreadActivityCount,
+} from "../components/use-activity-count";
 
 type StudioMode = "artwork" | "collection" | "manage" | "profile";
 
@@ -120,6 +127,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [signupDisplayName, setSignupDisplayName] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [publishedArtworkCount, setPublishedArtworkCount] = useState(0);
   const [collectionId, setCollectionId] = useState("");
   const [title, setTitle] = useState("");
   const [mood, setMood] = useState("");
@@ -148,6 +156,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(
     supabase ? null : "Supabase environment variables are missing."
   );
+  const unreadActivityCount = useUnreadActivityCount();
 
   useEffect(() => {
     const client = supabase;
@@ -184,19 +193,35 @@ export default function AdminPage() {
     if (!client || !userId) return;
 
     async function loadCollections(database: NonNullable<typeof supabase>) {
-      const { data, error: collectionsError } = await database
+      const collectionResult = await database
         .from("collections")
         .select("id, title, world_code, sort_order")
         .eq("owner_id", userId)
         .order("sort_order");
 
-      if (collectionsError) {
-        setError(collectionsError.message);
+      if (collectionResult.error) {
+        setError(collectionResult.error.message);
         return;
       }
 
-      const rows = (data ?? []) as Collection[];
+      const rows = (collectionResult.data ?? []) as Collection[];
+      const artworkCountResult = rows.length
+        ? await database
+            .from("artworks")
+            .select("id", { count: "exact", head: true })
+            .in(
+              "collection_id",
+              rows.map((collection) => collection.id)
+            )
+        : { count: 0, error: null };
+
+      if (artworkCountResult.error) {
+        setError(artworkCountResult.error.message);
+        return;
+      }
+
       setCollections(rows);
+      setPublishedArtworkCount(artworkCountResult.count ?? 0);
       setCollectionId((current) => current || rows[0]?.id || "");
       setManageCollectionId((current) => current || rows[0]?.id || "");
     }
@@ -419,6 +444,7 @@ export default function AdminPage() {
       setTags("");
       setFile(null);
       setFileInputKey((current) => current + 1);
+      setPublishedArtworkCount((current) => current + 1);
       setMessage("Artwork published successfully.");
     } catch (uploadError) {
       setError(
@@ -643,6 +669,7 @@ export default function AdminPage() {
     if (!supabase) return;
     await supabase.auth.signOut({ scope: "local" });
     setCollections([]);
+    setPublishedArtworkCount(0);
     setUserId(null);
     setManagedArtworks([]);
     setSelectedArtworkId("");
@@ -846,6 +873,41 @@ export default function AdminPage() {
   const creatorInitial = (profileDisplayName || userEmail)
     .charAt(0)
     .toUpperCase();
+  const profileReady = Boolean(
+    profileUsername.trim() &&
+      profileDisplayName.trim() &&
+      profileBio.trim() &&
+      profileAvatarPreview
+  );
+  const firstWorldReady = collections.length > 0;
+  const firstArtworkReady = publishedArtworkCount > 0;
+  const studioSetupComplete =
+    profileReady && firstWorldReady && firstArtworkReady;
+  const setupSteps: Array<{
+    label: string;
+    detail: string;
+    complete: boolean;
+    mode: StudioMode;
+  }> = [
+    {
+      label: "Complete your profile",
+      detail: "Add a name, avatar, bio, and permanent username.",
+      complete: profileReady,
+      mode: "profile",
+    },
+    {
+      label: "Create your first world",
+      detail: "Artwork lives inside a collection so the archive stays intentional.",
+      complete: firstWorldReady,
+      mode: "collection",
+    },
+    {
+      label: "Publish your first artwork",
+      detail: "Choose your world, upload one image, and send the first signal.",
+      complete: firstArtworkReady,
+      mode: "artwork",
+    },
+  ];
 
   return (
     <>
@@ -887,6 +949,22 @@ export default function AdminPage() {
               >
                 <MessageCircle data-icon="inline-start" />
                 Inbox
+              </Button>
+              <Button
+                render={<Link href="/activity" />}
+                nativeButton={false}
+                variant="outline"
+                className="h-10 border-white/12 bg-black/30 px-3 text-zinc-300"
+              >
+                <span className="relative" data-icon="inline-start">
+                  <Bell className="size-4" />
+                  {unreadActivityCount > 0 && (
+                    <span className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 font-mono text-[8px] leading-4 text-zinc-950">
+                      {formatActivityCount(unreadActivityCount)}
+                    </span>
+                  )}
+                </span>
+                Activity
               </Button>
               <Dialog>
                 <DialogTrigger
@@ -1059,6 +1137,57 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </div>
+
+          {!studioSetupComplete && (
+            <Card className="mt-6 overflow-hidden border-cyan-300/15 bg-[linear-gradient(120deg,rgba(8,145,178,.10),rgba(0,0,0,.35)_55%)] ring-0">
+              <CardHeader className="border-b border-white/8">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardDescription className="font-mono text-[10px] uppercase tracking-[0.22em] text-cyan-300">
+                      First signal checklist
+                    </CardDescription>
+                    <CardTitle className="mt-2 text-xl font-medium text-white">
+                      Open your creator channel in three moves.
+                    </CardTitle>
+                  </div>
+                  <Badge className="w-fit border border-white/10 bg-black/30 text-zinc-400">
+                    {setupSteps.filter((step) => step.complete).length}/3 complete
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3 p-4 lg:grid-cols-3">
+                {setupSteps.map((step, index) => (
+                  <button
+                    key={step.label}
+                    type="button"
+                    onClick={() => handleModeChange(step.mode)}
+                    className={`nodeine-action flex min-h-28 items-start gap-3 rounded-xl border p-4 text-left transition ${
+                      step.complete
+                        ? "border-emerald-300/15 bg-emerald-300/[0.04]"
+                        : "border-white/10 bg-black/25 hover:border-cyan-300/35 hover:bg-cyan-300/[0.035]"
+                    }`}
+                  >
+                    {step.complete ? (
+                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-300" />
+                    ) : (
+                      <Circle className="mt-0.5 size-5 shrink-0 text-zinc-600" />
+                    )}
+                    <span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                        0{index + 1}
+                      </span>
+                      <span className="mt-1 block text-sm font-medium text-white">
+                        {step.label}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                        {step.detail}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs
             value={mode}

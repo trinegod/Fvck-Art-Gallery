@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Archive,
+  Bell,
   Bookmark,
   ChevronDown,
   ExternalLink,
@@ -28,6 +29,10 @@ import {
 import { supabase } from "@/lib/supabase-browser";
 import PolishedImage from "./polished-image";
 import MobileAppNavigation from "./mobile-app-navigation";
+import {
+  formatActivityCount,
+  useUnreadActivityCount,
+} from "./use-activity-count";
 
 type ViewerProfile = {
   username: string;
@@ -49,6 +54,7 @@ export default function CreatorNavigation({
   const [authReady, setAuthReady] = useState(!supabase);
   const [signedIn, setSignedIn] = useState(false);
   const [profile, setProfile] = useState<ViewerProfile | null>(null);
+  const unreadActivityCount = useUnreadActivityCount();
 
   useEffect(() => {
     const client = supabase;
@@ -152,6 +158,23 @@ export default function CreatorNavigation({
         </Button>
 
         <Button
+          render={<Link href="/activity" />}
+          nativeButton={false}
+          variant="ghost"
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <span className="relative" data-icon="inline-start">
+            <Bell className="size-4" />
+            {unreadActivityCount > 0 && (
+              <span className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 font-mono text-[8px] leading-4 text-zinc-950">
+                {formatActivityCount(unreadActivityCount)}
+              </span>
+            )}
+          </span>
+          Activity
+        </Button>
+
+        <Button
           type="button"
           variant="ghost"
           onClick={onBrowseWorlds}
@@ -227,6 +250,18 @@ export default function CreatorNavigation({
               >
                 <MessageCircle />
                 Open inbox
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/activity" />}
+                className="px-2 py-2"
+              >
+                <Bell />
+                Activity center
+                {unreadActivityCount > 0 && (
+                  <span className="ml-auto rounded-full bg-rose-400 px-1.5 py-0.5 font-mono text-[9px] text-zinc-950">
+                    {formatActivityCount(unreadActivityCount)}
+                  </span>
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/saved" />}

@@ -7,6 +7,7 @@ import ArtworkComments from "../../components/artwork-comments";
 import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
+import ActivityNavLink from "../../components/activity-nav-link";
 import MobileAppNavigation from "../../components/mobile-app-navigation";
 import PolishedImage from "../../components/polished-image";
 import ProfileFollowControl from "../../components/profile-follow-control";
@@ -188,6 +189,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             <Link href="/messages" className="text-zinc-400 hover:text-white">
               Inbox
             </Link>
+            <ActivityNavLink />
             {creator && (
               <Link
                 href={`/creator/${creator.username}`}

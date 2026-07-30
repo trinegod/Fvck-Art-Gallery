@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
+import ActivityNavLink from "../components/activity-nav-link";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
 import ArtworkLikeButton from "../components/artwork-like-button";
@@ -308,6 +309,7 @@ export default function SavedArtworkView() {
             <Link href="/messages" className="text-zinc-400 hover:text-white">
               Inbox
             </Link>
+            <ActivityNavLink />
             <Link href={profileHref} className="hidden text-zinc-400 hover:text-white sm:inline">
               Profile
             </Link>

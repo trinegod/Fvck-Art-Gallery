@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessageCircle, Plus, Search, UserRound } from "lucide-react";
+import { Bell, Home, MessageCircle, Plus, Search, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
+import {
+  formatActivityCount,
+  useUnreadActivityCount,
+} from "./use-activity-count";
 
 type MobileAppNavigationProps = {
   hidden?: boolean;
@@ -21,6 +25,7 @@ export default function MobileAppNavigation({
   profileHref: suppliedProfileHref,
 }: MobileAppNavigationProps) {
   const pathname = usePathname();
+  const unreadActivityCount = useUnreadActivityCount();
   const [resolvedProfileHref, setResolvedProfileHref] = useState(
     suppliedProfileHref ?? "/admin"
   );
@@ -75,14 +80,15 @@ export default function MobileAppNavigation({
   const discoverActive = pathname.startsWith("/discover");
   const publishActive = pathname.startsWith("/admin");
   const messagesActive = pathname.startsWith("/messages");
+  const activityActive = pathname.startsWith("/activity");
   const profileActive = pathname.startsWith("/creator");
   const profileHref = suppliedProfileHref ?? resolvedProfileHref;
 
   return (
     <nav
       aria-label="Primary app navigation"
-      className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
-      style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}
+      className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-6 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
+      style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
     >
       {onHome ? (
         <button
@@ -138,6 +144,29 @@ export default function MobileAppNavigation({
           aria-hidden="true"
         />
         Inbox
+      </Link>
+
+      <Link
+        href="/activity"
+        aria-current={activityActive ? "page" : undefined}
+        className={`${itemClassName} ${itemState(activityActive)}`}
+      >
+        <span className="relative">
+          <Bell
+            className="size-4"
+            fill={activityActive ? "currentColor" : "none"}
+            aria-hidden="true"
+          />
+          {unreadActivityCount > 0 && (
+            <span
+              aria-label={`${unreadActivityCount} unread notifications`}
+              className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 font-mono text-[8px] leading-4 text-zinc-950"
+            >
+              {formatActivityCount(unreadActivityCount)}
+            </span>
+          )}
+        </span>
+        Activity
       </Link>
 
       <Link
