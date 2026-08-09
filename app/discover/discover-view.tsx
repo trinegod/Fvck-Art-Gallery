@@ -7,6 +7,7 @@ import {
   Compass,
   Search,
   Shuffle,
+  Sparkles,
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,8 +35,13 @@ type DiscoverViewProps = {
   artworks: DiscoverArtwork[];
 };
 
-type FeedMode = "discover" | "following";
+type FeedMode = "for-you" | "discover" | "following";
 type FollowingState = "loading" | "signed-out" | "ready" | "unavailable";
+type PersonalizationState =
+  | "loading"
+  | "signed-out"
+  | "ready"
+  | "unavailable";
 
 const filters = ["All", "Cyberpunk", "Anime", "Fashion", "Mecha", "Dystopia"];
 
@@ -54,15 +60,36 @@ function searchableText(artwork: DiscoverArtwork) {
     .toLowerCase();
 }
 
+function normalizedFacet(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function addAffinity(
+  affinity: Map<string, number>,
+  value: string | null | undefined,
+  weight: number
+) {
+  if (!value) return;
+  const key = normalizedFacet(value);
+  affinity.set(key, (affinity.get(key) ?? 0) + weight);
+}
+
 export default function DiscoverView({ artworks }: DiscoverViewProps) {
   const router = useRouter();
-  const [feedMode, setFeedMode] = useState<FeedMode>("discover");
+  const [feedMode, setFeedMode] = useState<FeedMode>("for-you");
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [followedCreatorIds, setFollowedCreatorIds] = useState<string[]>([]);
+  const [likedArtworkIds, setLikedArtworkIds] = useState<string[]>([]);
+  const [savedArtworkIds, setSavedArtworkIds] = useState<string[]>([]);
+  const [globalLikeCounts, setGlobalLikeCounts] = useState<
+    Record<string, number>
+  >({});
   const [followingState, setFollowingState] = useState<FollowingState>(
     supabase ? "loading" : "unavailable"
   );
+  const [personalizationState, setPersonalizationState] =
+    useState<PersonalizationState>(supabase ? "loading" : "unavailable");
   const [followingError, setFollowingError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -72,51 +99,95 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
     let cancelled = false;
     let requestId = 0;
 
-    async function loadFollowing(userId: string | null) {
+    async function loadFeedSignals(userId: string | null) {
       const currentRequest = ++requestId;
-
-      if (!userId) {
-        if (!cancelled) {
-          setFollowedCreatorIds([]);
-          setFollowingError(null);
-          setFollowingState("signed-out");
-        }
-        return;
-      }
-
       setFollowingState("loading");
+      setPersonalizationState("loading");
       setFollowingError(null);
 
-      const { data, error } = await database
-        .from("profile_follows")
-        .select("followed_id")
-        .eq("follower_id", userId)
-        .order("created_at", { ascending: false });
+      const popularityRequest = database
+        .from("artwork_likes")
+        .select("artwork_id");
+
+      const [popularityResult, followsResult, likesResult, savesResult] =
+        await Promise.all([
+          popularityRequest,
+          userId
+            ? database
+                .from("profile_follows")
+                .select("followed_id")
+                .eq("follower_id", userId)
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+          userId
+            ? database
+                .from("artwork_likes")
+                .select("artwork_id")
+                .eq("user_id", userId)
+            : Promise.resolve({ data: [], error: null }),
+          userId
+            ? database
+                .from("artwork_saves")
+                .select("artwork_id")
+                .eq("user_id", userId)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
 
       if (cancelled || currentRequest !== requestId) return;
 
-      if (error) {
+      const likeCounts: Record<string, number> = {};
+      for (const like of popularityResult.data ?? []) {
+        const artworkId = like.artwork_id as string;
+        likeCounts[artworkId] = (likeCounts[artworkId] ?? 0) + 1;
+      }
+      setGlobalLikeCounts(likeCounts);
+      setLikedArtworkIds(
+        (likesResult.data ?? []).map((like) => like.artwork_id as string)
+      );
+      setSavedArtworkIds(
+        (savesResult.data ?? []).map((save) => save.artwork_id as string)
+      );
+
+      if (!userId) {
+        setFollowedCreatorIds([]);
+        setFollowingState("signed-out");
+        setPersonalizationState(
+          popularityResult.error ? "unavailable" : "signed-out"
+        );
+        return;
+      }
+
+      if (followsResult.error) {
         setFollowedCreatorIds([]);
         setFollowingError(
-          error.code === "42P01" || error.code === "PGRST205"
+          followsResult.error.code === "42P01" ||
+            followsResult.error.code === "PGRST205"
             ? "Following is waiting for its database connection."
-            : error.message
+            : followsResult.error.message
         );
         setFollowingState("unavailable");
       } else {
         setFollowedCreatorIds(
-          (data ?? []).map((follow) => follow.followed_id as string)
+          (followsResult.data ?? []).map(
+            (follow) => follow.followed_id as string
+          )
         );
         setFollowingState("ready");
       }
+
+      setPersonalizationState(
+        popularityResult.error && likesResult.error && savesResult.error
+          ? "unavailable"
+          : "ready"
+      );
     }
 
     database.auth.getSession().then(({ data }) => {
-      loadFollowing(data.session?.user.id ?? null);
+      loadFeedSignals(data.session?.user.id ?? null);
     });
 
     const { data: authListener } = database.auth.onAuthStateChange(
-      (_event, session) => loadFollowing(session?.user.id ?? null)
+      (_event, session) => loadFeedSignals(session?.user.id ?? null)
     );
 
     return () => {
@@ -125,13 +196,140 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
     };
   }, []);
 
+  const personalizedFeed = useMemo(() => {
+    const followedCreators = new Set(followedCreatorIds);
+    const likedArtworks = new Set(likedArtworkIds);
+    const savedArtworks = new Set(savedArtworkIds);
+    const tagAffinity = new Map<string, number>();
+    const moodAffinity = new Map<string, number>();
+    const creatorAffinity = new Map<string, number>();
+
+    for (const artwork of artworks) {
+      const engagementWeight =
+        (likedArtworks.has(artwork.id) ? 3 : 0) +
+        (savedArtworks.has(artwork.id) ? 5 : 0);
+      if (!engagementWeight) continue;
+
+      for (const tag of artwork.tags ?? []) {
+        addAffinity(tagAffinity, tag, engagementWeight);
+      }
+      addAffinity(moodAffinity, artwork.mood, engagementWeight);
+      addAffinity(creatorAffinity, artwork.creatorId, engagementWeight);
+    }
+
+    const ranked = artworks
+      .map((artwork, originalIndex) => {
+        const tagScore = (artwork.tags ?? []).reduce(
+          (score, tag) => score + (tagAffinity.get(normalizedFacet(tag)) ?? 0),
+          0
+        );
+        const moodScore = artwork.mood
+          ? moodAffinity.get(normalizedFacet(artwork.mood)) ?? 0
+          : 0;
+        const creatorScore = artwork.creatorId
+          ? creatorAffinity.get(normalizedFacet(artwork.creatorId)) ?? 0
+          : 0;
+        const score =
+          (globalLikeCounts[artwork.id] ?? 0) * 2 +
+          (artwork.creatorId && followedCreators.has(artwork.creatorId)
+            ? 24
+            : 0) +
+          tagScore * 1.8 +
+          moodScore * 1.25 +
+          creatorScore * 1.5 -
+          (likedArtworks.has(artwork.id) ? 3 : 0) -
+          (savedArtworks.has(artwork.id) ? 5 : 0);
+
+        return { artwork, originalIndex, score };
+      })
+      .sort(
+        (left, right) =>
+          right.score - left.score || left.originalIndex - right.originalIndex
+      );
+
+    const diversified: DiscoverArtwork[] = [];
+    const remaining = [...ranked];
+    let lastCreatorId: string | null = null;
+    let lastCollectionTitle: string | null = null;
+
+    while (remaining.length) {
+      const variedIndex = remaining.findIndex(
+        ({ artwork }, index) =>
+          index < 6 &&
+          (artwork.creatorId !== lastCreatorId ||
+            artwork.collectionTitle !== lastCollectionTitle)
+      );
+      const [next] = remaining.splice(variedIndex >= 0 ? variedIndex : 0, 1);
+      diversified.push(next.artwork);
+      lastCreatorId = next.artwork.creatorId;
+      lastCollectionTitle = next.artwork.collectionTitle;
+    }
+
+    return diversified;
+  }, [
+    artworks,
+    followedCreatorIds,
+    globalLikeCounts,
+    likedArtworkIds,
+    savedArtworkIds,
+  ]);
+
+  const forYouReasons = useMemo(() => {
+    const followedCreators = new Set(followedCreatorIds);
+    const likedArtworks = new Set(likedArtworkIds);
+    const savedArtworks = new Set(savedArtworkIds);
+    const tagAffinity = new Map<string, number>();
+
+    for (const artwork of artworks) {
+      const weight =
+        (likedArtworks.has(artwork.id) ? 3 : 0) +
+        (savedArtworks.has(artwork.id) ? 5 : 0);
+      if (!weight) continue;
+      for (const tag of artwork.tags ?? []) {
+        addAffinity(tagAffinity, tag, weight);
+      }
+    }
+
+    return new Map<string, string>(
+      artworks.map((artwork): [string, string] => {
+        if (artwork.creatorId && followedCreators.has(artwork.creatorId)) {
+          return [artwork.id, "From a creator you follow"];
+        }
+
+        const strongestTag = (artwork.tags ?? [])
+          .map((tag) => ({
+            tag,
+            score: tagAffinity.get(normalizedFacet(tag)) ?? 0,
+          }))
+          .sort((left, right) => right.score - left.score)[0];
+
+        if (strongestTag?.score) {
+          return [artwork.id, `Because you like ${strongestTag.tag}`];
+        }
+
+        if ((globalLikeCounts[artwork.id] ?? 0) > 0) {
+          return [artwork.id, "Popular on Nodeine"];
+        }
+
+        return [artwork.id, "Fresh from Nodeine"];
+      })
+    );
+  }, [
+    artworks,
+    followedCreatorIds,
+    globalLikeCounts,
+    likedArtworkIds,
+    savedArtworkIds,
+  ]);
+
   const feedArtworks = useMemo(() => {
+    if (feedMode === "for-you") return personalizedFeed;
     if (feedMode === "discover") return artworks;
     const followedCreators = new Set(followedCreatorIds);
     return artworks.filter((artwork) =>
       artwork.creatorId ? followedCreators.has(artwork.creatorId) : false
     );
-  }, [artworks, feedMode, followedCreatorIds]);
+  }, [artworks, feedMode, followedCreatorIds, personalizedFeed]);
 
   const filteredArtworks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -187,17 +385,23 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
               {feedMode === "following"
                 ? "Your creative network"
-                : "Visual signal finder"}
+                : feedMode === "for-you"
+                  ? "Personalized visual stream"
+                  : "Visual signal finder"}
             </p>
             <h1 className="mt-3 text-4xl font-light text-white sm:text-5xl">
               {feedMode === "following"
                 ? "From creators you follow"
-                : "Discover the archive"}
+                : feedMode === "for-you"
+                  ? "For you"
+                  : "Discover the archive"}
             </h1>
             <p className="mt-3 max-w-2xl leading-7 text-zinc-400">
               {feedMode === "following"
                 ? "A focused stream of new worlds from the people you chose to keep close."
-                : "Search worlds, moods, creators, and visual ideas across NODEINE."}
+                : feedMode === "for-you"
+                  ? "A living mix shaped by what you follow, like, and save—balanced with what is moving across Nodeine."
+                  : "Search worlds, moods, creators, and visual ideas across NODEINE."}
             </p>
           </div>
           <Button
@@ -205,7 +409,8 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             onClick={surpriseMe}
             disabled={
               !feedArtworks.length ||
-              (feedMode === "following" && followingState !== "ready")
+              (feedMode === "following" && followingState !== "ready") ||
+              (feedMode === "for-you" && personalizationState === "loading")
             }
             className="h-11 w-fit bg-cyan-300 px-4 text-zinc-950 hover:bg-cyan-200"
           >
@@ -215,16 +420,30 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
         </div>
 
         <div
-          className="mt-7 inline-flex rounded-xl border border-white/10 bg-black/40 p-1"
+          className="mt-7 grid w-full grid-cols-3 rounded-xl border border-white/10 bg-black/40 p-1 sm:inline-grid sm:w-auto"
           role="tablist"
           aria-label="Artwork feed"
         >
           <button
             type="button"
             role="tab"
+            aria-selected={feedMode === "for-you"}
+            onClick={() => setFeedMode("for-you")}
+            className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
+              feedMode === "for-you"
+                ? "bg-gradient-to-r from-cyan-300/15 to-fuchsia-300/10 text-cyan-100"
+                : "text-zinc-500 hover:text-zinc-200"
+            }`}
+          >
+            <Sparkles className="size-4" aria-hidden="true" />
+            For You
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={feedMode === "discover"}
             onClick={() => setFeedMode("discover")}
-            className={`nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+            className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
               feedMode === "discover"
                 ? "bg-white/10 text-white"
                 : "text-zinc-500 hover:text-zinc-200"
@@ -238,7 +457,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             role="tab"
             aria-selected={feedMode === "following"}
             onClick={() => setFeedMode("following")}
-            className={`nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+            className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
               feedMode === "following"
                 ? "bg-cyan-300/12 text-cyan-200"
                 : "text-zinc-500 hover:text-zinc-200"
@@ -248,6 +467,30 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             Following
           </button>
         </div>
+
+        {feedMode === "for-you" &&
+          personalizationState === "signed-out" && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/5 px-4 py-3 text-sm text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                This is the community mix. Sign in and your likes, saves, and
+                follows will tune it to you.
+              </p>
+              <Link
+                href="/admin"
+                className="shrink-0 font-medium text-cyan-300 hover:text-cyan-200"
+              >
+                Sign in to personalize
+              </Link>
+            </div>
+          )}
+
+        {feedMode === "for-you" &&
+          personalizationState === "unavailable" && (
+            <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-500">
+              Personal signals are temporarily unavailable, so you are seeing
+              the wider Nodeine mix.
+            </p>
+          )}
 
         <div className="mt-7">
           <label className="relative block">
@@ -263,6 +506,8 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
               placeholder={
                 feedMode === "following"
                   ? "Search your following feed"
+                  : feedMode === "for-you"
+                    ? "Search your personalized feed"
                   : "Search artwork, worlds, moods, or creators"
               }
               className="h-14 rounded-xl border-white/12 bg-black/50 pl-12 pr-4 text-base text-white placeholder:text-zinc-600 focus-visible:border-cyan-300 focus-visible:ring-cyan-300/20"
@@ -299,7 +544,9 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             className="text-xs uppercase tracking-[0.18em] text-zinc-500"
             aria-live="polite"
           >
-            {feedMode === "following" && followingState === "loading"
+            {feedMode === "for-you" && personalizationState === "loading"
+              ? "Tuning your feed"
+              : feedMode === "following" && followingState === "loading"
               ? "Loading your feed"
               : `${filteredArtworks.length} ${
                   filteredArtworks.length === 1 ? "artwork" : "artworks"
@@ -319,7 +566,16 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
           )}
         </div>
 
-        {feedMode === "following" && followingState === "loading" ? (
+        {feedMode === "for-you" && personalizationState === "loading" ? (
+          <div className="grid min-h-72 place-items-center text-center">
+            <div>
+              <span className="mx-auto block size-8 animate-spin rounded-full border-2 border-white/10 border-t-fuchsia-300" />
+              <p className="mt-4 text-sm text-zinc-500">
+                Reading the signals that make this feed yours...
+              </p>
+            </div>
+          </div>
+        ) : feedMode === "following" && followingState === "loading" ? (
           <div className="grid min-h-72 place-items-center text-center">
             <div>
               <span className="mx-auto block size-8 animate-spin rounded-full border-2 border-white/10 border-t-cyan-300" />
@@ -408,6 +664,11 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
                       ? `@${artwork.creatorUsername}`
                       : artwork.creatorName}
                   </span>
+                  {feedMode === "for-you" && (
+                    <span className="mt-2 block truncate text-[10px] uppercase tracking-[0.12em] text-fuchsia-300/70">
+                      {forYouReasons.get(artwork.id)}
+                    </span>
+                  )}
                 </span>
               </Link>
             ))}
