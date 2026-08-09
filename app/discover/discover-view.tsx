@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -44,6 +44,7 @@ type PersonalizationState =
   | "unavailable";
 
 const filters = ["All", "Cyberpunk", "Anime", "Fashion", "Mecha", "Dystopia"];
+const artworkBatchSize = 24;
 
 function searchableText(artwork: DiscoverArtwork) {
   return [
@@ -79,6 +80,9 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
   const [feedMode, setFeedMode] = useState<FeedMode>("for-you");
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [visibleArtworkCount, setVisibleArtworkCount] =
+    useState(artworkBatchSize);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const [followedCreatorIds, setFollowedCreatorIds] = useState<string[]>([]);
   const [likedArtworkIds, setLikedArtworkIds] = useState<string[]>([]);
   const [savedArtworkIds, setSavedArtworkIds] = useState<string[]>([]);
@@ -344,6 +348,51 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
     });
   }, [activeFilter, feedArtworks, query]);
 
+  const visibleArtworks = useMemo(
+    () => filteredArtworks.slice(0, visibleArtworkCount),
+    [filteredArtworks, visibleArtworkCount]
+  );
+  const hasMoreArtwork = visibleArtworkCount < filteredArtworks.length;
+  const nextArtworkBatchSize = Math.min(
+    artworkBatchSize,
+    filteredArtworks.length - visibleArtworkCount
+  );
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (
+      !target ||
+      !hasMoreArtwork ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setVisibleArtworkCount((count) =>
+          Math.min(count + artworkBatchSize, filteredArtworks.length)
+        );
+      },
+      { rootMargin: "400px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [
+    feedMode,
+    filteredArtworks.length,
+    followingState,
+    hasMoreArtwork,
+    personalizationState,
+  ]);
+
+  function selectFeedMode(nextMode: FeedMode) {
+    setFeedMode(nextMode);
+    setVisibleArtworkCount(artworkBatchSize);
+  }
+
   function surpriseMe() {
     const pool = filteredArtworks.length ? filteredArtworks : feedArtworks;
     if (!pool.length) return;
@@ -428,7 +477,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             type="button"
             role="tab"
             aria-selected={feedMode === "for-you"}
-            onClick={() => setFeedMode("for-you")}
+            onClick={() => selectFeedMode("for-you")}
             className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
               feedMode === "for-you"
                 ? "bg-gradient-to-r from-cyan-300/15 to-fuchsia-300/10 text-cyan-100"
@@ -442,7 +491,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             type="button"
             role="tab"
             aria-selected={feedMode === "discover"}
-            onClick={() => setFeedMode("discover")}
+            onClick={() => selectFeedMode("discover")}
             className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
               feedMode === "discover"
                 ? "bg-white/10 text-white"
@@ -456,7 +505,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             type="button"
             role="tab"
             aria-selected={feedMode === "following"}
-            onClick={() => setFeedMode("following")}
+            onClick={() => selectFeedMode("following")}
             className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:gap-2 sm:px-4 sm:text-sm ${
               feedMode === "following"
                 ? "bg-cyan-300/12 text-cyan-200"
@@ -502,7 +551,10 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             <Input
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setVisibleArtworkCount(artworkBatchSize);
+              }}
               placeholder={
                 feedMode === "following"
                   ? "Search your following feed"
@@ -524,7 +576,10 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
                 <button
                   key={filter}
                   type="button"
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => {
+                    setActiveFilter(filter);
+                    setVisibleArtworkCount(artworkBatchSize);
+                  }}
                   aria-pressed={isActive}
                   className={`min-h-10 shrink-0 rounded-full border px-4 text-xs uppercase tracking-[0.13em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
                     isActive
@@ -558,6 +613,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
               onClick={() => {
                 setQuery("");
                 setActiveFilter("All");
+                setVisibleArtworkCount(artworkBatchSize);
               }}
               className="min-h-10 text-xs uppercase tracking-[0.16em] text-cyan-300 hover:text-cyan-200"
             >
@@ -629,7 +685,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
               </p>
               <button
                 type="button"
-                onClick={() => setFeedMode("discover")}
+                onClick={() => selectFeedMode("discover")}
                 className="nodeine-action mt-6 inline-flex min-h-11 items-center rounded-lg border border-white/15 px-5 py-3 text-sm text-zinc-200 hover:border-cyan-300/50 hover:text-cyan-200"
               >
                 Find creators
@@ -637,42 +693,69 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
             </div>
           </div>
         ) : filteredArtworks.length ? (
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {filteredArtworks.map((artwork) => (
-              <Link
-                key={artwork.id}
-                href={`/artwork/${artwork.id}`}
-                className="group overflow-hidden rounded-xl border border-white/10 bg-black outline-none transition hover:-translate-y-0.5 hover:border-cyan-300/30 focus-visible:ring-2 focus-visible:ring-cyan-300"
-              >
-                <PolishedImage
-                  src={artwork.thumbSrc || artwork.src}
-                  alt={artwork.title}
-                  loading="lazy"
-                  decoding="async"
-                  wrapperClassName="aspect-[4/5] w-full"
-                  className="size-full object-cover transition duration-500 group-hover:scale-105"
-                />
-                <span className="block border-t border-white/10 px-3 py-3">
-                  <span className="block truncate text-sm text-zinc-100">
-                    {artwork.title}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-cyan-300">
-                    {artwork.collectionTitle}
-                  </span>
-                  <span className="mt-2 block truncate text-[11px] text-zinc-600">
-                    {artwork.creatorUsername
-                      ? `@${artwork.creatorUsername}`
-                      : artwork.creatorName}
-                  </span>
-                  {feedMode === "for-you" && (
-                    <span className="mt-2 block truncate text-[10px] uppercase tracking-[0.12em] text-fuchsia-300/70">
-                      {forYouReasons.get(artwork.id)}
+          <>
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {visibleArtworks.map((artwork) => (
+                <Link
+                  key={artwork.id}
+                  href={`/artwork/${artwork.id}`}
+                  className="group overflow-hidden rounded-xl border border-white/10 bg-black outline-none transition hover:-translate-y-0.5 hover:border-cyan-300/30 focus-visible:ring-2 focus-visible:ring-cyan-300"
+                >
+                  <PolishedImage
+                    src={artwork.thumbSrc || artwork.src}
+                    alt={artwork.title}
+                    loading="lazy"
+                    decoding="async"
+                    wrapperClassName="aspect-[4/5] w-full"
+                    className="size-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                  <span className="block border-t border-white/10 px-3 py-3">
+                    <span className="block truncate text-sm text-zinc-100">
+                      {artwork.title}
                     </span>
-                  )}
-                </span>
-              </Link>
-            ))}
-          </div>
+                    <span className="mt-1 block truncate text-xs text-cyan-300">
+                      {artwork.collectionTitle}
+                    </span>
+                    <span className="mt-2 block truncate text-[11px] text-zinc-600">
+                      {artwork.creatorUsername
+                        ? `@${artwork.creatorUsername}`
+                        : artwork.creatorName}
+                    </span>
+                    {feedMode === "for-you" && (
+                      <span className="mt-2 block truncate text-[10px] uppercase tracking-[0.12em] text-fuchsia-300/70">
+                        {forYouReasons.get(artwork.id)}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            {hasMoreArtwork && (
+              <div
+                ref={loadMoreRef}
+                className="mt-8 flex flex-col items-center border-t border-white/10 pt-8"
+              >
+                <p className="mb-3 text-xs uppercase tracking-[0.16em] text-zinc-600">
+                  Showing {visibleArtworks.length} of {filteredArtworks.length}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleArtworkCount((count) =>
+                      Math.min(
+                        count + artworkBatchSize,
+                        filteredArtworks.length
+                      )
+                    )
+                  }
+                  className="nodeine-action min-h-11 rounded-full border border-white/15 bg-white/[0.03] px-5 text-sm text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                >
+                  Load {nextArtworkBatchSize} more
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="grid min-h-72 place-items-center text-center">
             <div>
