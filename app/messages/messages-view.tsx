@@ -136,11 +136,15 @@ export default function MessagesView({
     supabase ? null : "Supabase environment variables are missing."
   );
   const [search, setSearch] = useState("");
-  const [groupOpen, setGroupOpen] = useState(false);
+  const [newMessageOpen, setNewMessageOpen] = useState(false);
+  const [newMessageMode, setNewMessageMode] = useState<"direct" | "group">(
+    "direct"
+  );
   const [groupTitle, setGroupTitle] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [startingDirectId, setStartingDirectId] = useState<string | null>(null);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [artworkShareOpen, setArtworkShareOpen] = useState(false);
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
@@ -173,6 +177,20 @@ export default function MessagesView({
         .includes(query)
     );
   }, [inbox, search]);
+
+  const inboxProfileResults = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return [];
+
+    return profiles
+      .filter((profile) => profile.id !== viewerId)
+      .filter((profile) =>
+        `${profile.display_name} ${profile.username}`
+          .toLowerCase()
+          .includes(query)
+      )
+      .slice(0, 12);
+  }, [profiles, search, viewerId]);
 
   const groupProfiles = useMemo(() => {
     const query = groupSearch.trim().toLowerCase();
@@ -319,7 +337,7 @@ export default function MessagesView({
       .from("profiles")
       .select("id, username, display_name, avatar_url")
       .order("display_name")
-      .limit(100);
+      .limit(500);
 
     if (allProfilesResult.error) {
       setLoadState("unavailable");
@@ -1039,6 +1057,46 @@ export default function MessagesView({
     if (viewerId) loadInbox(viewerId);
   }
 
+  async function startDirectMessage(profileId: string) {
+    const client = supabase;
+    if (!client || !viewerId || startingDirectId) return;
+
+    setStartingDirectId(profileId);
+    setError(null);
+
+    const { data, error: startError } = await client.rpc(
+      "start_direct_conversation",
+      { other_profile_id: profileId }
+    );
+
+    if (startError) {
+      const message = isMissingMessagingError(startError.code)
+        ? "Messaging is waiting for its database connection."
+        : startError.message;
+      setError(message);
+      toast.error("Conversation couldn't be opened", {
+        description: message,
+      });
+      setStartingDirectId(null);
+      return;
+    }
+
+    const conversationId = data as string;
+    setNewMessageOpen(false);
+    setNewMessageMode("direct");
+    setGroupSearch("");
+    setSelectedMemberIds([]);
+    setSearch("");
+    setActiveConversationId(conversationId);
+    window.history.pushState(
+      null,
+      "",
+      `/messages?conversation=${conversationId}`
+    );
+    await loadInbox(viewerId);
+    setStartingDirectId(null);
+  }
+
   function toggleGroupMember(profileId: string) {
     setSelectedMemberIds((current) =>
       current.includes(profileId)
@@ -1058,7 +1116,7 @@ export default function MessagesView({
       !client ||
       !viewerId ||
       !title ||
-      !selectedMemberIds.length ||
+      selectedMemberIds.length < 2 ||
       creatingGroup
     ) {
       return;
@@ -1080,7 +1138,8 @@ export default function MessagesView({
       toast.error("Group wasn't created", { description: groupError.message });
     } else {
       const conversationId = data as string;
-      setGroupOpen(false);
+      setNewMessageOpen(false);
+      setNewMessageMode("direct");
       setGroupTitle("");
       setGroupSearch("");
       setSelectedMemberIds([]);
@@ -1188,23 +1247,29 @@ export default function MessagesView({
                 <Button
                   type="button"
                   size="icon-lg"
-                  onClick={() => setGroupOpen(true)}
+                  onClick={() => {
+                    setNewMessageMode("direct");
+                    setGroupTitle("");
+                    setGroupSearch("");
+                    setSelectedMemberIds([]);
+                    setNewMessageOpen(true);
+                  }}
                   className="rounded-full"
-                  aria-label="Create group chat"
-                  title="Create group chat"
+                  aria-label="Start a new message"
+                  title="Start a new message"
                 >
                   <Plus />
                 </Button>
               </div>
 
               <label className="relative mt-5 block">
-                <span className="sr-only">Search conversations</span>
+                <span className="sr-only">Search people and conversations</span>
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600" />
                 <Input
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search conversations"
+                  placeholder="Find people or conversations"
                   className="h-11 border-white/10 bg-black/45 pl-10"
                 />
               </label>
@@ -1265,54 +1330,96 @@ export default function MessagesView({
                 </section>
               )}
 
+              {search && inboxProfileResults.length > 0 && (
+                <section className="border-b border-white/10">
+                  <p className="px-5 pb-2 pt-4 text-[10px] uppercase tracking-[0.2em] text-cyan-300 sm:px-7">
+                    People
+                  </p>
+                  {inboxProfileResults.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      onClick={() => startDirectMessage(profile.id)}
+                      disabled={Boolean(startingDirectId)}
+                      className="nodeine-action flex w-full items-center gap-3 border-t border-white/8 px-5 py-3 text-left hover:bg-white/[0.035] disabled:cursor-wait disabled:opacity-60 sm:px-7"
+                    >
+                      <ConversationAvatar profile={profile} className="size-10" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-zinc-100">
+                          {profile.display_name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-zinc-600">
+                          @{profile.username}
+                        </span>
+                      </span>
+                      {startingDirectId === profile.id ? (
+                        <LoaderCircle className="size-4 animate-spin text-cyan-300" />
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-cyan-300">
+                          <MessageCircle className="size-4" />
+                          Message
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </section>
+              )}
+
               {filteredInbox.length ? (
-                filteredInbox.map((conversation) => (
-                  <button
-                    key={conversation.id}
-                    type="button"
-                    onClick={() => selectConversation(conversation.id)}
-                    className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-4 text-left hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:px-7"
-                  >
-                    <ConversationAvatar
-                      profile={conversation.otherProfile}
-                      group={conversation.kind === "group"}
-                      groupAvatarUrl={conversation.avatarUrl}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-3">
-                        <span className="truncate text-sm font-medium text-zinc-100">
-                          {conversationName(conversation)}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-zinc-600">
-                          {formatInboxTime(conversation.previewAt)}
-                        </span>
-                      </span>
-                      <span className="mt-1 flex items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
-                          {conversation.preview}
-                        </span>
-                        {conversation.unreadCount > 0 && (
-                          <span className="grid min-w-5 place-items-center rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-950">
-                            {conversation.unreadCount > 99
-                              ? "99+"
-                              : conversation.unreadCount}
+                <section>
+                  {search && (
+                    <p className="px-5 pb-2 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-600 sm:px-7">
+                      Conversations
+                    </p>
+                  )}
+                  {filteredInbox.map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => selectConversation(conversation.id)}
+                      className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-4 text-left hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:px-7"
+                    >
+                      <ConversationAvatar
+                        profile={conversation.otherProfile}
+                        group={conversation.kind === "group"}
+                        groupAvatarUrl={conversation.avatarUrl}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="truncate text-sm font-medium text-zinc-100">
+                            {conversationName(conversation)}
                           </span>
-                        )}
+                          <span className="shrink-0 text-[11px] text-zinc-600">
+                            {formatInboxTime(conversation.previewAt)}
+                          </span>
+                        </span>
+                        <span className="mt-1 flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+                            {conversation.preview}
+                          </span>
+                          {conversation.unreadCount > 0 && (
+                            <span className="grid min-w-5 place-items-center rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-950">
+                              {conversation.unreadCount > 99
+                                ? "99+"
+                                : conversation.unreadCount}
+                            </span>
+                          )}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                ))
-              ) : (
+                    </button>
+                  ))}
+                </section>
+              ) : inboxProfileResults.length ? null : (
                 <div className="grid min-h-80 place-items-center px-6 text-center">
                   <div className="max-w-xs">
                     <MessageCircle className="mx-auto size-9 text-zinc-700" />
                     <h2 className="mt-4 text-xl font-light text-white">
-                      {search ? "No conversation found" : "Start with an artist"}
+                      {search ? "No people found" : "Start with an artist"}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-zinc-600">
                       {search
-                        ? "Try another name or message."
-                        : "Open a creator profile and tap Message, or build a group chat here."}
+                        ? "Try another display name or username."
+                        : "Tap + to message a creator directly or start a group chat."}
                     </p>
                     {!search && (
                       <Link
@@ -1657,29 +1764,75 @@ export default function MessagesView({
         </section>
       )}
 
-      <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+      <Dialog
+        open={newMessageOpen}
+        onOpenChange={(open) => {
+          setNewMessageOpen(open);
+          if (!open) {
+            setNewMessageMode("direct");
+            setGroupTitle("");
+            setGroupSearch("");
+            setSelectedMemberIds([]);
+          }
+        }}
+      >
         <DialogContent className="max-h-[88svh] overflow-hidden border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-lg">
           <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
-            <DialogTitle className="text-xl text-white">Create a group chat</DialogTitle>
+            <DialogTitle className="text-xl text-white">New message</DialogTitle>
             <DialogDescription className="leading-6 text-zinc-500">
-              Invite up to 20 artists or friends into one private conversation.
+              Message one creator directly or bring three or more people into a
+              group.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={createGroup} className="flex min-h-0 flex-col">
             <div className="space-y-4 px-5 py-4 sm:px-6">
-              <label className="block">
-                <span className="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500">
-                  Group name
-                </span>
-                <Input
-                  value={groupTitle}
-                  onChange={(event) => setGroupTitle(event.target.value)}
-                  maxLength={80}
-                  placeholder="Midnight worldbuilders"
-                  className="h-11 border-white/12 bg-black/45"
-                />
-              </label>
+              <div className="grid grid-cols-2 rounded-xl border border-white/10 bg-black/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewMessageMode("direct");
+                    setSelectedMemberIds([]);
+                  }}
+                  aria-pressed={newMessageMode === "direct"}
+                  className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
+                    newMessageMode === "direct"
+                      ? "bg-cyan-300 font-medium text-zinc-950"
+                      : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <MessageCircle className="size-4" />
+                  Direct message
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewMessageMode("group")}
+                  aria-pressed={newMessageMode === "group"}
+                  className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
+                    newMessageMode === "group"
+                      ? "bg-cyan-300 font-medium text-zinc-950"
+                      : "text-zinc-500 hover:text-white"
+                  }`}
+                >
+                  <Users className="size-4" />
+                  Group chat
+                </button>
+              </div>
+
+              {newMessageMode === "group" && (
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500">
+                    Group name
+                  </span>
+                  <Input
+                    value={groupTitle}
+                    onChange={(event) => setGroupTitle(event.target.value)}
+                    maxLength={80}
+                    placeholder="Midnight worldbuilders"
+                    className="h-11 border-white/12 bg-black/45"
+                  />
+                </label>
+              )}
 
               <label className="relative block">
                 <span className="sr-only">Search people</span>
@@ -1688,7 +1841,11 @@ export default function MessagesView({
                   type="search"
                   value={groupSearch}
                   onChange={(event) => setGroupSearch(event.target.value)}
-                  placeholder="Search artists"
+                  placeholder={
+                    newMessageMode === "direct"
+                      ? "Search for a creator"
+                      : "Search creators"
+                  }
                   className="h-11 border-white/12 bg-black/45 pl-10"
                 />
               </label>
@@ -1702,9 +1859,18 @@ export default function MessagesView({
                     <button
                       key={profile.id}
                       type="button"
-                      onClick={() => toggleGroupMember(profile.id)}
-                      aria-pressed={selected}
-                      className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-3 text-left last:border-b-0 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:px-6"
+                      onClick={() =>
+                        newMessageMode === "direct"
+                          ? startDirectMessage(profile.id)
+                          : toggleGroupMember(profile.id)
+                      }
+                      aria-pressed={
+                        newMessageMode === "group" ? selected : undefined
+                      }
+                      disabled={
+                        newMessageMode === "direct" && Boolean(startingDirectId)
+                      }
+                      className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-3 text-left last:border-b-0 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 disabled:cursor-wait disabled:opacity-60 sm:px-6"
                     >
                       <ConversationAvatar profile={profile} className="size-10" />
                       <span className="min-w-0 flex-1">
@@ -1715,15 +1881,26 @@ export default function MessagesView({
                           @{profile.username}
                         </span>
                       </span>
-                      <span
-                        className={`grid size-6 place-items-center rounded-full border ${
-                          selected
-                            ? "border-cyan-300 bg-cyan-300 text-zinc-950"
-                            : "border-white/15 text-transparent"
-                        }`}
-                      >
-                        <Check className="size-3.5" />
-                      </span>
+                      {newMessageMode === "direct" ? (
+                        startingDirectId === profile.id ? (
+                          <LoaderCircle className="size-4 animate-spin text-cyan-300" />
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-cyan-300">
+                            <MessageCircle className="size-4" />
+                            Message
+                          </span>
+                        )
+                      ) : (
+                        <span
+                          className={`grid size-6 place-items-center rounded-full border ${
+                            selected
+                              ? "border-cyan-300 bg-cyan-300 text-zinc-950"
+                              : "border-white/15 text-transparent"
+                          }`}
+                        >
+                          <Check className="size-3.5" />
+                        </span>
+                      )}
                     </button>
                   );
                 })
@@ -1734,26 +1911,43 @@ export default function MessagesView({
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-              <p className="text-xs text-zinc-600">
-                {selectedMemberIds.length} selected
+            {newMessageMode === "direct" ? (
+              <p className="px-5 py-4 text-xs leading-5 text-zinc-600 sm:px-6">
+                Direct messages are private between you and the creator you
+                choose.
               </p>
-              <Button
-                type="submit"
-                disabled={
-                  creatingGroup ||
-                  !groupTitle.trim() ||
-                  !selectedMemberIds.length
-                }
-              >
-                {creatingGroup ? (
-                  <LoaderCircle data-icon="inline-start" className="animate-spin" />
-                ) : (
-                  <Users data-icon="inline-start" />
-                )}
-                Create group
-              </Button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                <p className="text-xs leading-5 text-zinc-600">
+                  {selectedMemberIds.length + 1 === 1
+                    ? "1 person total"
+                    : `${selectedMemberIds.length + 1} people total`}
+                  {selectedMemberIds.length < 2 && (
+                    <span className="block text-amber-300/80">
+                      Choose at least 2 people
+                    </span>
+                  )}
+                </p>
+                <Button
+                  type="submit"
+                  disabled={
+                    creatingGroup ||
+                    !groupTitle.trim() ||
+                    selectedMemberIds.length < 2
+                  }
+                >
+                  {creatingGroup ? (
+                    <LoaderCircle
+                      data-icon="inline-start"
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <Users data-icon="inline-start" />
+                  )}
+                  Create group
+                </Button>
+              </div>
+            )}
           </form>
         </DialogContent>
       </Dialog>
