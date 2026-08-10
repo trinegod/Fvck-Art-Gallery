@@ -1585,11 +1585,12 @@ export default function MessagesView({
                       type="button"
                       onClick={() => setArtworkShareOpen(true)}
                       disabled={uploadingMedia || sending}
-                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:opacity-60"
-                      aria-label="Share artwork from the archive"
-                      title="Share artwork from the archive"
+                      className="nodeine-action inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-xs text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:opacity-60"
+                      aria-label="Choose artwork from your worlds"
+                      title="Choose artwork from your worlds"
                     >
                       <BookmarkPlus className="size-4" />
+                      Worlds
                     </button>
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Message</span>

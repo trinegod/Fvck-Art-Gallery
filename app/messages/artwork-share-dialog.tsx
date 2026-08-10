@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ImageIcon, LoaderCircle, Play, Search, Send } from "lucide-react";
+import {
+  ImageIcon,
+  Layers3,
+  LoaderCircle,
+  Play,
+  Search,
+  Send,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { supabase } from "@/lib/supabase-browser";
 import PolishedImage from "../components/polished-image";
 import type { SharedArtwork } from "./messages-types";
@@ -22,33 +33,53 @@ type ArtworkShareDialogProps = {
   onShare: (artwork: SharedArtwork) => Promise<boolean>;
 };
 
+type ArtworkWorld = {
+  id: string;
+  title: string;
+  world_code: string | null;
+  sort_order: number | null;
+};
+
 export default function ArtworkShareDialog({
   open,
   onOpenChange,
   onShare,
 }: ArtworkShareDialogProps) {
   const [artworks, setArtworks] = useState<SharedArtwork[]>([]);
+  const [worlds, setWorlds] = useState<ArtworkWorld[]>([]);
+  const [selectedWorldId, setSelectedWorldId] = useState("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [sharingId, setSharingId] = useState<string | null>(null);
 
   useEffect(() => {
     const client = supabase;
-    if (!open || !client || artworks.length) return;
+    if (!open || !client || loaded) return;
     const database = client;
     let cancelled = false;
 
     async function loadArtworks() {
       setLoading(true);
-      const { data, error } = await database
-        .from("artworks")
-        .select("id, title, src, thumb_src, media_type, mood")
-        .order("created_at", { ascending: false })
-        .limit(160);
+      const [artworkResult, worldResult] = await Promise.all([
+        database
+          .from("artworks")
+          .select(
+            "id, collection_id, title, src, thumb_src, media_type, mood"
+          )
+          .order("created_at", { ascending: false })
+          .limit(1000),
+        database
+          .from("collections")
+          .select("id, title, world_code, sort_order")
+          .order("sort_order", { ascending: true }),
+      ]);
 
       if (cancelled) return;
       setLoading(false);
+      setLoaded(true);
 
+      const error = artworkResult.error ?? worldResult.error;
       if (error) {
         toast.error("Artwork couldn't be loaded", {
           description: error.message,
@@ -56,22 +87,42 @@ export default function ArtworkShareDialog({
         return;
       }
 
-      setArtworks((data ?? []) as SharedArtwork[]);
+      setArtworks((artworkResult.data ?? []) as SharedArtwork[]);
+      setWorlds((worldResult.data ?? []) as ArtworkWorld[]);
     }
 
     loadArtworks();
     return () => {
       cancelled = true;
     };
-  }, [artworks.length, open]);
+  }, [loaded, open]);
 
   const filteredArtworks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return artworks;
-    return artworks.filter((artwork) =>
-      `${artwork.title} ${artwork.mood ?? ""}`.toLowerCase().includes(query)
-    );
-  }, [artworks, search]);
+    return artworks.filter((artwork) => {
+      const matchesWorld =
+        selectedWorldId === "all" ||
+        artwork.collection_id === selectedWorldId;
+      const matchesSearch =
+        !query ||
+        `${artwork.title} ${artwork.mood ?? ""}`
+          .toLowerCase()
+          .includes(query);
+      return matchesWorld && matchesSearch;
+    });
+  }, [artworks, search, selectedWorldId]);
+
+  const artworkCountByWorld = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const artwork of artworks) {
+      if (!artwork.collection_id) continue;
+      counts.set(
+        artwork.collection_id,
+        (counts.get(artwork.collection_id) ?? 0) + 1
+      );
+    }
+    return counts;
+  }, [artworks]);
 
   async function shareArtwork(artwork: SharedArtwork) {
     if (sharingId) return;
@@ -80,6 +131,7 @@ export default function ArtworkShareDialog({
     setSharingId(null);
     if (shared) {
       setSearch("");
+      setSelectedWorldId("all");
       onOpenChange(false);
     }
   }
@@ -88,14 +140,39 @@ export default function ArtworkShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88svh] overflow-hidden border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
-          <DialogTitle className="text-xl text-white">Share artwork</DialogTitle>
+          <DialogTitle className="text-xl text-white">
+            Drop from a world
+          </DialogTitle>
           <DialogDescription className="leading-6 text-zinc-500">
-            Drop a piece from the archive into this conversation with its
-            original page and credit intact.
+            Choose one of your visual worlds, then drop a piece into this
+            conversation with its original page and credit intact.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="border-b border-white/10 px-5 py-4 sm:px-6">
+        <div className="space-y-3 border-b border-white/10 px-5 py-4 sm:px-6">
+          <label className="block">
+            <span className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+              <Layers3 className="size-3.5 text-cyan-300" />
+              Choose a world
+            </span>
+            <NativeSelect
+              value={selectedWorldId}
+              onChange={(event) => setSelectedWorldId(event.target.value)}
+              aria-label="Choose a visual world"
+              className="w-full [&_select]:h-11"
+            >
+              <NativeSelectOption value="all">
+                All worlds ({artworks.length})
+              </NativeSelectOption>
+              {worlds.map((world) => (
+                <NativeSelectOption key={world.id} value={world.id}>
+                  {world.world_code ? `${world.world_code} — ` : ""}
+                  {world.title} ({artworkCountByWorld.get(world.id) ?? 0})
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
+
           <label className="relative block">
             <span className="sr-only">Search artwork</span>
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600" />
@@ -173,7 +250,7 @@ export default function ArtworkShareDialog({
               <div>
                 <ImageIcon className="mx-auto size-8 text-zinc-700" />
                 <p className="mt-3 text-sm text-zinc-500">
-                  No matching artwork found.
+                  No matching artwork found in this world.
                 </p>
               </div>
             </div>

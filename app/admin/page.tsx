@@ -12,6 +12,8 @@ import {
   Circle,
   CircleHelp,
   ExternalLink,
+  Eye,
+  EyeOff,
   FolderPlus,
   ImagePlus,
   Layers3,
@@ -193,6 +195,7 @@ export default function AdminPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [signupDisplayName, setSignupDisplayName] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [publishedArtworkCount, setPublishedArtworkCount] = useState(0);
@@ -909,6 +912,7 @@ export default function AdminPage() {
                   value={authMode}
                   onValueChange={(nextMode) => {
                     setAuthMode(nextMode as "signin" | "signup");
+                    setShowPassword(false);
                     setError(null);
                     setMessage(null);
                   }}
@@ -970,19 +974,37 @@ export default function AdminPage() {
                         <FieldLabel htmlFor="creator-password">
                           Password
                         </FieldLabel>
-                        <Input
-                          id="creator-password"
-                          type="password"
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          required
-                          autoComplete={
-                            authMode === "signin"
-                              ? "current-password"
-                              : "new-password"
-                          }
-                          className="h-11 border-white/12 bg-black/45"
-                        />
+                        <div className="relative">
+                          <Input
+                            id="creator-password"
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                            autoComplete={
+                              authMode === "signin"
+                                ? "current-password"
+                                : "new-password"
+                            }
+                            className="h-11 border-white/12 bg-black/45 pr-11"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((visible) => !visible)}
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
+                            aria-pressed={showPassword}
+                            title={showPassword ? "Hide password" : "Show password"}
+                            className="nodeine-action absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-zinc-600 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="size-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="size-4" aria-hidden="true" />
+                            )}
+                          </button>
+                        </div>
                       </Field>
 
                       <StudioFeedback error={error} message={message} />

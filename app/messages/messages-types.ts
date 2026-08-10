@@ -73,6 +73,7 @@ export type ConversationInviteRow = {
 
 export type SharedArtwork = {
   id: string;
+  collection_id?: string | null;
   title: string;
   src: string;
   thumb_src: string | null;
