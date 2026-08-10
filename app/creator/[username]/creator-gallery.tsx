@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
 import ArtworkLikeButton from "../../components/artwork-like-button";
+import ArtworkMedia, {
+  ArtworkMediaBadge,
+} from "../../components/artwork-media";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
 import PolishedImage from "../../components/polished-image";
@@ -22,6 +25,7 @@ export type CreatorArtwork = {
   title: string;
   src: string;
   thumb_src: string | null;
+  media_type: string | null;
   mood: string | null;
   tags: string[] | null;
   sort_order: number | null;
@@ -211,14 +215,20 @@ export default function CreatorGallery({
                       className="group w-full overflow-hidden rounded-xl border border-white/10 bg-black text-left outline-none transition active:scale-[0.985] focus:border-cyan-300 sm:rounded-lg"
                       aria-label={`Open ${artwork.title}`}
                     >
-                      <PolishedImage
-                        src={artwork.thumb_src || artwork.src}
-                        alt={artwork.title}
-                        loading="lazy"
-                        decoding="async"
-                        wrapperClassName="aspect-[4/5] w-full"
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
+                      <span className="relative block">
+                        <PolishedImage
+                          src={artwork.thumb_src || artwork.src}
+                          alt={artwork.title}
+                          loading="lazy"
+                          decoding="async"
+                          wrapperClassName="aspect-[4/5] w-full"
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                        <ArtworkMediaBadge
+                          mediaType={artwork.media_type}
+                          src={artwork.src}
+                        />
+                      </span>
                       <span className="block border-t border-white/10 px-3 py-2.5 sm:py-3">
                         <span className="block truncate text-xs text-zinc-200 sm:text-sm">
                           {artwork.title}
@@ -279,6 +289,8 @@ export default function CreatorGallery({
               <ArtworkFocusView
                 key={selectedArtwork.id}
                 src={selectedArtwork.src}
+                posterSrc={selectedArtwork.thumb_src}
+                mediaType={selectedArtwork.media_type}
                 alt={selectedArtwork.title}
                 onBack={() => setFocusMode(false)}
                 onPrevious={
@@ -295,9 +307,11 @@ export default function CreatorGallery({
             ) : (
               <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:overflow-hidden">
                 <div className="relative h-[60svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
-                  <PolishedImage
+                  <ArtworkMedia
                     key={selectedArtwork.src}
                     src={selectedArtwork.src}
+                    posterSrc={selectedArtwork.thumb_src}
+                    mediaType={selectedArtwork.media_type}
                     alt={selectedArtwork.title}
                     wrapperClassName="absolute inset-0"
                     className="absolute inset-0 h-full w-full object-contain p-4 sm:p-8"

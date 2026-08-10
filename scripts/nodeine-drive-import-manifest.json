@@ -1,0 +1,719 @@
+{
+  "ownerId": "75df596f-cfa3-42ce-a335-a3580ce6172b",
+  "collections": [
+    {
+      "key": "ashigara",
+      "title": "Ashigara",
+      "prefix": "ash",
+      "worldCode": "World 011",
+      "sortOrder": 11,
+      "summary": "A continuing Japanese folklore archive of mythic figures, masks, spirits, and modern legends.",
+      "mood": "Mythic Japanese folklore character study",
+      "tags": [
+        "ashigara",
+        "japanese-folklore",
+        "yokai",
+        "mythology",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "78E88A13-B817-4322-92CE-BE03397F1C73.PNG",
+          "driveId": "1trUnd4gAxBWHxRZtjR1a4uU9cdUyVDnX",
+          "size": 3817774,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "8A63D090-185A-49FA-86B7-5DB0BB9A4163.PNG",
+          "driveId": "1MqoH6sg-tzy4y8efataT3zwvwIiHL-5Y",
+          "size": 3521171,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "809D10CC-186B-4199-85FA-82EB085DD51F.PNG",
+          "driveId": "17_Jw9jQlI-E9VrceWYsgc2I43TJaIDR3",
+          "size": 3877536,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "29A00333-E142-4043-84F5-722B7529404A.PNG",
+          "driveId": "1HYJaUihkSSuPRrTaRoYJcy0eJQPEEH8-",
+          "size": 3765108,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "AF8225AB-4DA5-4F5B-8CB3-7BF3DD30D5B4.PNG",
+          "driveId": "1_rMDQi5uOE93r4xuxbE7xg2nGVsT5wAs",
+          "size": 3229047,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "256975A0-8248-4E65-B502-32EFB834C6A3.PNG",
+          "driveId": "1r_2N-cwHNotW20rOZ5SIWokFB9ppzqS-",
+          "size": 3751297,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "DB8178A2-C079-4895-98E2-2606507A6837.PNG",
+          "driveId": "1P3T-KzQqngdPLQJtnz21D29DPr3_v-Jy",
+          "size": 3183026,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "8C6BBDEA-899E-465A-A041-04E34938C863.PNG",
+          "driveId": "1wxYmhqVvr_lfPdrC20bRsnTUBAO1njNr",
+          "size": 2282519,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "E1BE1F8A-D353-4666-804E-D40AFCE83AF6.PNG",
+          "driveId": "18BA3yrcF2pbwerRoOPw1W8MDCuuGB4G9",
+          "size": 2377986,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "B53D68AC-3654-4846-A3DB-CBD4B9124DDF.PNG",
+          "driveId": "1KJBmrFwPJrelpACCLC_ePLTdiOD-Sift",
+          "size": 2725738,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "76397162-4393-42A9-98F8-A1FB8DA50E18.PNG",
+          "driveId": "16vqV7T1-dyDupbDBiBb6nMXYx3cNxj5l",
+          "size": 3329439,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "7D02215D-F8C7-4716-A67A-34761B1C862A.PNG",
+          "driveId": "1CA9j_UhaM4D1J-K0dc-xPgT4gh1qS06h",
+          "size": 3386291,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "9DADBEB6-D26F-48FA-894C-DDB11A1AD2CF.PNG",
+          "driveId": "1s5IBDXI1mGM0tFtczLv7xzv5S_20xCxF",
+          "size": 3292969,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "F10F9F3F-5070-480D-BF4C-02244423A861.PNG",
+          "driveId": "1dLf_hT-kJRDN7FOK2epMwfFniE01NCra",
+          "size": 3558481,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "A6895FE2-12B0-4D56-AFD0-49DC4AE3513B.PNG",
+          "driveId": "1gKmA-5KXexIuGk-BHoanEDDAl6M7xQHX",
+          "size": 3862316,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "IMG_5965.PNG",
+          "driveId": "1LwMzc78o7Ipb44TlDyNENHWygSgGR-nS",
+          "size": 2761442,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "7107FD15-29CA-4C71-8791-C492D0D14434.PNG",
+          "driveId": "1LQ-NiP8T9xoyqilgYE7ENhDjaQfdzEc_",
+          "size": 3707999,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "FE8FF43F-349A-4F0C-834E-C4FE0D02273B.PNG",
+          "driveId": "1cpQ7cJjcBWCHfxpwvtm4GUlc5Y7x2ibG",
+          "size": 3191516,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "9DF973FD-67CD-489D-B998-9BB1941BDD3B.PNG",
+          "driveId": "1E-NQ_bN-9Gds6rTdUsIFWWO0xUODRKFI",
+          "size": 3813800,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "01E6CEA6-1F93-4C78-B619-EC8E10FC05EF.PNG",
+          "driveId": "10_g6Pk6mpoCN2PyvwS_4PY3em4-541an",
+          "size": 3818481,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "4833B46E-F17B-483B-93F3-C1165AE79082.PNG",
+          "driveId": "1G66DTLYUjp7CHtrD2wWU3AZbl7eny42i",
+          "size": 3469039,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "9A6F77E6-0F05-4D06-863A-7F6AC34232D5.PNG",
+          "driveId": "133gZWB-SWWDTWjAak3FN5J34q6ymooVA",
+          "size": 3355480,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "CBC43718-062C-46CD-91C0-25A3DBD86E4E.PNG",
+          "driveId": "1JXBCk_D1q8NqVHUGpWYimZK8AwoYgZot",
+          "size": 2472159,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "80A20B73-D309-43AB-9D3E-64D463DA92D6.PNG",
+          "driveId": "1z_hEhmCUaftVNeee6kpP2ogmpZUycoxh",
+          "size": 2891131,
+          "mimeType": "image/png"
+        }
+      ]
+    },
+    {
+      "key": "ashigara_sprites",
+      "title": "Ashigara Sprites",
+      "prefix": "ash-sprite",
+      "worldCode": "World 012",
+      "sortOrder": 12,
+      "summary": "Graphic sprite studies translating the Ashigara folklore world into bold, game-like character forms.",
+      "mood": "Bold folklore sprite study",
+      "tags": [
+        "ashigara",
+        "sprite-art",
+        "japanese-folklore",
+        "character-design",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "EAD3A72D-1873-446B-9D50-F86F564449B7.PNG",
+          "driveId": "1c0cZ5bFFvA1Z0M9IsBVtupPaQ76AFoJ0",
+          "size": 3220518,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "694710B0-B9E0-4777-90F7-BFF44B974318.PNG",
+          "driveId": "1yqptzE2LQu9eXsxKIgakgZnlsNpi5KfB",
+          "size": 2452104,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "87291B79-BB15-4BF7-8ADE-ACEB0C8AF6D0.PNG",
+          "driveId": "1BRryjuyp8r7m2-JydSuedFr1rKVgn29o",
+          "size": 2818229,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "FEB770DC-C1F0-49D1-B81F-4DF61402361C.PNG",
+          "driveId": "1St2DYAqB2XNKRrLuRO4QLAXhZO1zesI2",
+          "size": 1979103,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "C7361474-4068-4674-A0D7-59D6BC983637.PNG",
+          "driveId": "1NnLaUxR6JUx52H1C4Yp3-XoU5w1g4itC",
+          "size": 2016834,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "F1E8A7ED-68E3-4F9F-912F-1DD1FD2AC35E.PNG",
+          "driveId": "1-XpLZoiBCT0hud5JX7N-SAvniy8nIJia",
+          "size": 1781233,
+          "mimeType": "image/png"
+        }
+      ]
+    },
+    {
+      "key": "ghost_in_the_shell",
+      "title": "Ghost in the Shell",
+      "prefix": "ghost",
+      "worldCode": "World 013",
+      "sortOrder": 13,
+      "summary": "Cybernetic identity studies exploring synthetic bodies, urban systems, and the boundaries of the human self.",
+      "mood": "Cybernetic anime identity study",
+      "tags": [
+        "ghost-in-the-shell",
+        "cyberpunk",
+        "android",
+        "anime",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "DB3EF2AC-B374-4BAA-A300-489A63177D7B.PNG",
+          "driveId": "1Enyba1IMRkh5SF4vN_iX_kOgBsZRQULp",
+          "size": 2584012,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "19983439-27E5-478D-ADD6-193CC8AB4095.PNG",
+          "driveId": "1zUG60OVJzsR8lALq5J55zksjwgRzopO-",
+          "size": 3504051,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "29ECF44F-8971-4217-A9CF-7FC27F160692.PNG",
+          "driveId": "1wDoClSDaqQR-0qlzeKjhm1ALgyJ_WmVb",
+          "size": 1988000,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "F7EA4668-560F-4FCC-8B98-B3FD2B3DDF99.PNG",
+          "driveId": "1AiGS5-pKxAW9k5_BW0Bwy81cLZkKprNS",
+          "size": 2694762,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "8E0514EB-D00A-4BED-B162-5C5E0FDC7D87.PNG",
+          "driveId": "18c_ctiWOZ0gZMze2zpffjwc9x2UvyVNe",
+          "size": 2857237,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "BA518707-F0C6-4E86-A001-C47174D4D40A.PNG",
+          "driveId": "1eXV_axU00tnxXke1VC7jl0_rL3DiNqAj",
+          "size": 3248136,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "2378F97C-3BDD-419E-A642-4E3001448E10.PNG",
+          "driveId": "1Ao8nTQ3LF3tnFRP3TvnJX3wiSbs3tvjY",
+          "size": 2244308,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "4BEEA579-1844-4E9B-8C91-58D426BBFF7A.PNG",
+          "driveId": "1FSKE5gfJxfq6Y5SZN0Jzvqd1g8Y3bkCH",
+          "size": 2226601,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "512FA83D-4F15-4C63-9491-6B07A06922D5.PNG",
+          "driveId": "1gxZkRTmRevVrvN7_cSreeUjo48YUes1Q",
+          "size": 2181670,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "4A5C7F3A-9BA6-4634-90F1-0AF66B87A160.PNG",
+          "driveId": "1xi1zmAienatM4NrIPU8NfZ1n_MdD0P4O",
+          "size": 3159894,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "7F8ACBD1-3730-4D24-8173-572370620E36.PNG",
+          "driveId": "1frJYBi_VJsL_T7pBHFw7DOHn4-3oVIb5",
+          "size": 1998768,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "97015661-EC0C-4F74-A925-2641EA5B4AD5.PNG",
+          "driveId": "1tEWjlcSinQo7xtltukRAAIUBW2-Hqq2r",
+          "size": 2507887,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "7485B635-0BFE-4D03-8310-19C3994967BA.PNG",
+          "driveId": "1efcYYorc2tIi3e6A-nhzylhTFy9CM89t",
+          "size": 1713571,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "ECA365B5-09CF-42C9-A7DF-48CD36F3A66F.PNG",
+          "driveId": "1Ggl7J_-DzZGkJtm-XMTPddxkcXYQs3c_",
+          "size": 2350442,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "92781137-909D-4C51-80C3-C9F2385C7713.PNG",
+          "driveId": "1RGj_ZH7qerwn0SIWQSJQTrTRdq7SbRlJ",
+          "size": 2480910,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "E03311F8-7170-4A15-ADD7-23292242C01B.PNG",
+          "driveId": "1nDA05YIOxA4i3tI8Accp72MdSG-UjsjR",
+          "size": 3008351,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "78F2CEFA-B269-47D4-AEC1-697DA78649DC.PNG",
+          "driveId": "11bnExuzN8ae-tEIm03EIY_wTiEE5zX9l",
+          "size": 2197932,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "A33E929D-EBA3-4BB1-BE53-FDF0DD5F76B2.PNG",
+          "driveId": "1xS_t4mlVxs4NsrTSoRYCHnCCkJRu65Uy",
+          "size": 1947598,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "3EC05246-445D-44E9-92BA-08FB54D53DD7.PNG",
+          "driveId": "12QMOg0u_IxPruzmAc6ogutrQDv8FGF2e",
+          "size": 1832183,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "2055FDD5-4C4E-4F3F-A953-E07BE902D2DE.PNG",
+          "driveId": "1BdWxodXvgaQRjS_McpKQH_HpvzjKO_mG",
+          "size": 2245064,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "0DEC0D7C-9434-4DFB-AC9E-640D2C6831DC.PNG",
+          "driveId": "1DZXHV36PDl0JeeMqY5KYyQPKpbOHcrF8",
+          "size": 2156237,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "01E9063D-32F6-47DF-961D-EFD4BDAE978E.PNG",
+          "driveId": "1eKKDDAdhRpHd_bsZYu8BZ4ZmuGX-AKdP",
+          "size": 2309588,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "93128B30-7CE9-4109-BD8E-BFDD14A395BC.PNG",
+          "driveId": "194taPbJxHRKTq4114lMBZk3rd_N3Uuch",
+          "size": 2329697,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "A4F939BB-44EB-41FA-9C2F-135D4356449E.PNG",
+          "driveId": "1mvL-FCYl9rr7pTgNI6eSDfWfr7EMiiyl",
+          "size": 2642626,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "E28B1A96-53EC-4E0E-AD74-259BDE6B2D52.PNG",
+          "driveId": "12Vps6vrHSGSrXhUbueSDXyarob0is0kd",
+          "size": 2575153,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "2D1314B4-BD5A-460D-9D42-ECA8FD874F18.PNG",
+          "driveId": "1Bp1D_lv3ZMg5_lrfpvWQ5MdUk2IH6Mc2",
+          "size": 2320125,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "7E9558F0-EBE7-491F-BEC1-11B066E01689.PNG",
+          "driveId": "1hBrk_8HFNz0Ya-AW_s1mUB4ca0q9SMTC",
+          "size": 2091510,
+          "mimeType": "image/png"
+        }
+      ]
+    },
+    {
+      "key": "lost_lands",
+      "title": "Lost Lands",
+      "prefix": "lost",
+      "worldCode": "World 014",
+      "sortOrder": 14,
+      "summary": "Imagined territories, monumental ruins, and dreamlike landscapes from worlds without maps.",
+      "mood": "Dreamlike speculative landscape",
+      "tags": [
+        "lost-lands",
+        "landscape",
+        "worldbuilding",
+        "surreal",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "3BE62C46-3277-491F-96D7-F52212A905E5.PNG",
+          "driveId": "1rcf9gPduUMm8DpR26CwXB8v9_r2BWelR",
+          "size": 4132856,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "63400C15-0193-4FE0-8F3D-7D68E71ACA25.PNG",
+          "driveId": "17fs1APDrJ2qxiDxxUpFWtuvQ7n0Lidqn",
+          "size": 4344239,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "0C587A0A-170F-4792-9D28-8C36C26CAC11.PNG",
+          "driveId": "1P8QP56MkFJYLtb-NeE9O8xAAeHzxNXWy",
+          "size": 4158120,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "05093785-4495-4AEB-B27D-F3D57B30F8AF.PNG",
+          "driveId": "1fzZYvL0VdKherQkP5T2bHtBaJz0nsH7s",
+          "size": 4324862,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "81C1AF66-EFBE-43A8-8B72-9C1D036DCECA.PNG",
+          "driveId": "174ANkQxX0cDIlxBpRj5MfjU4fpUG_dAX",
+          "size": 4380591,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "0C7FE4C1-31E0-49D1-BE5F-D376BDD39867.PNG",
+          "driveId": "1i68eh0QZYC2oRcMPlb8h3qkjMyxL7tNr",
+          "size": 3562086,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "12BD42F1-A403-45B9-A31B-B0BA8A37943A.PNG",
+          "driveId": "1V74Po35aMP090k1A7-K-wGq12wq_iQB7",
+          "size": 4142177,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "32545C39-A5A4-4D68-B687-42D867C56E73.PNG",
+          "driveId": "1pUMEeSVtxApa4tFhzA7hBHwGKvPF2YQq",
+          "size": 3581398,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "2A619441-9E99-4109-A4C1-86CE30D364AE.PNG",
+          "driveId": "13hXO-4mH-q8g9oPLz0AM1uXm1azDxI2g",
+          "size": 4116369,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "AEA525FA-DA57-47F6-A31E-F2DFEF14C272.PNG",
+          "driveId": "1AkY9BE8Tf0-TvZj1pekmlWSlAGUlwHkd",
+          "size": 3247426,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "4410756F-3DC4-4F8C-871C-74535899399B.PNG",
+          "driveId": "19pDbTVTXISFQ_XIKJgKrLbczMRZklqLa",
+          "size": 3177935,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "D6A031BE-9119-414E-9FD0-829B807F7947.PNG",
+          "driveId": "1Meyn9QBqqToH4hJ37ZGEhGtyVd-l6-Xk",
+          "size": 4230013,
+          "mimeType": "image/png"
+        }
+      ]
+    },
+    {
+      "key": "character_study_videos",
+      "title": "Character Study Videos",
+      "prefix": "study",
+      "worldCode": "World 015",
+      "sortOrder": 15,
+      "summary": "Short-form moving portraits that turn character concepts into eight-second cinematic signals.",
+      "mood": "Short-form cinematic character motion",
+      "tags": [
+        "character-study",
+        "motion",
+        "video",
+        "animation",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "OTS20.MP4",
+          "driveId": "1gXZxxILRAFy4Y30e1cPlt3lM_GdXMSe1",
+          "size": 15628331,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "delivery.MP4",
+          "driveId": "19CxG856W6FelhuUQHHlQ4wqiIYWiXNoL",
+          "size": 16513934,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "fineshit.MP4",
+          "driveId": "1cIhpdncacsD8nHRBrr3uopFnGq0PWpP6",
+          "size": 15504006,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "OTS7.MP4",
+          "driveId": "1uIijvOKf7qh2rgNLmh92A8CeGbJ9fn_m",
+          "size": 13658281,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT5.MP4",
+          "driveId": "12e9o46M-QlZ1JvRVxcdp7GTvDnU-C8Hu",
+          "size": 15605474,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "OTS20.MP4",
+          "driveId": "1HG3k3SqazDfHnVX4xcZrbjKxuUTHHpky",
+          "size": 15628331,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT11.MP4",
+          "driveId": "1BGBURyFkkb005z3kOeq3gM7SJ-idW14D",
+          "size": 14980599,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT9.MP4",
+          "driveId": "1wpW0gc9v14tlsUSMjWsWADQekbgx2O0q",
+          "size": 15428879,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "roped.MP4",
+          "driveId": "1wmG5yq1cKtlKkNxuvvJtYJJLgZVOpiMs",
+          "size": 11851706,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "delirium.mov",
+          "driveId": "1zkrhfvdqTZA4sfrv52sVQvA-_psoWedK",
+          "size": 3194583,
+          "mimeType": "video/quicktime"
+        },
+        {
+          "sourceName": "SCT17.MP4",
+          "driveId": "1WJl4qgiHu42BGk7-8hxBQN_baNYZ5BP-",
+          "size": 18262072,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT13.MP4",
+          "driveId": "1-z7VnyWBKMfzpKzulNrPrf70gGYe2IoJ",
+          "size": 12676362,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT6.MP4",
+          "driveId": "1qUlACDdmobXRYi-vxCPsvIHJcSizscPu",
+          "size": 14421343,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT10.MP4",
+          "driveId": "1ax9UFcBrOFQJdYEnk2COO5hzZ0ovBE1D",
+          "size": 16900313,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT12.MP4",
+          "driveId": "18MordJ9yNH5n2f2CtM_ud16vS_90lCoe",
+          "size": 15089494,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "OTX1.MP4",
+          "driveId": "10_6tWxkdtpqcQBkVT5INRBDYw52iszzt",
+          "size": 18024134,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT16.MP4",
+          "driveId": "11XwQBEBp-Cxc4Gr3rdsZ9TbzPsd7wNLV",
+          "size": 14193932,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT18.MP4",
+          "driveId": "16XVxeF3A44TEQBO-qFhUWg2knb5ZUurU",
+          "size": 15384113,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT15.MP4",
+          "driveId": "1ZPuHNs9_FaxmNZeatqCgPiCl_bxjyp1H",
+          "size": 16312713,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "SCT14.MP4",
+          "driveId": "1O-t15JyYOtb74Q4_peo6FL4AQTJ1bahE",
+          "size": 14556413,
+          "mimeType": "video/mp4"
+        },
+        {
+          "sourceName": "OTS1.MP4",
+          "driveId": "1OaA05x4UpS4Br_O3scRM9svyOh2bVPow",
+          "size": 14206623,
+          "mimeType": "video/mp4"
+        }
+      ]
+    },
+    {
+      "key": "ukiyo_e",
+      "title": "Ukiyo-e",
+      "prefix": "ukiyo",
+      "worldCode": "World 016",
+      "sortOrder": 16,
+      "summary": "Contemporary studies inspired by ukiyo-e composition, woodblock texture, folklore, and the floating world.",
+      "mood": "Contemporary ukiyo-e inspired study",
+      "tags": [
+        "ukiyo-e",
+        "japanese-art",
+        "woodblock",
+        "folklore",
+        "ai-art"
+      ],
+      "items": [
+        {
+          "sourceName": "491A0386-1E71-4C04-B79F-AF38F75E1305.PNG",
+          "driveId": "1V9YEM4yKtVidM8mozlwgKA2UEuu4Hdpj",
+          "size": 3057841,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "42CE6F43-6FF0-4F2E-83D8-4FB364D62949.PNG",
+          "driveId": "1VdZNySm7IEridpANcXFKQcVNhq2uvwQ_",
+          "size": 3118130,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "712BA064-9573-4F0B-8A73-55FC90EE6974.PNG",
+          "driveId": "1TtaG436lxcK9X_94gahDuyml3vJqXxz7",
+          "size": 3164443,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "86518F68-594D-497A-AE36-1F95CEEA80C6.PNG",
+          "driveId": "16rfEPT8Cpu8ECZoPGyN3pHX4IUGBQCRH",
+          "size": 3705727,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "ADCFEB17-0942-44D7-8EAA-00DEA3FAEFE5.PNG",
+          "driveId": "1rhhVDTiyuU__vRh3N0L7mb9iobjY6scs",
+          "size": 3575173,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "3199ACDE-AB2D-4D43-9952-25DCFDE7ED68.PNG",
+          "driveId": "1hDGrXepiM3y0I88g9lHeT86Co6HFPLw8",
+          "size": 3540270,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "6E4998A6-2616-4E3C-A152-B4850A3EF5CE.PNG",
+          "driveId": "1VFcL7jI74jamjsiJkwSkixYMTN0cjRzr",
+          "size": 3738748,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "194BDF49-EEA5-4A30-AFA1-697481493CCE.PNG",
+          "driveId": "10OlDhi_HyjzPK1ZVHySdQ2fuTXrL8LYB",
+          "size": 3658334,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "97218F20-EF63-495A-99A4-FFDBE8D595C1.PNG",
+          "driveId": "1SvFFfUvBOplyJkuHa6eQfh1LPe9z044B",
+          "size": 3156587,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "651D2228-90B9-4A34-9EE6-762D340E4AC4.PNG",
+          "driveId": "1setZd9GaSGI33K0V5rbV-WPnBl0f5yIU",
+          "size": 3081246,
+          "mimeType": "image/png"
+        },
+        {
+          "sourceName": "526543A0-2C6F-45E9-8F41-A687015B04B8.PNG",
+          "driveId": "1MBY3FmUjUU30uVCvJWEMRveIKcK3MKXi",
+          "size": 2960062,
+          "mimeType": "image/png"
+        }
+      ]
+    }
+  ]
+}

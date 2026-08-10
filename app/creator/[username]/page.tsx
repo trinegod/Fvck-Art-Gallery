@@ -66,7 +66,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
     const { data: artworkData, error: artworkError } = await supabase
       .from("artworks")
       .select(
-        "id, collection_id, title, src, thumb_src, mood, tags, sort_order"
+        "id, collection_id, title, src, thumb_src, media_type, mood, tags, sort_order"
       )
       .in("collection_id", collectionIds)
       .order("sort_order");

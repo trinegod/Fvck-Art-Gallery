@@ -7,6 +7,9 @@ import { supabase } from "@/lib/supabase-browser";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
 import ArtworkLikeButton from "./components/artwork-like-button";
+import ArtworkMedia, {
+  ArtworkMediaBadge,
+} from "./components/artwork-media";
 import ArtworkSaveButton from "./components/artwork-save-button";
 import ArtworkShareButton from "./components/artwork-share-button";
 import CreatorNavigation from "./components/creator-navigation";
@@ -186,10 +189,15 @@ const fallbackGalleryItems = [
   ...edgeRunnersItems,
 ];
 
-type GalleryItem = (typeof fallbackGalleryItems)[number];
+type GalleryItem = (typeof fallbackGalleryItems)[number] & {
+  thumbSrc?: string | null;
+};
 
 function getThumbnail(src: string) {
-  return src.replace("/art/", "/thumbs/");
+  return src
+    .replace("/art/", "/thumbs/")
+    .replace("/video/", "/thumbs/")
+    .replace(/\.m4v$/i, ".webp");
 }
 const collectionDetails: Record<string, { order: number; summary: string }> = {
   "Edge Runners": {
@@ -299,6 +307,7 @@ export default function Home() {
               title: artwork.title,
               type: artwork.media_type ?? "image",
               src: artwork.src,
+              thumbSrc: artwork.thumb_src,
               series,
               category: fallbackItem?.category ?? "AI World",
               mood:
@@ -377,7 +386,7 @@ export default function Home() {
           category: coverItem.category,
           mood: coverItem.mood,
           summary: databaseCollection?.summary ?? details.summary,
-          cover: coverItem.src,
+          cover: coverItem.thumbSrc || getThumbnail(coverItem.src),
           tags: coverItem.tags,
           creator: databaseCollection
             ? creatorProfiles.find(
@@ -618,7 +627,7 @@ export default function Home() {
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-zinc-900">
                     <PolishedImage
-                      src={getThumbnail(collection.cover)}
+                      src={collection.cover}
                       alt={collection.series}
                       loading="lazy"
                       decoding="async"
@@ -726,13 +735,14 @@ export default function Home() {
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
                     <PolishedImage
-                      src={getThumbnail(item.src)}
+                      src={item.thumbSrc || getThumbnail(item.src)}
                       alt={item.title}
                       loading="lazy"
                       decoding="async"
                       wrapperClassName="absolute inset-0"
                       className="h-full w-full object-cover object-[center_38%] transition duration-500 group-hover:scale-105"
                     />
+                    <ArtworkMediaBadge mediaType={item.type} src={item.src} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                       <p className="text-[10px] uppercase tracking-[0.17em] text-cyan-200 sm:text-xs sm:tracking-[0.2em]">
@@ -814,6 +824,8 @@ export default function Home() {
               <ArtworkFocusView
                 key={selectedItem.id}
                 src={selectedItem.src}
+                posterSrc={selectedItem.thumbSrc || getThumbnail(selectedItem.src)}
+                mediaType={selectedItem.type}
                 alt={selectedItem.title}
                 onBack={() => setFocusMode(false)}
                 onPrevious={filteredItems.length > 1 ? showPrevious : undefined}
@@ -822,9 +834,11 @@ export default function Home() {
             ) : (
               <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
                 <div className="relative h-[60svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
-                  <PolishedImage
+                  <ArtworkMedia
                     key={selectedItem.src}
                     src={selectedItem.src}
+                    posterSrc={selectedItem.thumbSrc || getThumbnail(selectedItem.src)}
+                    mediaType={selectedItem.type}
                     alt={selectedItem.title}
                     wrapperClassName="absolute inset-0"
                     className="absolute inset-0 h-full w-full object-contain p-3 sm:p-6"
@@ -903,7 +917,7 @@ export default function Home() {
                   onClick={() => setFocusMode(true)}
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
                 >
-                  View full artwork
+                  View full {selectedItem.type === "video" ? "video" : "artwork"}
                   <span aria-hidden="true">⛶</span>
                 </button>
               </div>

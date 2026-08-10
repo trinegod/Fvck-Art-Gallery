@@ -94,6 +94,74 @@ type CreatorProfile = {
   avatar_url: string | null;
 };
 
+const acceptedUploadTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+]);
+
+function isVideoFile(file: File) {
+  return (
+    file.type.startsWith("video/") || /\.(?:m4v|mov|mp4|webm)$/i.test(file.name)
+  );
+}
+
+function titleFromFilename(filename: string) {
+  return filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function createVideoPoster(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.preload = "auto";
+  video.muted = true;
+  video.playsInline = true;
+  video.src = objectUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadeddata = () => resolve();
+      video.onerror = () => reject(new Error("Could not read the video preview."));
+    });
+
+    if (Number.isFinite(video.duration) && video.duration > 0.2) {
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => resolve();
+        video.currentTime = Math.min(0.5, video.duration / 3);
+      });
+    }
+
+    const maxWidth = 960;
+    const scale = Math.min(1, maxWidth / Math.max(video.videoWidth, 1));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not create the video preview.");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) =>
+          blob ? resolve(blob) : reject(new Error("Could not save the video preview.")),
+        "image/webp",
+        0.84
+      );
+    });
+  } finally {
+    video.removeAttribute("src");
+    video.load();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function StudioFeedback({
   error,
   message,
@@ -132,8 +200,10 @@ export default function AdminPage() {
   const [title, setTitle] = useState("");
   const [mood, setMood] = useState("");
   const [tags, setTags] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [uploadNumberOffset, setUploadNumberOffset] = useState(0);
   const [newCollectionTitle, setNewCollectionTitle] = useState("");
   const [newCollectionSummary, setNewCollectionSummary] = useState("");
   const [newWorldNumber, setNewWorldNumber] = useState("");
@@ -280,6 +350,34 @@ export default function AdminPage() {
     setMessage(null);
   }
 
+  function selectUploadFiles(nextFiles: File[]) {
+    const selectedFiles = nextFiles.slice(0, 50);
+    const invalidFile = selectedFiles.find((selectedFile) => {
+      const sizeLimit = isVideoFile(selectedFile)
+        ? 100 * 1024 * 1024
+        : 15 * 1024 * 1024;
+      const supportedType =
+        acceptedUploadTypes.has(selectedFile.type) ||
+        /\.(?:jpe?g|png|webp|m4v|mov|mp4|webm)$/i.test(selectedFile.name);
+      return !supportedType || selectedFile.size > sizeLimit;
+    });
+
+    if (invalidFile) {
+      setFiles([]);
+      setError(
+        `${invalidFile.name} is unsupported or too large. Images can be up to 15 MB and videos up to 100 MB.`
+      );
+      return;
+    }
+
+    setFiles(selectedFiles);
+    setUploadNumberOffset(0);
+    setError(
+      nextFiles.length > 50 ? "A single drop can contain up to 50 files." : null
+    );
+    setMessage(null);
+  }
+
   function selectArtwork(artwork: Artwork) {
     setSelectedArtworkId(artwork.id);
     setEditTitle(artwork.title);
@@ -374,43 +472,17 @@ export default function AdminPage() {
     event.preventDefault();
     const client = supabase;
 
-    if (!client || !file || !collectionId || !title.trim()) {
-      setError("Choose a collection and image, then enter a title.");
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      setError("The selected file must be an image.");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      setError("The image must be 10 MB or smaller.");
+    if (!client || !files.length || !collectionId) {
+      setError("Choose a collection and add at least one image or video.");
       return;
     }
 
     setBusy(true);
     setError(null);
     setMessage(null);
-
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filePath = `${collectionId}/${crypto.randomUUID()}.${extension}`;
+    let publishedCount = 0;
 
     try {
-      const { error: uploadError } = await client.storage
-        .from("artworks")
-        .upload(filePath, file, {
-          cacheControl: "31536000",
-          contentType: file.type,
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = client.storage
-        .from("artworks")
-        .getPublicUrl(filePath);
-
       const { data: latestArtwork, error: orderError } = await client
         .from("artworks")
         .select("sort_order")
@@ -420,39 +492,113 @@ export default function AdminPage() {
 
       if (orderError) throw orderError;
 
-      const nextSortOrder = (latestArtwork?.[0]?.sort_order ?? 0) + 1;
+      const firstSortOrder = (latestArtwork?.[0]?.sort_order ?? 0) + 1;
       const parsedTags = tags
         .split(",")
         .map((tag) => tag.trim().toLowerCase())
         .filter(Boolean);
 
-      const { error: insertError } = await client.from("artworks").insert({
-        collection_id: collectionId,
-        title: title.trim(),
-        src: publicUrlData.publicUrl,
-        thumb_src: publicUrlData.publicUrl,
-        media_type: "image",
-        mood: mood.trim() || null,
-        tags: parsedTags,
-        sort_order: nextSortOrder,
-      });
+      for (const [index, file] of files.entries()) {
+        setUploadProgress(
+          `Publishing ${index + 1} of ${files.length}: ${file.name}`
+        );
+        const videoFile = isVideoFile(file);
+        const extension =
+          file.name.split(".").pop()?.toLowerCase() ||
+          (videoFile ? "mp4" : "jpg");
+        const fileId = crypto.randomUUID();
+        const filePath = `${collectionId}/${fileId}.${extension}`;
+        const uploadedPaths = [filePath];
 
-      if (insertError) throw insertError;
+        const { error: uploadError } = await client.storage
+          .from("artworks")
+          .upload(filePath, file, {
+            cacheControl: "31536000",
+            contentType: file.type || undefined,
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = client.storage
+          .from("artworks")
+          .getPublicUrl(filePath);
+        let thumbnailUrl = publicUrlData.publicUrl;
+
+        if (videoFile) {
+          try {
+            const poster = await createVideoPoster(file);
+            const posterPath = `${collectionId}/${fileId}-poster.webp`;
+            const { error: posterError } = await client.storage
+              .from("artworks")
+              .upload(posterPath, poster, {
+                cacheControl: "31536000",
+                contentType: "image/webp",
+                upsert: false,
+              });
+            if (posterError) throw posterError;
+            uploadedPaths.push(posterPath);
+            thumbnailUrl = client.storage
+              .from("artworks")
+              .getPublicUrl(posterPath).data.publicUrl;
+          } catch {
+            thumbnailUrl = "/video-placeholder.svg";
+          }
+        }
+
+        const numberedTitle = title.trim()
+          ? files.length === 1
+            ? title.trim()
+            : `${title.trim()} ${String(uploadNumberOffset + index + 1).padStart(3, "0")}`
+          : titleFromFilename(file.name) ||
+            `Untitled ${String(index + 1).padStart(3, "0")}`;
+
+        const { error: insertError } = await client.from("artworks").insert({
+          collection_id: collectionId,
+          title: numberedTitle,
+          src: publicUrlData.publicUrl,
+          thumb_src: thumbnailUrl,
+          media_type: videoFile ? "video" : "image",
+          mood: mood.trim() || null,
+          tags: parsedTags,
+          sort_order: firstSortOrder + index,
+        });
+
+        if (insertError) {
+          await client.storage.from("artworks").remove(uploadedPaths);
+          throw insertError;
+        }
+        publishedCount += 1;
+      }
 
       setTitle("");
       setMood("");
       setTags("");
-      setFile(null);
+      setFiles([]);
+      setUploadNumberOffset(0);
       setFileInputKey((current) => current + 1);
-      setPublishedArtworkCount((current) => current + 1);
-      setMessage("Artwork published successfully.");
+      setPublishedArtworkCount((current) => current + publishedCount);
+      setMessage(
+        `${publishedCount} ${publishedCount === 1 ? "piece was" : "pieces were"} published successfully.`
+      );
     } catch (uploadError) {
-      setError(
+      const reason =
         uploadError instanceof Error
           ? uploadError.message
-          : "The artwork could not be published."
+          : "The artwork could not be published.";
+
+      if (publishedCount) {
+        setFiles((current) => current.slice(publishedCount));
+        setUploadNumberOffset((current) => current + publishedCount);
+        setPublishedArtworkCount((current) => current + publishedCount);
+      }
+      setError(
+        publishedCount
+          ? `${publishedCount} ${publishedCount === 1 ? "piece was" : "pieces were"} published before the drop stopped. The remaining files are still queued. ${reason}`
+          : reason
       );
     } finally {
+      setUploadProgress("");
       setBusy(false);
     }
   }
@@ -903,7 +1049,7 @@ export default function AdminPage() {
     },
     {
       label: "Publish your first artwork",
-      detail: "Choose your world, upload one image, and send the first signal.",
+      detail: "Choose your world, drop images or videos, and send the first signal.",
       complete: firstArtworkReady,
       mode: "artwork",
     },
@@ -1202,7 +1348,7 @@ export default function AdminPage() {
                 className="min-h-12 rounded-lg px-3 text-xs data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950 sm:text-sm"
               >
                 <UploadCloud />
-                Publish artwork
+                Bulk drop
               </TabsTrigger>
               <TabsTrigger
                 value="collection"
@@ -1234,11 +1380,12 @@ export default function AdminPage() {
                     Publish / New transmission
                   </Badge>
                   <CardTitle className="text-2xl font-light text-white">
-                    Add a piece to the archive
+                    Drop a batch into the archive
                   </CardTitle>
                   <CardDescription className="max-w-2xl leading-6 text-zinc-500">
-                    Select the world it belongs to, upload the final image, and
-                    add enough context for it to be discoverable.
+                    Add up to 50 images and short videos at once. NODEINE keeps
+                    the batch together, numbers shared titles, and generates
+                    video preview frames automatically.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-5 sm:px-7">
@@ -1274,32 +1421,87 @@ export default function AdminPage() {
                       </Field>
 
                       <Field className="sm:col-span-2">
-                        <FieldLabel htmlFor="artwork-file">Image</FieldLabel>
+                        <FieldLabel htmlFor="artwork-file">
+                          Images and videos
+                        </FieldLabel>
                         <Input
                           id="artwork-file"
                           key={fileInputKey}
                           type="file"
-                          accept="image/png,image/jpeg,image/webp"
+                          accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,.m4v,.mov"
+                          multiple
                           onChange={(event) =>
-                            setFile(event.target.files?.[0] ?? null)
+                            selectUploadFiles(Array.from(event.target.files ?? []))
                           }
                           required
                           className="h-auto min-h-24 border-dashed border-white/15 bg-black/35 px-4 py-5 file:mr-3 file:rounded-lg file:bg-cyan-300 file:px-3 file:text-zinc-950"
                         />
                         <FieldDescription>
-                          PNG, JPG, or WebP. Maximum size 10 MB.
+                          Up to 50 PNG, JPG, WebP, MP4, M4V, MOV, or WebM files.
+                          Images can be 15 MB; videos can be 100 MB.
                         </FieldDescription>
                       </Field>
 
+                      {!!files.length && (
+                        <div className="sm:col-span-2 rounded-xl border border-white/10 bg-black/25 p-3">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">
+                              Drop queue · {files.length} {files.length === 1 ? "file" : "files"}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFiles([]);
+                                setUploadNumberOffset(0);
+                                setFileInputKey((current) => current + 1);
+                              }}
+                              className="text-xs text-zinc-500 hover:text-white"
+                            >
+                              Clear all
+                            </button>
+                          </div>
+                          <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                            {files.map((selectedFile, index) => (
+                              <div
+                                key={`${selectedFile.name}-${selectedFile.lastModified}-${index}`}
+                                className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2"
+                              >
+                                <span className="w-8 shrink-0 font-mono text-[10px] text-cyan-300">
+                                  {String(index + 1).padStart(2, "0")}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-xs text-zinc-300">
+                                  {selectedFile.name}
+                                </span>
+                                <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+                                  {isVideoFile(selectedFile) ? "video" : "image"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFiles((current) =>
+                                      current.filter((_, fileIndex) => fileIndex !== index)
+                                    )
+                                  }
+                                  className="grid size-7 shrink-0 place-items-center rounded-md text-zinc-600 hover:bg-white/5 hover:text-white"
+                                  aria-label={`Remove ${selectedFile.name}`}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <Field className="sm:col-span-2">
                         <FieldLabel htmlFor="artwork-title">
-                          Artwork title
+                          Shared title prefix (optional)
                         </FieldLabel>
                         <Input
                           id="artwork-title"
                           value={title}
                           onChange={(event) => setTitle(event.target.value)}
-                          required
+                          placeholder="Ashigara — becomes Ashigara 001, 002..."
                           className="h-11 bg-black/35"
                         />
                       </Field>
@@ -1328,14 +1530,21 @@ export default function AdminPage() {
 
                       <div className="grid gap-4 sm:col-span-2">
                         <StudioFeedback error={error} message={message} />
+                        {uploadProgress && (
+                          <p className="text-center text-xs text-cyan-200" aria-live="polite">
+                            {uploadProgress}
+                          </p>
+                        )}
                         <Button
                           type="submit"
                           size="lg"
-                          disabled={busy || !file || !collections.length}
+                          disabled={busy || !files.length || !collections.length}
                           className="h-11 w-full"
                         >
                           <UploadCloud data-icon="inline-start" />
-                          {busy ? "Publishing..." : "Publish to archive"}
+                          {busy
+                            ? "Publishing drop..."
+                            : `Publish ${files.length || ""} ${files.length === 1 ? "piece" : "pieces"}`}
                         </Button>
                       </div>
                     </FieldGroup>

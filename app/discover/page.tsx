@@ -8,6 +8,7 @@ type ArtworkRow = {
   title: string;
   src: string;
   thumb_src: string | null;
+  media_type: string | null;
   mood: string | null;
   tags: string[] | null;
   sort_order: number | null;
@@ -50,7 +51,7 @@ export default async function DiscoverPage() {
     database
       .from("artworks")
       .select(
-        "id, collection_id, title, src, thumb_src, mood, tags, sort_order"
+        "id, collection_id, title, src, thumb_src, media_type, mood, tags, sort_order"
       )
       .order("sort_order"),
     database
@@ -84,6 +85,7 @@ export default async function DiscoverPage() {
           title: artwork.title,
           src: artwork.src,
           thumbSrc: artwork.thumb_src,
+          mediaType: artwork.media_type,
           mood: artwork.mood,
           tags: artwork.tags,
           collectionTitle: collection.title,

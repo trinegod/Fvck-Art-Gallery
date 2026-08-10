@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" role="img" aria-labelledby="title description">
+  <title id="title">NODEINE video</title>
+  <description id="description">A dark video placeholder with a cyan play symbol.</description>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#164e63" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#09090b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="800" fill="#09090b"/>
+  <rect width="640" height="800" fill="url(#glow)"/>
+  <circle cx="320" cy="380" r="74" fill="#000" fill-opacity=".62" stroke="#67e8f9" stroke-opacity=".5" stroke-width="2"/>
+  <path d="M297 338 365 380 297 422Z" fill="#a5f3fc"/>
+  <text x="320" y="510" fill="#a1a1aa" font-family="Arial, sans-serif" font-size="18" letter-spacing="7" text-anchor="middle">NODEINE VIDEO</text>
+</svg>

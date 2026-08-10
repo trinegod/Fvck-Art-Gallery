@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
 import ActivityNavLink from "../components/activity-nav-link";
 import MobileAppNavigation from "../components/mobile-app-navigation";
+import { ArtworkMediaBadge } from "../components/artwork-media";
 import PolishedImage from "../components/polished-image";
 
 export type DiscoverArtwork = {
@@ -22,6 +23,7 @@ export type DiscoverArtwork = {
   title: string;
   src: string;
   thumbSrc: string | null;
+  mediaType: string | null;
   mood: string | null;
   tags: string[] | null;
   collectionTitle: string;
@@ -43,7 +45,18 @@ type PersonalizationState =
   | "ready"
   | "unavailable";
 
-const filters = ["All", "Cyberpunk", "Anime", "Fashion", "Mecha", "Dystopia"];
+const filters = [
+  "All",
+  "Video",
+  "Folklore",
+  "Landscape",
+  "Ukiyo-e",
+  "Cyberpunk",
+  "Anime",
+  "Fashion",
+  "Mecha",
+  "Dystopia",
+];
 const artworkBatchSize = 24;
 
 function searchableText(artwork: DiscoverArtwork) {
@@ -54,6 +67,7 @@ function searchableText(artwork: DiscoverArtwork) {
     artwork.creatorName,
     artwork.creatorUsername,
     artwork.mood,
+    artwork.mediaType,
     ...(artwork.tags ?? []),
   ]
     .filter(Boolean)
@@ -699,7 +713,7 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
                 <Link
                   key={artwork.id}
                   href={`/artwork/${artwork.id}`}
-                  className="group overflow-hidden rounded-xl border border-white/10 bg-black outline-none transition hover:-translate-y-0.5 hover:border-cyan-300/30 focus-visible:ring-2 focus-visible:ring-cyan-300"
+                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-black outline-none transition hover:-translate-y-0.5 hover:border-cyan-300/30 focus-visible:ring-2 focus-visible:ring-cyan-300"
                 >
                   <PolishedImage
                     src={artwork.thumbSrc || artwork.src}
@@ -708,6 +722,10 @@ export default function DiscoverView({ artworks }: DiscoverViewProps) {
                     decoding="async"
                     wrapperClassName="aspect-[4/5] w-full"
                     className="size-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                  <ArtworkMediaBadge
+                    mediaType={artwork.mediaType}
+                    src={artwork.src}
                   />
                   <span className="block border-t border-white/10 px-3 py-3">
                     <span className="block truncate text-sm text-zinc-100">

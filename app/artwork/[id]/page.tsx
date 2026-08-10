@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkLikeButton from "../../components/artwork-like-button";
+import ArtworkMedia from "../../components/artwork-media";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
 import ActivityNavLink from "../../components/activity-nav-link";
@@ -136,7 +137,10 @@ export async function generateMetadata({
   const description = getDescription(data);
   const origin = getSiteOrigin();
   const canonicalUrl = `${origin}/artwork/${data.artwork.id}`;
-  const imageUrl = new URL(data.artwork.src, origin).toString();
+  const imageUrl = new URL(
+    data.artwork.thumb_src || data.artwork.src,
+    origin
+  ).toString();
 
   return {
     title,
@@ -204,8 +208,10 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
       <div className="mx-auto grid max-w-7xl gap-0 lg:min-h-[calc(100svh-73px)] lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="relative grid min-h-[58svh] place-items-center overflow-hidden bg-black p-4 sm:min-h-[70svh] sm:p-8 lg:min-h-0">
-          <PolishedImage
+          <ArtworkMedia
             src={artwork.src}
+            posterSrc={artwork.thumb_src}
+            mediaType={artwork.media_type}
             alt={artwork.title}
             wrapperClassName="absolute inset-0"
             className="absolute inset-0 size-full object-contain p-4 sm:p-8"

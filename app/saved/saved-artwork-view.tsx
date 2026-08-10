@@ -8,6 +8,9 @@ import ActivityNavLink from "../components/activity-nav-link";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
 import ArtworkLikeButton from "../components/artwork-like-button";
+import ArtworkMedia, {
+  ArtworkMediaBadge,
+} from "../components/artwork-media";
 import ArtworkSaveButton from "../components/artwork-save-button";
 import ArtworkShareButton from "../components/artwork-share-button";
 import MobileAppNavigation from "../components/mobile-app-navigation";
@@ -24,6 +27,7 @@ type ArtworkRow = {
   title: string;
   src: string;
   thumb_src: string | null;
+  media_type: string | null;
   mood: string | null;
   tags: string[] | null;
 };
@@ -133,7 +137,7 @@ export default function SavedArtworkView() {
       const artworkIds = saves.map((save) => save.artwork_id);
       const { data: artworkData, error: artworkError } = await database
         .from("artworks")
-        .select("id, collection_id, title, src, thumb_src, mood, tags")
+        .select("id, collection_id, title, src, thumb_src, media_type, mood, tags")
         .in("id", artworkIds);
 
       if (cancelled) return;
@@ -411,14 +415,20 @@ export default function SavedArtworkView() {
                   className="block w-full text-left outline-none transition active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
                   aria-label={`Open saved artwork ${artwork.title}`}
                 >
-                  <PolishedImage
-                    src={artwork.thumb_src || artwork.src}
-                    alt={artwork.title}
-                    loading="lazy"
-                    decoding="async"
-                    wrapperClassName="aspect-[4/5] w-full"
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
+                  <span className="relative block">
+                    <PolishedImage
+                      src={artwork.thumb_src || artwork.src}
+                      alt={artwork.title}
+                      loading="lazy"
+                      decoding="async"
+                      wrapperClassName="aspect-[4/5] w-full"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <ArtworkMediaBadge
+                      mediaType={artwork.media_type}
+                      src={artwork.src}
+                    />
+                  </span>
                   <span className="block border-t border-white/10 px-3 py-3">
                     <span className="block truncate text-sm text-zinc-100">
                       {artwork.title}
@@ -488,6 +498,8 @@ export default function SavedArtworkView() {
               <ArtworkFocusView
                 key={selectedArtwork.id}
                 src={selectedArtwork.src}
+                posterSrc={selectedArtwork.thumb_src}
+                mediaType={selectedArtwork.media_type}
                 alt={selectedArtwork.title}
                 onBack={() => setFocusMode(false)}
                 onPrevious={
@@ -500,9 +512,11 @@ export default function SavedArtworkView() {
             ) : (
               <div className="min-h-0 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
                 <div className="relative h-[60svh] min-h-80 overflow-hidden bg-black lg:h-auto lg:min-h-0">
-                  <PolishedImage
+                  <ArtworkMedia
                     key={selectedArtwork.src}
                     src={selectedArtwork.src}
+                    posterSrc={selectedArtwork.thumb_src}
+                    mediaType={selectedArtwork.media_type}
                     alt={selectedArtwork.title}
                     wrapperClassName="absolute inset-0"
                     className="absolute inset-0 size-full object-contain p-3 sm:p-6"
@@ -602,7 +616,7 @@ export default function SavedArtworkView() {
                       onClick={() => setFocusMode(true)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 px-4 py-2.5 text-sm text-zinc-200 transition hover:border-cyan-300 hover:text-white"
                     >
-                      View full artwork
+                      View full {selectedArtwork.media_type === "video" ? "video" : "artwork"}
                       <span aria-hidden="true">⛶</span>
                     </button>
                   </div>
