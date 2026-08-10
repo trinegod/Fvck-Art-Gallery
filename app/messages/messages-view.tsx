@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  DragEvent,
   FormEvent,
   useCallback,
   useEffect,
@@ -11,12 +12,16 @@ import {
 import Link from "next/link";
 import {
   ArrowLeft,
+  BookmarkPlus,
   Check,
+  ImagePlus,
   LoaderCircle,
   MessageCircle,
   Plus,
   Search,
   Send,
+  Settings,
+  UploadCloud,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,47 +38,19 @@ import { supabase } from "@/lib/supabase-browser";
 import ActivityNavLink from "../components/activity-nav-link";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
-
-type Profile = {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-};
-
-type ConversationRow = {
-  id: string;
-  kind: "direct" | "group";
-  title: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type MembershipRow = {
-  conversation_id: string;
-  profile_id: string;
-  role: "owner" | "member";
-  joined_at: string;
-  last_read_at: string | null;
-};
-
-type MessageRow = {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  body: string;
-  created_at: string;
-};
-
-type InboxConversation = ConversationRow & {
-  memberIds: string[];
-  memberCount: number;
-  otherProfile: Profile | null;
-  preview: string;
-  previewAt: string;
-  unreadCount: number;
-};
+import ArtworkShareDialog from "./artwork-share-dialog";
+import ChatArtworkCard from "./chat-artwork-card";
+import ConversationAvatar from "./conversation-avatar";
+import GroupSettingsDialog from "./group-settings-dialog";
+import type {
+  ConversationRow,
+  InboxConversation,
+  MembershipRow,
+  MessageRow,
+  PendingGroupInvite,
+  Profile,
+  SharedArtwork,
+} from "./messages-types";
 
 type MessagesViewProps = {
   initialConversationId?: string;
@@ -113,36 +90,18 @@ function conversationName(conversation: InboxConversation) {
   return conversation.otherProfile?.display_name ?? "Creator conversation";
 }
 
-function Avatar({
-  profile,
-  group = false,
-  className = "size-11",
-}: {
-  profile?: Profile | null;
-  group?: boolean;
-  className?: string;
-}) {
-  const initial = profile?.display_name.charAt(0).toUpperCase() || "N";
+function messagePreview(message?: MessageRow) {
+  if (!message) return "Start the conversation";
+  if (message.body) return message.body;
+  if (message.message_type === "artwork") return "Shared an artwork";
+  if (message.message_type === "image") return "Shared an image";
+  if (message.message_type === "video") return "Shared a video";
+  return "New message";
+}
 
-  return (
-    <span
-      className={`grid shrink-0 place-items-center overflow-hidden rounded-full border border-white/12 bg-cyan-300/8 text-sm font-medium text-cyan-200 ${className}`}
-      aria-hidden="true"
-    >
-      {group ? (
-        <Users className="size-5" />
-      ) : profile?.avatar_url ? (
-        <PolishedImage
-          src={profile.avatar_url}
-          alt=""
-          wrapperClassName="size-full"
-          className="size-full object-cover"
-        />
-      ) : (
-        initial
-      )}
-    </span>
-  );
+function safeAttachmentName(name: string) {
+  const extension = name.split(".").pop()?.toLowerCase() || "bin";
+  return `${crypto.randomUUID()}.${extension.replace(/[^a-z0-9]/g, "") || "bin"}`;
 }
 
 export default function MessagesView({
@@ -162,9 +121,17 @@ export default function MessagesView({
       : null
   );
   const [messages, setMessages] = useState<MessageRow[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
+  const [sharedArtworks, setSharedArtworks] = useState<Map<string, SharedArtwork>>(
+    new Map()
+  );
+  const [savedArtworkIds, setSavedArtworkIds] = useState<Set<string>>(new Set());
+  const [savingArtworkId, setSavingArtworkId] = useState<string | null>(null);
   const [conversationLoading, setConversationLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(
     supabase ? null : "Supabase environment variables are missing."
   );
@@ -174,8 +141,12 @@ export default function MessagesView({
   const [groupSearch, setGroupSearch] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
+  const [artworkShareOpen, setArtworkShareOpen] = useState(false);
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
   const startedProfileRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile])),
@@ -216,6 +187,103 @@ export default function MessagesView({
       );
   }, [groupSearch, profiles, viewerId]);
 
+  const hydrateMessages = useCallback(async (rows: MessageRow[]) => {
+    const client = supabase;
+    const paths = Array.from(
+      new Set(
+        rows
+          .map((message) => message.attachment_path)
+          .filter((path): path is string => Boolean(path))
+      )
+    );
+
+    if (!client || !paths.length) return rows;
+
+    const { data } = await client.storage
+      .from("conversation-media")
+      .createSignedUrls(paths, 3600);
+    const signedByPath = new Map(
+      (data ?? []).map((item) => [item.path, item.signedUrl])
+    );
+
+    return rows.map((message) => ({
+      ...message,
+      attachmentUrl: message.attachment_path
+        ? signedByPath.get(message.attachment_path) ?? null
+        : null,
+    }));
+  }, []);
+
+  const loadPendingInvites = useCallback(async () => {
+    const client = supabase;
+    if (!client) return;
+    const { data, error: inviteError } = await client.rpc(
+      "list_my_group_invites"
+    );
+
+    if (inviteError) {
+      if (!isMissingMessagingError(inviteError.code)) {
+        setError(inviteError.message);
+      }
+      setPendingInvites([]);
+      return;
+    }
+
+    setPendingInvites((data ?? []) as PendingGroupInvite[]);
+  }, []);
+
+  const loadSharedArtworkState = useCallback(
+    async (messageRows: MessageRow[], userId: string) => {
+      const client = supabase;
+      if (!client) return;
+      const artworkIds = Array.from(
+        new Set(
+          messageRows
+            .map((message) => message.artwork_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      if (!artworkIds.length) {
+        setSharedArtworks(new Map());
+        setSavedArtworkIds(new Set());
+        return;
+      }
+
+      const [artworkResult, saveResult] = await Promise.all([
+        client
+          .from("artworks")
+          .select("id, title, src, thumb_src, media_type, mood")
+          .in("id", artworkIds),
+        client
+          .from("artwork_saves")
+          .select("artwork_id")
+          .eq("user_id", userId)
+          .in("artwork_id", artworkIds),
+      ]);
+
+      if (artworkResult.error) {
+        setError(artworkResult.error.message);
+      } else {
+        const artworkRows = (artworkResult.data ?? []) as SharedArtwork[];
+        setSharedArtworks(
+          new Map(artworkRows.map((artwork) => [artwork.id, artwork]))
+        );
+      }
+
+      if (!saveResult.error) {
+        setSavedArtworkIds(
+          new Set(
+            (saveResult.data ?? []).map(
+              (row: { artwork_id: string }) => row.artwork_id
+            )
+          )
+        );
+      }
+    },
+    []
+  );
+
   const loadInbox = useCallback(async (userId: string) => {
     const client = supabase;
     if (!client) return;
@@ -225,7 +293,9 @@ export default function MessagesView({
 
     const membershipResult = await client
       .from("conversation_members")
-      .select("conversation_id, profile_id, role, joined_at, last_read_at")
+      .select(
+        "conversation_id, profile_id, role, joined_at, last_read_at, muted_until"
+      )
       .eq("profile_id", userId)
       .order("joined_at", { ascending: false });
 
@@ -263,21 +333,28 @@ export default function MessagesView({
     if (!conversationIds.length) {
       setInbox([]);
       setLoadState("ready");
+      await loadPendingInvites();
       return;
     }
 
     const [conversationResult, membersResult, messagesResult] = await Promise.all([
       client
         .from("conversations")
-        .select("id, kind, title, created_by, created_at, updated_at")
+        .select(
+          "id, kind, title, avatar_path, created_by, created_at, updated_at"
+        )
         .in("id", conversationIds),
       client
         .from("conversation_members")
-        .select("conversation_id, profile_id, role, joined_at, last_read_at")
+        .select(
+          "conversation_id, profile_id, role, joined_at, last_read_at, muted_until"
+        )
         .in("conversation_id", conversationIds),
       client
         .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at")
+        .select(
+          "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
+        )
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false })
         .limit(300),
@@ -323,12 +400,14 @@ export default function MessagesView({
 
         return {
           ...conversation,
+          members: conversationMembers,
           memberIds: conversationMembers.map((membership) => membership.profile_id),
           memberCount: conversationMembers.length,
           otherProfile: otherMember
             ? profilesMap.get(otherMember.profile_id) ?? null
             : null,
-          preview: latestMessage?.body ?? "Start the conversation",
+          avatarUrl: null,
+          preview: messagePreview(latestMessage),
           previewAt: latestMessage?.created_at ?? conversation.updated_at,
           unreadCount: conversationMessages.filter(
             (message) =>
@@ -342,9 +421,39 @@ export default function MessagesView({
           new Date(b.previewAt).getTime() - new Date(a.previewAt).getTime()
       );
 
-    setInbox(nextInbox);
+    const avatarPaths = Array.from(
+      new Set(
+        nextInbox
+          .map((conversation) => conversation.avatar_path)
+          .filter((path): path is string => Boolean(path))
+      )
+    );
+    let signedAvatarByPath = new Map<string, string>();
+
+    if (avatarPaths.length) {
+      const { data } = await client.storage
+        .from("conversation-media")
+        .createSignedUrls(avatarPaths, 3600);
+      signedAvatarByPath = new Map(
+        (data ?? []).flatMap((item) =>
+          item.path && item.signedUrl
+            ? ([[item.path, item.signedUrl]] as [string, string][])
+            : []
+        )
+      );
+    }
+
+    setInbox(
+      nextInbox.map((conversation) => ({
+        ...conversation,
+        avatarUrl: conversation.avatar_path
+          ? signedAvatarByPath.get(conversation.avatar_path) ?? null
+          : null,
+      }))
+    );
     setLoadState("ready");
-  }, []);
+    await loadPendingInvites();
+  }, [loadPendingInvites]);
 
   useEffect(() => {
     const client = supabase;
@@ -365,6 +474,7 @@ export default function MessagesView({
         setInbox([]);
         setProfiles([]);
         setMessages([]);
+        setPendingInvites([]);
         setLoadState("signed-out");
       }
     }
@@ -397,12 +507,32 @@ export default function MessagesView({
         { event: "INSERT", schema: "public", table: "messages" },
         () => loadInbox(viewerId)
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_members" },
+        () => loadInbox(viewerId)
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "conversations" },
+        () => loadInbox(viewerId)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversation_invites",
+          filter: `invited_profile_id=eq.${viewerId}`,
+        },
+        () => loadPendingInvites()
+      )
       .subscribe();
 
     return () => {
       client.removeChannel(channel);
     };
-  }, [loadInbox, loadState, viewerId]);
+  }, [loadInbox, loadPendingInvites, loadState, viewerId]);
 
   useEffect(() => {
     const client = supabase;
@@ -467,7 +597,9 @@ export default function MessagesView({
       setConversationLoading(true);
       const { data, error: messagesError } = await database
         .from("messages")
-        .select("id, conversation_id, sender_id, body, created_at")
+        .select(
+          "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
+        )
         .eq("conversation_id", currentConversationId)
         .order("created_at", { ascending: true })
         .limit(200);
@@ -477,8 +609,13 @@ export default function MessagesView({
       if (messagesError) {
         setError(messagesError.message);
         setMessages([]);
+        setSharedArtworks(new Map());
+        setSavedArtworkIds(new Set());
       } else {
-        setMessages((data ?? []) as MessageRow[]);
+        const messageRows = await hydrateMessages((data ?? []) as MessageRow[]);
+        if (cancelled) return;
+        setMessages(messageRows);
+        await loadSharedArtworkState(messageRows, currentViewerId);
         await database
           .from("conversation_members")
           .update({ last_read_at: new Date().toISOString() })
@@ -509,12 +646,40 @@ export default function MessagesView({
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         async (payload) => {
-          const incoming = payload.new as MessageRow;
+          const [incoming] = await hydrateMessages([payload.new as MessageRow]);
           setMessages((current) =>
             current.some((message) => message.id === incoming.id)
               ? current
               : [...current, incoming]
           );
+          if (incoming.artwork_id) {
+            const [artworkResult, saveResult] = await Promise.all([
+              database
+                .from("artworks")
+                .select("id, title, src, thumb_src, media_type, mood")
+                .eq("id", incoming.artwork_id)
+                .maybeSingle(),
+              database
+                .from("artwork_saves")
+                .select("artwork_id")
+                .eq("artwork_id", incoming.artwork_id)
+                .eq("user_id", currentViewerId)
+                .maybeSingle(),
+            ]);
+            if (artworkResult.data) {
+              const artwork = artworkResult.data as SharedArtwork;
+              setSharedArtworks((current) => {
+                const next = new Map(current);
+                next.set(artwork.id, artwork);
+                return next;
+              });
+            }
+            if (saveResult.data) {
+              setSavedArtworkIds((current) =>
+                new Set(current).add(incoming.artwork_id as string)
+              );
+            }
+          }
           await database
             .from("conversation_members")
             .update({ last_read_at: new Date().toISOString() })
@@ -528,7 +693,12 @@ export default function MessagesView({
       cancelled = true;
       database.removeChannel(channel);
     };
-  }, [activeConversationId, viewerId]);
+  }, [
+    activeConversationId,
+    hydrateMessages,
+    loadSharedArtworkState,
+    viewerId,
+  ]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -563,6 +733,9 @@ export default function MessagesView({
   function closeConversation() {
     setActiveConversationId(null);
     setMessages([]);
+    setSharedArtworks(new Map());
+    setSavedArtworkIds(new Set());
+    setGroupSettingsOpen(false);
     window.history.pushState(null, "", "/messages");
   }
 
@@ -582,8 +755,11 @@ export default function MessagesView({
         conversation_id: activeConversationId,
         sender_id: viewerId,
         body,
+        message_type: "text",
       })
-      .select("id, conversation_id, sender_id, body, created_at")
+      .select(
+        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
+      )
       .single();
 
     if (sendError) {
@@ -601,6 +777,266 @@ export default function MessagesView({
     }
 
     setSending(false);
+  }
+
+  async function shareArtwork(artwork: SharedArtwork) {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || sending) return false;
+    setSending(true);
+
+    const { data, error: shareError } = await client
+      .from("messages")
+      .insert({
+        conversation_id: activeConversationId,
+        sender_id: viewerId,
+        body: null,
+        message_type: "artwork",
+        artwork_id: artwork.id,
+      })
+      .select(
+        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
+      )
+      .single();
+
+    if (shareError) {
+      setError(shareError.message);
+      toast.error("Artwork wasn't shared", { description: shareError.message });
+      setSending(false);
+      return false;
+    }
+
+    const message = data as MessageRow;
+    setMessages((current) =>
+      current.some((item) => item.id === message.id)
+        ? current
+        : [...current, message]
+    );
+    setSharedArtworks((current) => {
+      const next = new Map(current);
+      next.set(artwork.id, artwork);
+      return next;
+    });
+    await loadInbox(viewerId);
+    toast.success("Artwork shared");
+    setSending(false);
+    return true;
+  }
+
+  async function saveSharedArtwork(artworkId: string) {
+    const client = supabase;
+    if (!client || !viewerId || savedArtworkIds.has(artworkId)) return;
+    setSavingArtworkId(artworkId);
+
+    const { error: saveError } = await client.from("artwork_saves").insert({
+      artwork_id: artworkId,
+      user_id: viewerId,
+    });
+
+    if (saveError && saveError.code !== "23505") {
+      toast.error("Artwork wasn't saved", { description: saveError.message });
+      setSavingArtworkId(null);
+      return;
+    }
+
+    setSavedArtworkIds((current) => new Set(current).add(artworkId));
+    setSavingArtworkId(null);
+    toast.success("Artwork saved to your stash");
+  }
+
+  async function saveAllSharedArtwork() {
+    const client = supabase;
+    if (!client || !viewerId || savingArtworkId) return;
+    const unsavedIds = Array.from(
+      new Set(
+        messages
+          .map((message) => message.artwork_id)
+          .filter(
+            (id): id is string => Boolean(id) && !savedArtworkIds.has(id as string)
+          )
+      )
+    );
+
+    if (!unsavedIds.length) {
+      toast.success("All shared artwork is already in your stash");
+      return;
+    }
+
+    setSavingArtworkId("all");
+    const { error: saveError } = await client.from("artwork_saves").upsert(
+      unsavedIds.map((artworkId) => ({
+        artwork_id: artworkId,
+        user_id: viewerId,
+      })),
+      {
+        onConflict: "artwork_id,user_id",
+        ignoreDuplicates: true,
+      }
+    );
+
+    if (saveError) {
+      toast.error("Shared artwork wasn't saved", {
+        description: saveError.message,
+      });
+      setSavingArtworkId(null);
+      return;
+    }
+
+    setSavedArtworkIds((current) => {
+      const next = new Set(current);
+      unsavedIds.forEach((artworkId) => next.add(artworkId));
+      return next;
+    });
+    setSavingArtworkId(null);
+    toast.success(
+      `${unsavedIds.length} shared ${unsavedIds.length === 1 ? "piece" : "pieces"} saved`
+    );
+  }
+
+  async function sendAttachment(file: File) {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || uploadingMedia) return;
+
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    const isImage = file.type.startsWith("image/");
+    const isVideo =
+      file.type.startsWith("video/") || ["mov", "m4v", "mp4", "webm"].includes(extension);
+    const messageType = isImage ? "image" : isVideo ? "video" : null;
+
+    if (!messageType) {
+      toast.error("Choose an image or video file");
+      return;
+    }
+
+    const maxBytes = messageType === "image" ? 15 * 1024 * 1024 : 100 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error(
+        messageType === "image"
+          ? "Images must be 15 MB or smaller"
+          : "Videos must be 100 MB or smaller"
+      );
+      return;
+    }
+
+    const fallbackMime =
+      extension === "mov"
+        ? "video/quicktime"
+        : extension === "m4v"
+          ? "video/x-m4v"
+          : messageType === "image"
+            ? "image/jpeg"
+            : "video/mp4";
+    const mimeType = file.type || fallbackMime;
+    const attachmentPath = `${activeConversationId}/attachments/${safeAttachmentName(file.name)}`;
+    const caption = draft.trim() || null;
+
+    setUploadingMedia(true);
+    setError(null);
+
+    const { error: uploadError } = await client.storage
+      .from("conversation-media")
+      .upload(attachmentPath, file, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      setUploadingMedia(false);
+      toast.error("Media wasn't uploaded", { description: uploadError.message });
+      return;
+    }
+
+    const { data, error: messageError } = await client
+      .from("messages")
+      .insert({
+        conversation_id: activeConversationId,
+        sender_id: viewerId,
+        body: caption,
+        message_type: messageType,
+        attachment_path: attachmentPath,
+        attachment_mime: mimeType,
+        attachment_name: file.name.slice(0, 180),
+      })
+      .select(
+        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
+      )
+      .single();
+
+    if (messageError) {
+      await client.storage.from("conversation-media").remove([attachmentPath]);
+      setUploadingMedia(false);
+      toast.error("Media message wasn't sent", {
+        description: messageError.message,
+      });
+      return;
+    }
+
+    const [message] = await hydrateMessages([data as MessageRow]);
+    setMessages((current) =>
+      current.some((item) => item.id === message.id)
+        ? current
+        : [...current, message]
+    );
+    setDraft("");
+    setUploadingMedia(false);
+    await loadInbox(viewerId);
+    toast.success(messageType === "image" ? "Image shared" : "Video shared");
+  }
+
+  function handleMediaDrag(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
+  }
+
+  function handleMediaDragLeave(event: DragEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setDragActive(false);
+  }
+
+  function handleMediaDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) sendAttachment(file);
+  }
+
+  async function respondToInvite(inviteId: string, accept: boolean) {
+    const client = supabase;
+    if (!client || !viewerId || busyInviteId) return;
+    setBusyInviteId(inviteId);
+    const { data, error: inviteError } = await client.rpc(
+      "respond_to_group_invite",
+      {
+        target_invite_id: inviteId,
+        accept_invite: accept,
+      }
+    );
+    setBusyInviteId(null);
+
+    if (inviteError) {
+      toast.error("Invitation response wasn't saved", {
+        description: inviteError.message,
+      });
+      return;
+    }
+
+    await loadInbox(viewerId);
+    if (accept) {
+      const conversationId = data as string;
+      selectConversation(conversationId);
+      toast.success("Group invitation accepted");
+    } else {
+      toast.success("Invitation declined");
+    }
+  }
+
+  function handleGroupLeft() {
+    closeConversation();
+    if (viewerId) loadInbox(viewerId);
   }
 
   function toggleGroupMember(profileId: string) {
@@ -655,7 +1091,7 @@ export default function MessagesView({
         `/messages?conversation=${conversationId}`
       );
       await loadInbox(viewerId);
-      toast.success("Group chat created");
+      toast.success("Group created and invitations sent");
     }
 
     setCreatingGroup(false);
@@ -775,6 +1211,60 @@ export default function MessagesView({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
+              {!search && pendingInvites.length > 0 && (
+                <section className="border-b border-cyan-300/15 bg-cyan-300/[0.035] px-5 py-4 sm:px-7">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">
+                    Group invitations
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {pendingInvites.map((invite) => {
+                      const inviter = profileById.get(invite.invited_by);
+                      const responding = busyInviteId === invite.invite_id;
+                      return (
+                        <article
+                          key={invite.invite_id}
+                          className="rounded-xl border border-white/10 bg-black/30 p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <ConversationAvatar group className="size-10" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-white">
+                                {invite.conversation_title}
+                              </p>
+                              <p className="mt-0.5 truncate text-xs text-zinc-600">
+                                Invited by {inviter?.display_name ?? "a creator"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => respondToInvite(invite.invite_id, false)}
+                              disabled={Boolean(busyInviteId)}
+                              className="nodeine-action inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-white/10 px-3 text-xs text-zinc-400 hover:border-white/25 hover:text-white"
+                            >
+                              Decline
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => respondToInvite(invite.invite_id, true)}
+                              disabled={Boolean(busyInviteId)}
+                              className="nodeine-action inline-flex min-h-9 flex-1 items-center justify-center rounded-lg bg-cyan-300 px-3 text-xs font-medium text-zinc-950 hover:bg-cyan-200 disabled:opacity-60"
+                            >
+                              {responding ? (
+                                <LoaderCircle className="size-4 animate-spin" />
+                              ) : (
+                                "Join group"
+                              )}
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
               {filteredInbox.length ? (
                 filteredInbox.map((conversation) => (
                   <button
@@ -783,9 +1273,10 @@ export default function MessagesView({
                     onClick={() => selectConversation(conversation.id)}
                     className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-4 text-left hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:px-7"
                   >
-                    <Avatar
+                    <ConversationAvatar
                       profile={conversation.otherProfile}
                       group={conversation.kind === "group"}
+                      groupAvatarUrl={conversation.avatarUrl}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-3">
@@ -853,9 +1344,10 @@ export default function MessagesView({
                   >
                     <ArrowLeft className="size-5" />
                   </button>
-                  <Avatar
+                  <ConversationAvatar
                     profile={activeConversation.otherProfile}
                     group={activeConversation.kind === "group"}
+                    groupAvatarUrl={activeConversation.avatarUrl}
                     className="size-10"
                   />
                   <div className="min-w-0 flex-1">
@@ -864,12 +1356,39 @@ export default function MessagesView({
                     </h2>
                     <p className="mt-0.5 truncate text-xs text-zinc-600">
                       {activeConversation.kind === "group"
-                        ? `${activeConversation.memberCount} members`
+                        ? `${activeConversation.memberCount} ${activeConversation.memberCount === 1 ? "member" : "members"}`
                         : activeConversation.otherProfile
                           ? `@${activeConversation.otherProfile.username}`
                           : "Private conversation"}
                     </p>
                   </div>
+                  {messages.some((message) => message.artwork_id) && (
+                    <button
+                      type="button"
+                      onClick={saveAllSharedArtwork}
+                      disabled={savingArtworkId === "all"}
+                      className="nodeine-action grid size-10 shrink-0 place-items-center rounded-full text-zinc-500 hover:bg-white/5 hover:text-cyan-200"
+                      aria-label="Save all shared artwork"
+                      title="Save all shared artwork"
+                    >
+                      {savingArtworkId === "all" ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <BookmarkPlus className="size-4" />
+                      )}
+                    </button>
+                  )}
+                  {activeConversation.kind === "group" && viewerId && (
+                    <button
+                      type="button"
+                      onClick={() => setGroupSettingsOpen(true)}
+                      className="nodeine-action grid size-10 shrink-0 place-items-center rounded-full text-zinc-500 hover:bg-white/5 hover:text-white"
+                      aria-label="Open group settings"
+                      title="Group settings"
+                    >
+                      <Settings className="size-4" />
+                    </button>
+                  )}
                   {activeConversation.otherProfile && (
                     <Link
                       href={`/creator/${activeConversation.otherProfile.username}`}
@@ -880,7 +1399,28 @@ export default function MessagesView({
                   )}
                 </header>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+                <div
+                  className={`relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 ${
+                    dragActive ? "bg-cyan-300/[0.035]" : ""
+                  }`}
+                  onDragEnter={handleMediaDrag}
+                  onDragOver={handleMediaDrag}
+                  onDragLeave={handleMediaDragLeave}
+                  onDrop={handleMediaDrop}
+                >
+                  {dragActive && (
+                    <div className="pointer-events-none absolute inset-3 z-20 grid place-items-center rounded-2xl border-2 border-dashed border-cyan-300/70 bg-zinc-950/90 backdrop-blur">
+                      <div className="text-center">
+                        <UploadCloud className="mx-auto size-8 text-cyan-300" />
+                        <p className="mt-3 text-sm font-medium text-white">
+                          Drop image or video
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          It stays inside this conversation.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {conversationLoading ? (
                     <div className="grid min-h-full place-items-center">
                       <LoaderCircle className="size-7 animate-spin text-cyan-300" />
@@ -890,6 +1430,12 @@ export default function MessagesView({
                       {messages.map((message) => {
                         const mine = message.sender_id === viewerId;
                         const sender = profileById.get(message.sender_id);
+                        const artwork = message.artwork_id
+                          ? sharedArtworks.get(message.artwork_id)
+                          : null;
+                        const mediaMessage =
+                          message.message_type === "image" ||
+                          message.message_type === "video";
 
                         return (
                           <article
@@ -897,25 +1443,89 @@ export default function MessagesView({
                             className={`flex gap-2.5 ${mine ? "justify-end" : "justify-start"}`}
                           >
                             {!mine && (
-                              <Avatar profile={sender} className="mt-1 size-8" />
+                              <ConversationAvatar
+                                profile={sender}
+                                className="mt-1 size-8"
+                              />
                             )}
-                            <div className={`max-w-[82%] sm:max-w-[68%] ${mine ? "text-right" : "text-left"}`}>
+                            <div
+                              className={`max-w-[82%] sm:max-w-[72%] ${
+                                mine ? "text-right" : "text-left"
+                              }`}
+                            >
                               {!mine && activeConversation.kind === "group" && (
                                 <p className="mb-1 px-1 text-[11px] text-zinc-600">
                                   {sender?.display_name ?? "NODEINE creator"}
                                 </p>
                               )}
-                              <div
-                                className={`rounded-2xl px-4 py-2.5 text-left text-sm leading-6 ${
-                                  mine
-                                    ? "rounded-br-md bg-cyan-300 text-zinc-950"
-                                    : "rounded-bl-md border border-white/10 bg-white/[0.045] text-zinc-200"
-                                }`}
-                              >
-                                <p className="whitespace-pre-wrap break-words">
-                                  {message.body}
-                                </p>
-                              </div>
+                              {message.message_type === "artwork" && artwork ? (
+                                <div className="space-y-2">
+                                  <ChatArtworkCard
+                                    artwork={artwork}
+                                    saved={savedArtworkIds.has(artwork.id)}
+                                    saving={savingArtworkId === artwork.id}
+                                    onSave={saveSharedArtwork}
+                                  />
+                                  {message.body && (
+                                    <div
+                                      className={`rounded-2xl px-4 py-2.5 text-left text-sm leading-6 ${
+                                        mine
+                                          ? "rounded-br-md bg-cyan-300 text-zinc-950"
+                                          : "rounded-bl-md border border-white/10 bg-white/[0.045] text-zinc-200"
+                                      }`}
+                                    >
+                                      <p className="whitespace-pre-wrap break-words">
+                                        {message.body}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : mediaMessage && message.attachmentUrl ? (
+                                <div
+                                  className={`overflow-hidden rounded-2xl border bg-black/40 ${
+                                    mine
+                                      ? "rounded-br-md border-cyan-300/25"
+                                      : "rounded-bl-md border-white/10"
+                                  }`}
+                                >
+                                  {message.message_type === "video" ? (
+                                    <video
+                                      src={message.attachmentUrl}
+                                      controls
+                                      playsInline
+                                      preload="metadata"
+                                      className="max-h-[520px] w-full object-contain"
+                                    />
+                                  ) : (
+                                    <PolishedImage
+                                      src={message.attachmentUrl}
+                                      alt={message.attachment_name ?? "Shared image"}
+                                      wrapperClassName="max-h-[520px] w-full"
+                                      className="max-h-[520px] w-full object-contain"
+                                    />
+                                  )}
+                                  {message.body && (
+                                    <p className="whitespace-pre-wrap break-words px-4 py-3 text-left text-sm leading-6 text-zinc-200">
+                                      {message.body}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div
+                                  className={`rounded-2xl px-4 py-2.5 text-left text-sm leading-6 ${
+                                    mine
+                                      ? "rounded-br-md bg-cyan-300 text-zinc-950"
+                                      : "rounded-bl-md border border-white/10 bg-white/[0.045] text-zinc-200"
+                                  }`}
+                                >
+                                  <p className="whitespace-pre-wrap break-words">
+                                    {message.body ??
+                                      (message.message_type === "artwork"
+                                        ? "Shared artwork is unavailable."
+                                        : "Shared media is unavailable.")}
+                                  </p>
+                                </div>
+                              )}
                               <time className="mt-1 block px-1 text-[10px] text-zinc-700">
                                 {formatMessageTime(message.created_at)}
                               </time>
@@ -946,6 +1556,41 @@ export default function MessagesView({
                   className="border-t border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-xl sm:px-6"
                 >
                   <div className="mx-auto flex max-w-3xl items-end gap-2">
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,video/x-m4v,.mov,.m4v"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) sendAttachment(file);
+                        event.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => attachmentInputRef.current?.click()}
+                      disabled={uploadingMedia || sending}
+                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
+                      aria-label="Share image or video"
+                      title="Share image or video"
+                    >
+                      {uploadingMedia ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="size-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setArtworkShareOpen(true)}
+                      disabled={uploadingMedia || sending}
+                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:opacity-60"
+                      aria-label="Share artwork from the archive"
+                      title="Share artwork from the archive"
+                    >
+                      <BookmarkPlus className="size-4" />
+                    </button>
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Message</span>
                       <textarea
@@ -963,14 +1608,17 @@ export default function MessagesView({
                         }}
                         maxLength={2000}
                         rows={1}
-                        placeholder="Message..."
+                        placeholder={
+                          uploadingMedia ? "Uploading media..." : "Message..."
+                        }
+                        disabled={uploadingMedia}
                         className="max-h-32 min-h-11 w-full resize-none rounded-2xl border border-white/12 bg-black/50 px-4 py-2.5 text-sm leading-6 text-white outline-none placeholder:text-zinc-600 focus:border-cyan-300"
                       />
                     </label>
                     <Button
                       type="submit"
                       size="icon-lg"
-                      disabled={sending || !draft.trim()}
+                      disabled={sending || uploadingMedia || !draft.trim()}
                       className="shrink-0 rounded-full"
                       aria-label="Send message"
                     >
@@ -1013,7 +1661,7 @@ export default function MessagesView({
           <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
             <DialogTitle className="text-xl text-white">Create a group chat</DialogTitle>
             <DialogDescription className="leading-6 text-zinc-500">
-              Bring up to 20 artists or friends into one private conversation.
+              Invite up to 20 artists or friends into one private conversation.
             </DialogDescription>
           </DialogHeader>
 
@@ -1057,7 +1705,7 @@ export default function MessagesView({
                       aria-pressed={selected}
                       className="nodeine-action flex w-full items-center gap-3 border-b border-white/8 px-5 py-3 text-left last:border-b-0 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:px-6"
                     >
-                      <Avatar profile={profile} className="size-10" />
+                      <ConversationAvatar profile={profile} className="size-10" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-zinc-100">
                           {profile.display_name}
@@ -1108,6 +1756,26 @@ export default function MessagesView({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ArtworkShareDialog
+        open={artworkShareOpen}
+        onOpenChange={setArtworkShareOpen}
+        onShare={shareArtwork}
+      />
+
+      {viewerId && (
+        <GroupSettingsDialog
+          open={groupSettingsOpen}
+          onOpenChange={setGroupSettingsOpen}
+          conversation={
+            activeConversation?.kind === "group" ? activeConversation : null
+          }
+          viewerId={viewerId}
+          profiles={profiles}
+          onConversationChanged={() => loadInbox(viewerId)}
+          onLeft={handleGroupLeft}
+        />
+      )}
 
       <MobileAppNavigation />
     </main>
