@@ -2,7 +2,7 @@
 
 **The TRINE Archive — an interactive platform for AI-generated visual worlds.**
 
-NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 344 images and short-form videos across 16 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
+NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 380 images and short-form videos across 16 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
 
 ## What this project demonstrates
 
@@ -24,7 +24,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 Visitors can:
 
-- Explore 16 themed visual-world collections containing 344 pieces
+- Explore 16 themed visual-world collections containing 380 pieces
 - Open individual pieces in an immersive lightbox
 - Navigate artwork with buttons or keyboard controls
 - View moods, tags, collection context, and creator information
