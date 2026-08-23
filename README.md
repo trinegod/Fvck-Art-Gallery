@@ -2,7 +2,7 @@
 
 **The TRINE Archive — an interactive platform for AI-generated visual worlds.**
 
-NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 380 images and short-form videos across 16 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
+NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 399 images and short-form videos across 18 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
 
 ## What this project demonstrates
 
@@ -24,7 +24,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 Visitors can:
 
-- Explore 16 themed visual-world collections containing 380 pieces
+- Explore 18 themed visual-world collections containing 399 pieces
 - Open individual pieces in an immersive lightbox
 - Navigate artwork with buttons or keyboard controls
 - View moods, tags, collection context, and creator information
@@ -82,6 +82,14 @@ public/thumbs/           Performance-optimized gallery thumbnails
 public/video/            Short-form video archive
 supabase/                Database schema, functions, migrations, and RLS policies
 ```
+
+## Curated world imports
+
+- **Ashigara** contains 54 unique character studies. An August 23 master-level duplicate audit confirmed that the current Ibaraki-dōji, Minamoto no Yorimitsu, Sakata no Kintoki, Shuten-dōji, Urabe no Suetake, Usui Sadamitsu, Watanabe no Tsuna, and Yamauba masters already have matching NODEINE derivatives, so none were re-imported.
+- **Martyrs** adds five editorial works: Martyrs, Persona, Unfinished, Below, and Evidence.
+- **Vessels** adds six portrait-master bonsai scenes, six paired botanical detail studies, Tea Master, and a dedicated hand-and-cup detail.
+
+Import provenance, source hashes, deterministic IDs, and generated asset sizes are recorded in `scripts/nodeine-martyrs-vessels-manifest.json`. The idempotent Supabase content migration is `supabase/import-august-2026-martyrs-vessels.sql`.
 
 ## Status
 

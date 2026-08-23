@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CircleHelp } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
+import {
+  importedCollectionDetails,
+  importedFallbackItems,
+} from "@/lib/imported-fallback-worlds";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
 import ArtworkLikeButton from "./components/artwork-like-button";
@@ -187,6 +191,7 @@ const fallbackGalleryItems = [
   ...gundamWingItems,
   ...streetLifeItems,
   ...edgeRunnersItems,
+  ...importedFallbackItems,
 ];
 
 type GalleryItem = (typeof fallbackGalleryItems)[number] & {
@@ -200,6 +205,7 @@ function getThumbnail(src: string) {
     .replace(/\.m4v$/i, ".webp");
 }
 const collectionDetails: Record<string, { order: number; summary: string }> = {
+  ...importedCollectionDetails,
   "Edge Runners": {
     order: 1,
     summary: "Neon cyberpunk studies from a future built on speed, style, and survival.",
@@ -334,7 +340,14 @@ export default function Home() {
           });
 
         if (!cancelled && databaseGalleryItems.length) {
-          setGalleryItems(databaseGalleryItems);
+          const databaseSeries = new Set(
+            databaseGalleryItems.map((item) => item.series)
+          );
+          const localOnlyItems = fallbackGalleryItems.filter(
+            (item) => !databaseSeries.has(item.series)
+          );
+
+          setGalleryItems([...databaseGalleryItems, ...localOnlyItems]);
           setDatabaseCollections(collectionRows);
           setCreatorProfiles(profileRows);
           setGalleryError(null);
