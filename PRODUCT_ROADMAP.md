@@ -36,7 +36,7 @@ This creates something more useful than another infinite feed: a living map of h
 
 - Public World Thread gallery and shareable thread detail pages
 - Signed-in composer sourced from Saved/Stash with 2–12 ordered pieces
-- Origin, palette, mood, composition, character, setting, motion, lore, and contrast relationships
+- Origin, palette, mood, composition, character, setting, motion, continuity, lore, and contrast relationships for image, mixed-media, and short-film paths
 - Optional curator summary and per-step notes
 - Private drafts, public publishing, owner editing, opt-in forks, and permanent source lineage
 - Original artwork, world, and maker credit on every step

@@ -7,11 +7,13 @@ import MobileAppNavigation from "@/app/components/mobile-app-navigation";
 import PolishedImage from "@/app/components/polished-image";
 import {
   worldThreadDescription,
+  worldThreadItemAnchor,
   worldThreadRelationLabel,
   type WorldThread,
 } from "@/lib/world-threads";
 import ThreadHeader from "../thread-header";
 import ThreadActions from "./thread-actions";
+import ThreadLineageMap from "./thread-lineage-map";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", {
@@ -23,16 +25,21 @@ function formatDate(value: string) {
 
 export default function ThreadDetail({ thread }: { thread: WorldThread }) {
   const firstArtwork = thread.items[0]?.artwork;
+  const firstArtworkPreview = firstArtwork
+    ? firstArtwork.thumbSrc || (isVideoArtwork(firstArtwork.mediaType, firstArtwork.src)
+      ? "/video-placeholder.svg"
+      : firstArtwork.src)
+    : null;
 
   return (
     <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <ThreadHeader />
 
       <section className="relative isolate overflow-hidden border-b border-white/10 px-5 py-14 sm:px-8 sm:py-20">
-        {firstArtwork && (
+        {firstArtworkPreview && (
           <div className="pointer-events-none absolute inset-0 -z-20 opacity-20">
             <PolishedImage
-              src={firstArtwork.thumbSrc || firstArtwork.src}
+              src={firstArtworkPreview}
               alt=""
               wrapperClassName="size-full"
               className="size-full scale-110 object-cover blur-3xl"
@@ -102,12 +109,18 @@ export default function ThreadDetail({ thread }: { thread: WorldThread }) {
         </div>
       </section>
 
+      <ThreadLineageMap thread={thread} />
+
       <section aria-label={`${thread.title} sequence`} className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
         <div className="space-y-6 sm:space-y-10">
           {thread.items.map((item, index) => {
             const creator = item.artwork.collection?.creator;
             return (
-              <article key={item.id} className="relative">
+              <article
+                key={item.id}
+                id={worldThreadItemAnchor(item.artwork.id)}
+                className="relative scroll-mt-6 sm:scroll-mt-10"
+              >
                 {index > 0 && (
                   <div className="mb-6 flex items-center gap-3 sm:mb-10">
                     <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/12 to-white/5" />

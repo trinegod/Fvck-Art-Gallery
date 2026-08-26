@@ -34,7 +34,7 @@ export default async function ThreadsPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
               World Threads connect references by palette, mood, composition,
-              character, setting, motion, lore, and contrast—preserving the
+              character, setting, motion, continuity, lore, and contrast—preserving the
               maker and world behind every piece.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">

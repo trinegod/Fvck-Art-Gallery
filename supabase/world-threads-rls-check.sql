@@ -52,8 +52,8 @@ from public.create_world_thread(
     '343fa613-d303-58d4-b319-c53783fb6db9'::uuid,
     'fba7d74a-7553-54c7-a2eb-32070d151a86'::uuid
   ],
-  array['origin', 'mood', 'palette'],
-  array['Proof origin', 'Proof connection', 'Proof continuation']
+  array['origin', 'continuity', 'palette'],
+  array['Proof origin', 'Proof film continuity', 'Proof continuation']
 );
 
 do $$

@@ -11,6 +11,7 @@ export const WORLD_THREAD_RELATIONS = [
   "character",
   "setting",
   "motion",
+  "continuity",
   "lore",
   "contrast",
 ] as const;
@@ -517,6 +518,10 @@ export function worldThreadRelationLabel(relation: WorldThreadRelation) {
   return relation === "origin"
     ? "Origin"
     : `${relation.charAt(0).toUpperCase()}${relation.slice(1)}`;
+}
+
+export function worldThreadItemAnchor(artworkId: string) {
+  return `piece-${artworkId}`;
 }
 
 export function worldThreadDescription(thread: WorldThread) {

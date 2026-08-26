@@ -5,12 +5,13 @@ World Threads turns NODEINE's Saved/Stash behavior into a creative act: a maker 
 ## Product contract
 
 - The first item is the only `origin`.
-- Later items use `palette`, `mood`, `composition`, `character`, `setting`, `motion`, `lore`, or `contrast`.
+- Later items use `palette`, `mood`, `composition`, `character`, `setting`, `motion`, `continuity`, `lore`, or `contrast`.
 - A thread can be a private `draft` or `public`.
 - Forking is opt-in. A fork begins as a private draft and permanently records its source.
 - Every item retains its artwork ID, collection/world, and maker credit. `added_by` records the curator who placed it in the current thread; `forked_from_id` preserves the source path.
 - The composer uses Saved/Stash works, with an artwork-detail seed allowed through `/threads/new?artwork=<uuid>`.
 - Signal Trails are read-only, deterministic, capped at six, exclude the current work and duplicates, and explain the connection.
+- Every published path includes a server-rendered Lineage Map with keyboard-accessible, shareable deep links to each artwork step. Video paths automatically present it as a Film Continuity Map with poster-frame nodes.
 
 ## Routes
 

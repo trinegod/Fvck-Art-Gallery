@@ -11,12 +11,14 @@ import {
   LoaderCircle,
   LockKeyhole,
   Network,
+  Play,
   Plus,
   Search,
   Sparkles,
   Trash2,
 } from "lucide-react";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
+import { isVideoArtwork } from "@/app/components/artwork-media";
 import PolishedImage from "@/app/components/polished-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +81,14 @@ function artworkSearchText(artwork: ThreadArtwork) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
+}
+
+function artworkPreviewSrc(artwork: ThreadArtwork) {
+  return artwork.thumbSrc || (
+    isVideoArtwork(artwork.mediaType, artwork.src)
+      ? "/video-placeholder.svg"
+      : artwork.src
+  );
 }
 
 function draftFromThread(thread: WorldThread): WorldThreadDraft {
@@ -484,12 +494,20 @@ export default function ThreadComposer({
                   if (!artwork) return null;
                   return (
                     <article key={item.artworkId} className="grid gap-4 rounded-2xl border border-white/10 bg-black/25 p-3 sm:grid-cols-[112px_minmax(0,1fr)] sm:p-4">
-                      <PolishedImage
-                        src={artwork.thumbSrc || artwork.src}
-                        alt={artwork.title}
-                        wrapperClassName="aspect-square rounded-xl"
-                        className="size-full object-cover"
-                      />
+                      <div className="relative">
+                        <PolishedImage
+                          src={artworkPreviewSrc(artwork)}
+                          alt={artwork.title}
+                          wrapperClassName="aspect-square rounded-xl"
+                          className="size-full object-cover"
+                        />
+                        {isVideoArtwork(artwork.mediaType, artwork.src) && (
+                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/80 px-2 py-1 font-mono text-[8px] uppercase tracking-[0.14em] text-white">
+                            <Play className="size-2.5 fill-current" aria-hidden="true" />
+                            Video
+                          </span>
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -577,11 +595,17 @@ export default function ThreadComposer({
                     className="group relative overflow-hidden rounded-xl border border-white/10 bg-black text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:opacity-40"
                   >
                     <PolishedImage
-                      src={artwork.thumbSrc || artwork.src}
+                      src={artworkPreviewSrc(artwork)}
                       alt=""
                       wrapperClassName="aspect-[4/5]"
                       className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
                     />
+                    {isVideoArtwork(artwork.mediaType, artwork.src) && (
+                      <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/80 px-2 py-1 font-mono text-[8px] uppercase tracking-[0.14em] text-white">
+                        <Play className="size-2.5 fill-current" aria-hidden="true" />
+                        Video
+                      </span>
+                    )}
                     <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-cyan-300 text-zinc-950 shadow-lg">
                       <Plus className="size-3.5" aria-hidden="true" />
                     </span>

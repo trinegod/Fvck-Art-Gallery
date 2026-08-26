@@ -10,10 +10,10 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Responsive UX/UI for collection discovery across desktop and mobile
 - A masonry-style gallery with optimized thumbnails and lazy-loaded artwork
 - Collection filtering, detailed artwork views, keyboard navigation, and metadata
-- Native image and short-form video playback across discovery and collection views
+- Native image and short-form video playback across discovery, collection, World Thread, and Film Continuity Map views
 - Creator profiles with public portfolio routes
 - Personalized discovery, follows, likes, comments, activity, and private saves
-- World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, and provenance-preserving forks
+- World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, shareable Lineage Maps, and provenance-preserving forks
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - Direct and group messaging with realtime delivery, invitations, owner/admin/member roles, private media sharing, moderation controls, and archive-to-chat artwork cards
 - A Bulk Drop Studio for publishing up to 50 images or videos in one batch

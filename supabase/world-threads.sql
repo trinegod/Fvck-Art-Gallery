@@ -67,20 +67,6 @@ create table if not exists public.world_thread_items (
     unique (thread_id, position),
   constraint world_thread_items_position_check
     check (position between 1 and 12),
-  constraint world_thread_items_relation_type_check
-    check (
-      relation_type in (
-        'origin',
-        'palette',
-        'mood',
-        'composition',
-        'character',
-        'setting',
-        'motion',
-        'lore',
-        'contrast'
-      )
-    ),
   constraint world_thread_items_origin_position_check
     check (
       (position = 1 and relation_type = 'origin')
@@ -92,6 +78,27 @@ create table if not exists public.world_thread_items (
       or char_length(btrim(note)) between 1 and 280
     )
 );
+
+-- Kept outside CREATE TABLE so rerunning this migration upgrades the allowed
+-- vocabulary on existing projects as well as fresh databases.
+alter table public.world_thread_items
+  drop constraint if exists world_thread_items_relation_type_check;
+alter table public.world_thread_items
+  add constraint world_thread_items_relation_type_check
+  check (
+    relation_type in (
+      'origin',
+      'palette',
+      'mood',
+      'composition',
+      'character',
+      'setting',
+      'motion',
+      'continuity',
+      'lore',
+      'contrast'
+    )
+  );
 
 create index if not exists world_threads_owner_updated_idx
   on public.world_threads (owner_id, updated_at desc);
@@ -420,7 +427,7 @@ begin
       case when item_index = 1 then 'origin' else 'lore' end
     ) not in (
       'origin', 'palette', 'mood', 'composition', 'character',
-      'setting', 'motion', 'lore', 'contrast'
+      'setting', 'motion', 'continuity', 'lore', 'contrast'
     )
   ) then
     raise exception 'Choose a valid relationship for every artwork.';
@@ -587,7 +594,7 @@ begin
       case when item_index = 1 then 'origin' else 'lore' end
     ) not in (
       'origin', 'palette', 'mood', 'composition', 'character',
-      'setting', 'motion', 'lore', 'contrast'
+      'setting', 'motion', 'continuity', 'lore', 'contrast'
     )
   ) then
     raise exception 'Choose a valid relationship for every artwork.';
