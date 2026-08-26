@@ -15,6 +15,7 @@ import {
   Search,
   Sparkles,
   UserRound,
+  Waypoints,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -148,6 +149,16 @@ export default function CreatorNavigation({
         </Button>
 
         <Button
+          render={<Link href="/threads" />}
+          nativeButton={false}
+          variant="ghost"
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <Waypoints data-icon="inline-start" />
+          Threads
+        </Button>
+
+        <Button
           render={<Link href="/messages" />}
           nativeButton={false}
           variant="ghost"
@@ -243,6 +254,13 @@ export default function CreatorNavigation({
               >
                 <Search />
                 Discover artwork
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/threads" />}
+                className="px-2 py-2"
+              >
+                <Waypoints />
+                World Threads
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/messages" />}

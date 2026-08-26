@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import type { ImgHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import PolishedImage from "./polished-image";
 
@@ -14,6 +15,9 @@ type ArtworkMediaProps = {
   loop?: boolean;
   muted?: boolean;
   preload?: "none" | "metadata" | "auto";
+  loading?: ImgHTMLAttributes<HTMLImageElement>["loading"];
+  decoding?: ImgHTMLAttributes<HTMLImageElement>["decoding"];
+  fetchPriority?: ImgHTMLAttributes<HTMLImageElement>["fetchPriority"];
 };
 
 export function isVideoArtwork(
@@ -55,6 +59,9 @@ export default function ArtworkMedia({
   loop = false,
   muted = false,
   preload = "metadata",
+  loading,
+  decoding,
+  fetchPriority,
 }: ArtworkMediaProps) {
   if (!isVideoArtwork(mediaType, src)) {
     return (
@@ -63,6 +70,9 @@ export default function ArtworkMedia({
         alt={alt}
         wrapperClassName={wrapperClassName}
         className={imageClassName ?? className}
+        loading={loading}
+        decoding={decoding}
+        fetchPriority={fetchPriority}
       />
     );
   }

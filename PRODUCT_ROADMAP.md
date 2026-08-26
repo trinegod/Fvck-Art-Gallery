@@ -32,6 +32,24 @@ Move beyond ordinary boards by letting people connect images and videos into a n
 
 This creates something more useful than another infinite feed: a living map of how an idea evolves.
 
+### Shipped in v1
+
+- Public World Thread gallery and shareable thread detail pages
+- Signed-in composer sourced from Saved/Stash with 2–12 ordered pieces
+- Origin, palette, mood, composition, character, setting, motion, lore, and contrast relationships
+- Optional curator summary and per-step notes
+- Private drafts, public publishing, owner editing, opt-in forks, and permanent source lineage
+- Original artwork, world, and maker credit on every step
+- Signal Trails on artwork pages as a small, explainable discovery layer using shared world, mood, and tag signals
+- Atomic PostgreSQL RPCs, row-level authorization, reproducible SQL, and deterministic unit tests
+
+### Next validation gates
+
+- Measure whether Signal Trail clicks and completed Thread reads improve meaningful archive traversal
+- Add Named Stashes only after the save-to-thread loop shows repeat use
+- Add collaboration after ownership, moderation, deletion, and notification rules are specified and tested
+- Carry verified Collect destinations through threads after link validation and creator controls ship
+
 ## Discovery ideas informed by current Pinterest
 
 - Visual vocabulary: derive editable palette, material, silhouette, atmosphere, and composition facets from an image so people can search a vibe without knowing the right words.

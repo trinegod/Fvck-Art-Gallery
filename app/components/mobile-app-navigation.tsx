@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Home, MessageCircle, Plus, Search, UserRound } from "lucide-react";
+import {
+  Bell,
+  Home,
+  MessageCircle,
+  Plus,
+  Search,
+  UserRound,
+  Waypoints,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
 import {
   formatActivityCount,
@@ -17,7 +25,7 @@ type MobileAppNavigationProps = {
 };
 
 const itemClassName =
-  "nodeine-action flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
+  "nodeine-action flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[9px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300";
 
 export default function MobileAppNavigation({
   hidden = false,
@@ -78,6 +86,7 @@ export default function MobileAppNavigation({
 
   const homeActive = pathname === "/";
   const discoverActive = pathname.startsWith("/discover");
+  const threadsActive = pathname.startsWith("/threads");
   const publishActive = pathname.startsWith("/admin");
   const messagesActive = pathname.startsWith("/messages");
   const activityActive = pathname.startsWith("/activity");
@@ -87,8 +96,8 @@ export default function MobileAppNavigation({
   return (
     <nav
       aria-label="Primary app navigation"
-      className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-6 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
-      style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
+      className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-7 rounded-[1.35rem] border border-white/12 bg-zinc-950/88 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
+      style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
     >
       {onHome ? (
         <button
@@ -118,6 +127,15 @@ export default function MobileAppNavigation({
       >
         <Search className="size-4" aria-hidden="true" />
         Discover
+      </Link>
+
+      <Link
+        href="/threads"
+        aria-current={threadsActive ? "page" : undefined}
+        className={`${itemClassName} ${itemState(threadsActive)}`}
+      >
+        <Waypoints className="size-4" aria-hidden="true" />
+        Threads
       </Link>
 
       <Link

@@ -3,6 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import { Waypoints } from "lucide-react";
+import {
+  rankSignalTrail,
+  type SignalTrailArtwork,
+} from "@/lib/signal-trails";
+import ArtworkSignalTrail, {
+  type ArtworkSignalTrailItem,
+} from "../../components/artwork-signal-trail";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkMedia from "../../components/artwork-media";
@@ -48,6 +56,7 @@ type ArtworkPageData = {
   artwork: ArtworkRecord;
   collection: CollectionRecord;
   creator: CreatorRecord | null;
+  signalTrail: ArtworkSignalTrailItem[];
 };
 
 const uuidPattern =
@@ -104,10 +113,97 @@ const getArtworkPageData = cache(
 
     if (creatorError) throw creatorError;
 
+    const candidateSelect =
+      "id, collection_id, title, src, thumb_src, media_type, mood, tags";
+    const candidateRequests = [
+      database
+        .from("artworks")
+        .select(candidateSelect)
+        .eq("collection_id", artwork.collection_id)
+        .neq("id", artwork.id)
+        .order("sort_order", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(16),
+    ];
+
+    if (artwork.tags?.length) {
+      candidateRequests.push(
+        database
+          .from("artworks")
+          .select(candidateSelect)
+          .overlaps("tags", artwork.tags)
+          .neq("id", artwork.id)
+          .order("sort_order", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(32)
+      );
+    }
+
+    if (artwork.mood) {
+      candidateRequests.push(
+        database
+          .from("artworks")
+          .select(candidateSelect)
+          .eq("mood", artwork.mood)
+          .neq("id", artwork.id)
+          .order("sort_order", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(16)
+      );
+    }
+
+    const candidateResults = await Promise.all(candidateRequests);
+    const candidateRows = candidateResults.flatMap((result) =>
+      result.error ? [] : ((result.data ?? []) as ArtworkRecord[])
+    );
+    const currentSignalArtwork: SignalTrailArtwork = {
+      id: artwork.id,
+      collectionId: artwork.collection_id,
+      title: artwork.title,
+      src: artwork.src,
+      thumbSrc: artwork.thumb_src,
+      mediaType: artwork.media_type,
+      mood: artwork.mood,
+      tags: artwork.tags,
+    };
+    const rankedSignalTrail = rankSignalTrail(
+      currentSignalArtwork,
+      candidateRows.map((candidate) => ({
+        id: candidate.id,
+        collectionId: candidate.collection_id,
+        title: candidate.title,
+        src: candidate.src,
+        thumbSrc: candidate.thumb_src,
+        mediaType: candidate.media_type,
+        mood: candidate.mood,
+        tags: candidate.tags,
+      }))
+    );
+    const signalCollectionIds = Array.from(
+      new Set(rankedSignalTrail.map((candidate) => candidate.collectionId))
+    );
+    const { data: signalCollectionData } = signalCollectionIds.length
+      ? await database
+          .from("collections")
+          .select("id, title")
+          .in("id", signalCollectionIds)
+      : { data: [] };
+    const signalCollectionTitles = new Map(
+      (signalCollectionData ?? []).map((candidateCollection) => [
+        candidateCollection.id as string,
+        candidateCollection.title as string,
+      ])
+    );
+
     return {
       artwork,
       collection,
       creator: (creatorData as CreatorRecord | null) ?? null,
+      signalTrail: rankedSignalTrail.map((candidate) => ({
+        ...candidate,
+        collectionTitle:
+          signalCollectionTitles.get(candidate.collectionId) ?? "NODEINE",
+      })),
     };
   }
 );
@@ -168,7 +264,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
   const data = await getArtworkPageData(id);
   if (!data) notFound();
 
-  const { artwork, collection, creator } = data;
+  const { artwork, collection, creator, signalTrail } = data;
 
   return (
     <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
@@ -189,6 +285,9 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             </Link>
             <Link href="/saved" className="text-zinc-400 hover:text-white">
               Saved
+            </Link>
+            <Link href="/threads" className="text-zinc-400 hover:text-white">
+              Threads
             </Link>
             <Link href="/messages" className="text-zinc-400 hover:text-white">
               Inbox
@@ -305,11 +404,19 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
               artworkId={artwork.id}
               artworkTitle={artwork.title}
             />
+            <Link
+              href={`/threads/new?artwork=${artwork.id}`}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-violet-300/25 bg-violet-300/8 px-4 py-2.5 text-sm text-violet-100 transition hover:border-violet-300/60 hover:bg-violet-300/12"
+            >
+              <Waypoints className="size-4" aria-hidden="true" />
+              Thread it
+            </Link>
           </div>
 
           <ArtworkComments artworkId={artwork.id} />
         </aside>
       </div>
+      <ArtworkSignalTrail items={signalTrail} />
       <MobileAppNavigation />
     </main>
   );
