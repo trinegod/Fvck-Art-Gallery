@@ -8,6 +8,7 @@ import {
   Bookmark,
   ChevronDown,
   ExternalLink,
+  FlaskConical,
   Layers3,
   LogOut,
   MessageCircle,
@@ -158,6 +159,18 @@ export default function CreatorNavigation({
           Threads
         </Button>
 
+        {signedIn && (
+          <Button
+            render={<Link href="/forge" />}
+            nativeButton={false}
+            variant="ghost"
+            className="h-10 px-3 text-zinc-400 hover:text-white"
+          >
+            <FlaskConical data-icon="inline-start" />
+            Forge
+          </Button>
+        )}
+
         <Button
           render={<Link href="/messages" />}
           nativeButton={false}
@@ -261,6 +274,13 @@ export default function CreatorNavigation({
               >
                 <Waypoints />
                 World Threads
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                render={<Link href="/forge" />}
+                className="px-2 py-2"
+              >
+                <FlaskConical />
+                Forge Lab
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<Link href="/messages" />}

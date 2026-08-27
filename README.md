@@ -15,6 +15,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Personalized discovery, follows, likes, comments, activity, and private saves
 - World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, shareable Lineage Maps, and provenance-preserving forks
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
+- A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes
 - Direct and group messaging with realtime delivery, invitations, owner/admin/member roles, private media sharing, moderation controls, and archive-to-chat artwork cards
 - A Bulk Drop Studio for publishing up to 50 images or videos in one batch
 - An administrative workspace for managing creator profiles, collections, artwork, and media
@@ -36,7 +37,7 @@ Visitors can:
 - Browse public World Threads and inspect the maker and world credit behind every step
 - Browse public creator galleries and personalized recommendations
 
-Creators can manage their profile, upload an avatar, organize collections, edit artwork details, publish media in bulk, and build private direct or group conversations. They can also turn saved references into ordered World Threads, keep drafts private, publish them, and allow credited forks without losing source lineage. Group owners and admins can manage invitations, member roles, avatars, notification settings, reports, membership, and group deletion. Conversation members can share archive artwork or privately stored images and videos, then save shared artwork to their personal collection.
+Creators can manage their profile, upload an avatar, organize collections, edit artwork details, publish media in bulk, and build private direct or group conversations. They can also turn saved references into ordered World Threads, keep drafts private, publish them, and allow credited forks without losing source lineage. Forge Lab lets signed-in creators measure palette, tonal behavior, compositional weight, and texture from their own artwork in the browser, then export an editable visual recipe without spending credits or calling an AI provider. Group owners and admins can manage invitations, member roles, avatars, notification settings, reports, membership, and group deletion. Conversation members can share archive artwork or privately stored images and videos, then save shared artwork to their personal collection.
 
 ## Technology
 
@@ -83,7 +84,8 @@ npm run build
 ```text
 app/                     Archive, discovery, social, messaging, and admin experiences
 app/threads/             World Threads gallery, composer, detail, edit, and fork flows
-lib/                     Thread data contracts and deterministic Signal Trail ranking
+app/forge/               Creator-only Visual DNA and Prompt Foundry foundation
+lib/                     Thread contracts, Signal Trail ranking, and Visual DNA analysis
 public/art/              Full-resolution visual archive
 public/thumbs/           Performance-optimized gallery thumbnails
 public/video/            Short-form video archive
@@ -92,6 +94,8 @@ tests/                   Deterministic product and validation tests
 ```
 
 The World Threads v1 product contract, authorization model, and proof checklist are documented in `docs/WORLD_THREADS_V1.md`.
+
+Forge capabilities, quality gates, rights boundaries, and future credit-ledger rules are documented in `docs/FORGE_CAPABILITY_MATRIX.md`.
 
 ## Curated world imports
 

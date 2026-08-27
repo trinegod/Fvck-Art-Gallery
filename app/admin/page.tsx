@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  FlaskConical,
   FolderPlus,
   ImagePlus,
   Layers3,
@@ -1109,6 +1110,15 @@ export default function AdminPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                render={<Link href="/forge" />}
+                nativeButton={false}
+                variant="outline"
+                className="h-10 border-cyan-300/20 bg-cyan-300/5 px-3 text-cyan-200"
+              >
+                <FlaskConical data-icon="inline-start" />
+                Forge Lab
+              </Button>
               <Button
                 render={<Link href="/messages" />}
                 nativeButton={false}
