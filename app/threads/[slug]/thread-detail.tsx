@@ -1,10 +1,22 @@
 import Link from "next/link";
-import { ArrowDown, GitFork, Network, Route } from "lucide-react";
+import {
+  ArrowDown,
+  GitFork,
+  MessageCircleMore,
+  Network,
+  Route,
+  Waypoints,
+} from "lucide-react";
 import ArtworkMedia, {
   isVideoArtwork,
 } from "@/app/components/artwork-media";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
 import PolishedImage from "@/app/components/polished-image";
+import {
+  appendFeedReturnContext,
+  buildFeedReturnHref,
+  type FeedReturnContext,
+} from "@/lib/feed-return";
 import {
   worldThreadDescription,
   worldThreadItemAnchor,
@@ -12,6 +24,7 @@ import {
   type WorldThread,
 } from "@/lib/world-threads";
 import ThreadHeader from "../thread-header";
+import ThreadCard from "../thread-card";
 import ThreadActions from "./thread-actions";
 import ThreadLineageMap from "./thread-lineage-map";
 
@@ -23,8 +36,17 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default function ThreadDetail({ thread }: { thread: WorldThread }) {
+export default function ThreadDetail({
+  thread,
+  responses = [],
+  feedReturn = null,
+}: {
+  thread: WorldThread;
+  responses?: WorldThread[];
+  feedReturn?: FeedReturnContext | null;
+}) {
   const firstArtwork = thread.items[0]?.artwork;
+  const lastArtwork = thread.items.at(-1)?.artwork;
   const firstArtworkPreview = firstArtwork
     ? firstArtwork.thumbSrc || (isVideoArtwork(firstArtwork.mediaType, firstArtwork.src)
       ? "/video-placeholder.svg"
@@ -50,11 +72,11 @@ export default function ThreadDetail({ thread }: { thread: WorldThread }) {
 
         <div className="mx-auto max-w-5xl">
           <Link
-            href="/threads"
+            href={feedReturn ? buildFeedReturnHref(feedReturn) : "/threads"}
             className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-300 hover:text-cyan-200"
           >
             <Network className="size-3.5" aria-hidden="true" />
-            World Threads
+            {feedReturn ? "Back to feed" : "World Threads"}
           </Link>
 
           {thread.forkedFromId && (
@@ -146,7 +168,7 @@ export default function ThreadDetail({ thread }: { thread: WorldThread }) {
                       />
                     </div>
                   ) : (
-                    <Link href={`/artwork/${item.artwork.id}`} className="group relative min-h-[48svh] overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:min-h-[62svh] lg:min-h-[720px]">
+                    <Link href={feedReturn ? appendFeedReturnContext(`/artwork/${item.artwork.id}`, feedReturn) : `/artwork/${item.artwork.id}`} className="group relative min-h-[48svh] overflow-hidden bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300 sm:min-h-[62svh] lg:min-h-[720px]">
                       <ArtworkMedia
                         src={item.artwork.src}
                         posterSrc={item.artwork.thumbSrc}
@@ -196,7 +218,7 @@ export default function ThreadDetail({ thread }: { thread: WorldThread }) {
                           <p className="mt-1 text-zinc-300">{creator?.displayName || "NODEINE"}</p>
                         )}
                       </div>
-                      <Link href={`/artwork/${item.artwork.id}`} className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-zinc-500 hover:text-white">
+                      <Link href={feedReturn ? appendFeedReturnContext(`/artwork/${item.artwork.id}`, feedReturn) : `/artwork/${item.artwork.id}`} className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-zinc-500 hover:text-white">
                         Open original piece
                         <Route className="size-3.5" aria-hidden="true" />
                       </Link>
@@ -208,15 +230,105 @@ export default function ThreadDetail({ thread }: { thread: WorldThread }) {
           })}
         </div>
 
-        <div className="mt-14 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_50%_0%,rgba(103,232,249,.10),transparent_58%)] px-6 py-12 text-center sm:mt-20 sm:py-16">
-          <GitFork className="mx-auto size-7 text-cyan-300" aria-hidden="true" />
-          <h2 className="mt-4 text-2xl font-medium text-white">The path ends here. The lineage does not.</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-zinc-400">
+        <section
+          aria-labelledby="branch-point-title"
+          className="mt-14 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_50%_0%,rgba(103,232,249,.10),transparent_58%)] px-5 py-10 sm:mt-20 sm:px-8 sm:py-14"
+        >
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-cyan-300">
+              Branch point
+            </p>
+            <h2 id="branch-point-title" className="mt-4 text-2xl font-medium text-white sm:text-3xl">
+              Which truth should this Chronicle follow?
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
+              The canon remains intact. Choose a route into its sequence, its visual DNA, or the public interpretations it inspired.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-3 md:grid-cols-3">
+            {firstArtwork && (
+              <Link
+                href={`#${worldThreadItemAnchor(firstArtwork.id)}`}
+                className="group rounded-2xl border border-white/10 bg-black/30 p-5 transition hover:border-cyan-300/35 hover:bg-cyan-300/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              >
+                <Route className="size-5 text-cyan-300" aria-hidden="true" />
+                <span className="mt-5 block text-base font-medium text-white">Continue canon</span>
+                <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                  Return to the origin and follow the published sequence.
+                </span>
+              </Link>
+            )}
+            {lastArtwork && (
+              <Link
+                href={feedReturn ? appendFeedReturnContext(`/artwork/${lastArtwork.id}#signal-trail`, feedReturn) : `/artwork/${lastArtwork.id}#signal-trail`}
+                className="group rounded-2xl border border-white/10 bg-black/30 p-5 transition hover:border-violet-300/35 hover:bg-violet-300/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+              >
+                <Waypoints className="size-5 text-violet-300" aria-hidden="true" />
+                <span className="mt-5 block text-base font-medium text-white">Follow visual echo</span>
+                <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                  Leave the sequence through the final piece&apos;s Signal Trail.
+                </span>
+              </Link>
+            )}
+            <Link
+              href="#creator-responses"
+              className="group rounded-2xl border border-white/10 bg-black/30 p-5 transition hover:border-amber-300/35 hover:bg-amber-300/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+            >
+              <MessageCircleMore className="size-5 text-amber-300" aria-hidden="true" />
+              <span className="mt-5 block text-base font-medium text-white">Enter responses</span>
+              <span className="mt-2 block text-xs leading-5 text-zinc-500">
+                {responses.length
+                  ? `Explore ${responses.length} public ${responses.length === 1 ? "branch" : "branches"} from other makers.`
+                  : "See where the first public response will appear."}
+              </span>
+            </Link>
+          </div>
+
+          <p className="mx-auto mt-7 max-w-xl text-center text-xs leading-5 text-zinc-500">
             {thread.allowForks
-              ? "Fork this World Thread to carry its references into a new interpretation. The source path and every maker credit remain attached."
-              : "This curator has kept the path complete as published. You can still open and save every original piece."}
+              ? "Fork this Chronicle to publish your own response. Its source path and every maker credit stay attached."
+              : "This curator has kept the path complete as published. Existing public responses remain connected below."}
           </p>
-        </div>
+        </section>
+
+        <section
+          id="creator-responses"
+          aria-labelledby="creator-responses-title"
+          className="scroll-mt-8 pt-14 sm:pt-20"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-300">
+                Public branches
+              </p>
+              <h2 id="creator-responses-title" className="mt-3 text-3xl font-light tracking-tight text-white sm:text-4xl">
+                Creator responses
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-500">
+              {responses.length} published {responses.length === 1 ? "response" : "responses"}
+            </p>
+          </div>
+
+          {responses.length ? (
+            <div className="mt-7 grid gap-5 lg:grid-cols-2">
+              {responses.map((response) => (
+                <ThreadCard key={response.id} thread={response} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-7 rounded-2xl border border-dashed border-white/10 px-6 py-10 text-center">
+              <GitFork className="mx-auto size-6 text-zinc-600" aria-hidden="true" />
+              <p className="mt-4 text-sm text-zinc-400">No public responses have branched from this Chronicle yet.</p>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-zinc-600">
+                {thread.allowForks
+                  ? "Use Fork this path above to preserve the canon, change the interpretation, and become the first response."
+                  : "The curator is not accepting new forks from this path."}
+              </p>
+            </div>
+          )}
+        </section>
       </section>
 
       <MobileAppNavigation />

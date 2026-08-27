@@ -5,6 +5,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Waypoints } from "lucide-react";
 import {
+  buildFeedReturnHref,
+  parseFeedReturn,
+  type FeedReturnQuery,
+} from "@/lib/feed-return";
+import {
   rankSignalTrail,
   type SignalTrailArtwork,
 } from "@/lib/signal-trails";
@@ -23,6 +28,7 @@ import ProfileFollowControl from "../../components/profile-follow-control";
 
 type ArtworkPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<FeedReturnQuery>;
 };
 
 type ArtworkRecord = {
@@ -259,19 +265,22 @@ export async function generateMetadata({
   };
 }
 
-export default async function ArtworkPage({ params }: ArtworkPageProps) {
-  const { id } = await params;
+export default async function ArtworkPage({ params, searchParams }: ArtworkPageProps) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const data = await getArtworkPageData(id);
   if (!data) notFound();
 
   const { artwork, collection, creator, signalTrail } = data;
+  const feedReturn = parseFeedReturn(query);
+  const backHref = feedReturn ? buildFeedReturnHref(feedReturn) : "/";
+  const backLabel = feedReturn ? "Back to feed" : "Back to archive";
 
   return (
     <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <header className="border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
-            href="/"
+            href={backHref}
             className="text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
           >
             NODEINE
@@ -316,10 +325,10 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             className="absolute inset-0 size-full object-contain p-4 sm:p-8"
           />
           <Link
-            href="/"
+            href={backHref}
             className="absolute left-4 top-4 z-10 inline-flex min-h-10 items-center rounded-lg border border-white/15 bg-black/70 px-3 py-2 text-xs text-zinc-200 backdrop-blur hover:border-cyan-300 hover:text-white"
           >
-            ← Back to archive
+            ← {backLabel}
           </Link>
         </section>
 

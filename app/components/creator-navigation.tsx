@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ExternalLink,
   FlaskConical,
+  Home,
   Layers3,
   LogOut,
   MessageCircle,
@@ -139,6 +140,16 @@ export default function CreatorNavigation({
         aria-label="Creator controls"
         className="relative z-20 hidden w-full items-center justify-end gap-2 lg:flex"
       >
+        <Button
+          render={<Link href="/feed" />}
+          nativeButton={false}
+          variant="ghost"
+          className="h-10 px-3 text-zinc-400 hover:text-white"
+        >
+          <Home data-icon="inline-start" />
+          Feed
+        </Button>
+
         <Button
           render={<Link href="/discover" />}
           nativeButton={false}

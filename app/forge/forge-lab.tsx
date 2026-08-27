@@ -134,7 +134,11 @@ function MetricCard({
   );
 }
 
-export default function ForgeLab() {
+export default function ForgeLab({
+  initialArtworkId,
+}: {
+  initialArtworkId?: string;
+}) {
   const [authReady, setAuthReady] = useState(!supabase);
   const [userId, setUserId] = useState<string | null>(null);
   const [worlds, setWorlds] = useState<ForgeWorld[]>([]);
@@ -228,12 +232,19 @@ export default function ForgeLab() {
       );
 
       if (cancelled) return;
-      const firstWorld = nextWorlds.find((world) =>
-        nextArtworks.some((artwork) => artwork.collection_id === world.id)
+      const requestedArtwork = nextArtworks.find(
+        (artwork) => artwork.id === initialArtworkId
       );
-      const firstArtwork = firstWorld
+      const firstWorld = requestedArtwork
+        ? nextWorlds.find(
+            (world) => world.id === requestedArtwork.collection_id
+          )
+        : nextWorlds.find((world) =>
+            nextArtworks.some((artwork) => artwork.collection_id === world.id)
+          );
+      const firstArtwork = requestedArtwork ?? (firstWorld
         ? nextArtworks.find((artwork) => artwork.collection_id === firstWorld.id)
-        : null;
+        : null);
       setWorlds(nextWorlds);
       setArtworks(nextArtworks);
       setWorldId(firstWorld?.id ?? nextWorlds[0]?.id ?? "");
@@ -255,7 +266,7 @@ export default function ForgeLab() {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [initialArtworkId, userId]);
 
   const activeWorld = worlds.find((world) => world.id === worldId) ?? null;
   const worldArtworks = useMemo(

@@ -352,6 +352,36 @@ export async function getPublicWorldThreads(limit = 24) {
   return hydrateThreads(database, (data ?? []) as ThreadRow[], 3);
 }
 
+export async function getPublicWorldThreadsForArtworkIds(
+  artworkIds: string[],
+  limit = 24
+) {
+  const database = publicDatabase();
+  const ids = unique(artworkIds);
+  if (!database || !ids.length || limit <= 0) return [];
+
+  const { data: itemData, error: itemError } = await database
+    .from("world_thread_items")
+    .select("thread_id")
+    .in("artwork_id", ids);
+  if (itemError) throw itemError;
+
+  const threadIds = unique(
+    (itemData ?? []).map((item) => item.thread_id as string)
+  );
+  if (!threadIds.length) return [];
+
+  const { data, error } = await database
+    .from("world_threads")
+    .select(threadFields)
+    .in("id", threadIds)
+    .eq("visibility", "public")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrateThreads(database, (data ?? []) as ThreadRow[]);
+}
+
 export async function getPublicWorldThreadBySlug(slug: string) {
   const database = publicDatabase();
   if (!database) return null;
@@ -366,6 +396,24 @@ export async function getPublicWorldThreadBySlug(slug: string) {
   if (!data) return null;
   const [thread] = await hydrateThreads(database, [data as ThreadRow]);
   return thread ?? null;
+}
+
+export async function getPublicWorldThreadResponses(
+  threadId: string,
+  limit = 12
+) {
+  const database = publicDatabase();
+  if (!database || !threadId || limit <= 0) return [];
+
+  const { data, error } = await database
+    .from("world_threads")
+    .select(threadFields)
+    .eq("visibility", "public")
+    .eq("forked_from_id", threadId)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrateThreads(database, (data ?? []) as ThreadRow[], 3);
 }
 
 export async function getWorldThreadBySlug(

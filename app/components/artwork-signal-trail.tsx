@@ -18,7 +18,10 @@ export default function ArtworkSignalTrail({
   if (!items.length) return null;
 
   return (
-    <section className="border-t border-white/10 px-5 py-10 sm:px-8 sm:py-14">
+    <section
+      id="signal-trail"
+      className="scroll-mt-8 border-t border-white/10 px-5 py-10 sm:px-8 sm:py-14"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
