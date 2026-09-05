@@ -4,6 +4,17 @@
 
 NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 399 images and short-form videos across 18 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
 
+**Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
+
+## September 4, 2026 release
+
+- A cleaner mobile dock keeps Feed fixed and groups destinations under Explore, Create, and You.
+- Equally sized, centered section tabs replace the extra arrow. Native horizontal swiping, labeled tap controls, keyboard navigation, and activity indicators remain available.
+- Forge clearly distinguishes its working reference analysis and prompt export from planned in-app image generation. Copying a prompt does not transfer its source image to an external generator.
+- The release passed 39 automated tests, TypeScript checks, mobile browser verification, and a production build. Lint has no errors; four existing admin image-optimization warnings remain.
+
+Deployment and recovery boundaries are documented in [Release and backup notes](docs/RELEASE_AND_BACKUP.md).
+
 ## What this project demonstrates
 
 - Product design and information architecture for a large visual archive
@@ -42,6 +53,10 @@ Visitors can:
 
 Creators can manage their profile, upload an avatar, organize collections, edit artwork details, publish media in bulk, and build private direct or group conversations. They can also turn saved references into ordered World Threads, keep drafts private, publish them, and allow credited forks without losing source lineage. Forge Lab lets signed-in creators measure palette, tonal behavior, compositional weight, and texture from their own artwork in the browser, then export an editable visual recipe without spending credits or calling an AI provider. Group owners and admins can manage invitations, member roles, avatars, notification settings, reports, membership, and group deletion. Conversation members can share archive artwork or privately stored images and videos, then save shared artwork to their personal collection.
 
+## Forge generation status
+
+In-app image generation and editing are not connected yet. The planned integration sends creator-authorized references through a server-side model API, keeps provider credentials out of the browser, and saves outputs as private, versioned drafts. Quality, permission, moderation, and spending controls must be validated before public generation is enabled. See the [Forge capability matrix](docs/FORGE_CAPABILITY_MATRIX.md).
+
 ## Technology
 
 - Next.js 16
@@ -78,6 +93,7 @@ Environment files, dependencies, build output, private keys, and deployment stat
 
 ```bash
 npm test
+npx tsc --noEmit
 npm run lint
 npm run build
 ```

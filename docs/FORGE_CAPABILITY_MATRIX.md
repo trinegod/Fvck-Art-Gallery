@@ -1,7 +1,7 @@
 # NODEINE Forge Capability Matrix
 
 Status: working product contract
-Last updated: August 26, 2026
+Last updated: September 4, 2026
 
 September 4 priority note: Forge now has a first-class home in the mobile Create section. The next approved direction is reference-aware image generation for creator-owned Worlds, immutable revision history, and simpler onboarding. This navigation work does not enable generation, hosted semantic analysis, revision persistence, or billing. The first tracer slice below is implemented; the remaining release gates still apply.
 
@@ -19,11 +19,11 @@ Forge is three connected modules:
 
 | Capability | User outcome | Technical approach | Stage | Charging posture | Acceptance gate |
 | --- | --- | --- | --- | --- | --- |
-| Pixel palette | Dominant colors and proportions | Deterministic browser/server image sampling | Building now | Free | Stable output for a fixed image; transparent pixels ignored |
-| Tonal profile | Measured luminance, shadows, highlights, contrast, saturation, warmth | Deterministic pixel statistics | Building now | Free | Golden fixtures produce expected bands |
-| Composition signal | Explainable focal weight and aspect behavior | Contrast/saturation-weighted pixel centroid | Building now | Free | Labeled as a signal, never as semantic certainty |
-| Texture signal | Minimal-to-dense edge detail | Neighbor luminance-gradient sampling | Building now | Free | Deterministic and resolution-normalized |
-| Portable prompt | Copyable visual recipe from an owned work | Visual DNA plus artwork metadata | Building now | Free | Includes originality and continuity constraints |
+| Pixel palette | Dominant colors and proportions | Deterministic browser image sampling | Implemented | Free | Stable output for a fixed image; transparent pixels ignored |
+| Tonal profile | Measured luminance, shadows, highlights, contrast, saturation, warmth | Deterministic pixel statistics | Implemented | Free | Golden fixtures produce expected bands |
+| Composition signal | Explainable focal weight and aspect behavior | Contrast/saturation-weighted pixel centroid | Implemented | Free | Labeled as a signal, never as semantic certainty |
+| Texture signal | Minimal-to-dense edge detail | Neighbor luminance-gradient sampling | Implemented | Free | Deterministic and resolution-normalized |
+| Portable prompt | Copyable visual recipe from an owned work | Visual DNA plus artwork metadata | Implemented | Free | Includes originality and continuity constraints |
 | Semantic visual analysis | Materials, lighting direction, shot type, motifs, subject regions | Structured-output vision model | Next | Small free allowance, then credits if provider-metered | Confidence, model version, and unknown states stored |
 | Silhouette extraction | Mask and shape profile for characters/objects | Segmentation model plus shape descriptors | Next | Free analysis allowance | Human-visible mask; correction supported |
 | Visual similarity | Actual-pixel Signal Trails and reference recommendations | Versioned embeddings in pgvector | Next | Free discovery | Human-labeled precision benchmark beats metadata baseline |
