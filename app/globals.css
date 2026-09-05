@@ -217,10 +217,6 @@
   box-shadow: inset 0 1px 0 rgb(var(--nav-section-accent) / 12%);
 }
 
-.nodeine-nav-next:hover {
-  color: rgb(var(--nav-section-accent));
-}
-
 .nodeine-mobile-navigation :is(a, button):focus-visible {
   /* Keep keyboard focus independent from the decorative inset shadows. */
   outline: 2px solid var(--ring);

@@ -27,7 +27,7 @@ Feed is fixed at the leading edge. Three labeled sections organize the remaining
 
 Archive retains its existing name and collection-browser destination. Individual World portals remain reachable through the feed and archive; do not invent an empty Worlds route.
 
-Sections switch the dock's destinations, not the current page. Native horizontal scroll snapping, three visible section labels, and a next-section arrow provide gesture and non-gesture access. Feed remains visible in every section. A route change selects its owning section; viewport resizing preserves the currently browsed section. Desktop navigation is unchanged at 1024px and above.
+Sections switch the dock's destinations, not the current page. Native horizontal scroll snapping and three visible, equally sized section tabs provide gesture and non-gesture access. The tabs span the same width as the destinations beneath them; the next-section arrow was removed following creator feedback to reduce clutter. Feed remains visible in every section. A route change selects its owning section; viewport resizing preserves the currently browsed section. Desktop navigation is unchanged at 1024px and above.
 
 ## Interaction and accessibility
 

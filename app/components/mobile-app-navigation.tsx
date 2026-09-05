@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Archive, Bell, Bookmark, ChevronLeft, ChevronRight, FlaskConical, Home,
+  Archive, Bell, Bookmark, FlaskConical, Home,
   MessageCircle, Plus, Search, SquarePen, UserRound, Waypoints,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
@@ -98,7 +98,6 @@ function MobileNavigationDock({
   const railRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeDestination = mobileDestinationForPath(pathname);
-  const nextGroup = (selectedGroup + 1) % mobileNavigationGroups.length;
 
   useEffect(() => {
     const rail = railRef.current;
@@ -155,7 +154,7 @@ function MobileNavigationDock({
 
       <div className="min-w-0 flex-1 border-l border-white/10 pl-2">
         <div className="flex items-center">
-          <div role="tablist" aria-label="Navigation sections" className="flex min-w-0 flex-1">
+          <div role="tablist" aria-label="Navigation sections" aria-describedby={id + "-hint"} className="grid min-w-0 flex-1 grid-cols-3">
             {mobileNavigationGroups.map((group, index) => (
               <button
                 key={group.id}
@@ -191,16 +190,6 @@ function MobileNavigationDock({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => selectGroup(nextGroup)}
-            aria-label={"Show " + mobileNavigationGroups[nextGroup].label + " destinations"}
-            aria-describedby={id + "-hint"}
-            title={"Swipe or tap: " + mobileNavigationGroups[nextGroup].label}
-            className="nodeine-action nodeine-nav-next grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
-          >
-            {nextGroup === 0 ? <ChevronLeft className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
-          </button>
         </div>
         <p id={id + "-hint"} className="sr-only">Swipe sideways or choose a section to see its destinations. Feed stays available.</p>
         <div ref={railRef} onScroll={syncScrolledGroup} className="nodeine-nav-rail flex overflow-x-auto overscroll-x-contain">

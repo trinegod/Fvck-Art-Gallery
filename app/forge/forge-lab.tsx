@@ -388,15 +388,15 @@ export default function ForgeLab({
         <div className="relative mx-auto max-w-7xl">
           <Badge className="border border-cyan-300/20 bg-cyan-300/8 text-cyan-200">
             <FlaskConical data-icon="inline-start" />
-            Foundation release · zero credits
+            Reference analysis + prompt export
           </Badge>
           <h1 className="mt-6 max-w-4xl text-4xl font-light tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
             Measure the visual language already inside your World.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg sm:leading-8">
-            Visual DNA reads real pixels locally, then Prompt Foundry translates
-            those measurements into a portable creation recipe. Nothing is
-            generated, published, or charged in this release.
+            Visual DNA measures your artwork locally. Prompt Foundry turns those
+            measurements into a prompt for an external image generator. In-app
+            image generation is not connected yet. No credits are used here.
           </p>
           <div className="mt-7 flex flex-wrap gap-3 text-xs text-zinc-500">
             {[
@@ -559,13 +559,14 @@ export default function ForgeLab({
               <Card className="border-violet-300/12 bg-violet-300/[0.035] ring-0">
                 <CardHeader>
                   <CardDescription className="font-mono text-[10px] uppercase tracking-[0.2em] text-violet-300">
-                    Deliberately gated
+                    Not connected yet
                   </CardDescription>
                   <CardTitle className="text-lg text-white">Character Forge</CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs leading-5 text-zinc-500">
-                  Generation, precision editing, identity lock, and upscaling stay
-                  disabled until the multi-World quality and cost benchmark passes.
+                  In-app image generation and editing are planned, not available
+                  in this release. They still need a model integration and
+                  quality and cost validation across different Worlds.
                 </CardContent>
               </Card>
             </div>
@@ -752,8 +753,10 @@ export default function ForgeLab({
                           Portable creation recipe
                         </CardTitle>
                         <CardDescription className="mt-2 max-w-2xl leading-6 text-zinc-500">
-                          Edit the intent, then copy a provider-neutral prompt grounded
-                          in measured pixels and existing World metadata.
+                          Edit the intent, then copy this prompt into your image
+                          generator. Attach the original artwork there to use it
+                          as a visual reference; copying this text does not
+                          transfer the image.
                         </CardDescription>
                       </div>
                       <Badge className="mt-1 border border-emerald-300/15 bg-emerald-300/8 text-emerald-200">
@@ -811,9 +814,9 @@ export default function ForgeLab({
                       Your first measurement is waiting.
                     </h2>
                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
-                      Select one of your images and measure it. Silhouette masks and
-                      semantic material analysis remain clearly gated for the next
-                      model-backed release.
+                      Select one of your images to measure its palette, tone,
+                      composition, and texture. This creates a prompt, not a
+                      new image.
                     </p>
                   </CardContent>
                 </Card>

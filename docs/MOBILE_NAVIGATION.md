@@ -6,7 +6,7 @@ The visual pass uses a graphite floating surface, a subtle top highlight, inset 
 
 ## Contract
 
-Feed remains fixed. Explore contains Discover, Archive, and Threads; Create contains Forge, Publish, and New Thread; You contains Saved, Inbox, Activity, and the viewer's Profile. The section labels and next-section arrow work without swiping. There is no drawer, modal focus trap, or body scroll lock.
+Feed remains fixed. Explore contains Discover, Archive, and Threads; Create contains Forge, Publish, and New Thread; You contains Saved, Inbox, Activity, and the viewer's Profile. Three equally sized section tabs span the destination rail, centered without a next-section arrow. The labels work without swiping. There is no drawer, modal focus trap, or body scroll lock.
 
 Choosing a section does not navigate or discard form state. Choosing a destination uses an existing route and its existing access checks. Direct routes and browser history select the corresponding section. Resizing aligns the selected panel. Only the active panel participates in keyboard navigation; section selection supports arrow keys and Home/End. Unread activity remains visible on You, with its count on Activity.
 
@@ -25,9 +25,11 @@ The shared CSS reserves bottom clearance only for mobile main elements containin
 
 This release makes Forge easier to find. It does not add image generation, semantic reference analysis, revision storage, new billing, or a new onboarding flow. Those priorities are preserved in `PRODUCT_ROADMAP.md` and `docs/FORGE_CAPABILITY_MATRIX.md`.
 
+Forge explicitly labels in-app generation as not connected yet. Prompt export explains that the user must attach the original artwork in their external generator; copying text does not transfer a reference image.
+
 ## Validation
 
-Automated suite, type-check, lint, production build, and browser verification are required before delivery. Browser checks should include 320px/390px widths, section tabs and arrow button, keyboard focus, native horizontal scroll, route entry/Back, and Creator Studio return navigation. A physical-device touch/VoiceOver check remains valuable after browser emulation.
+Automated suite, type-check, lint, production build, and browser verification are required before delivery. Browser checks should include 320px/390px widths, centered section tabs, keyboard focus, native horizontal scroll, route entry/Back, and Creator Studio return navigation. A physical-device touch/VoiceOver check remains valuable after browser emulation.
 
 September 4 verification:
 
@@ -37,3 +39,5 @@ September 4 verification:
 - `npx next build --webpack`: production build passed.
 - Browser: 320px and 390px phone layouts have no page-level horizontal overflow; visible controls meet 44px minimum targets. Native horizontal scrolling switches Create to You; section buttons and keyboard Home/Tab work. Forge, Publish, and New Thread routes open in Create; browser Back returns to Forge in Create. At 768px the dock realigns; at 1280px it is hidden. No browser warnings/errors were captured during these checks.
 - Not claimed as browser-tested: physical touchscreen/VoiceOver, reduced-motion OS emulation, a fresh signed-out session, or nonzero realtime notification delivery. Those paths preserve the existing access/count mechanisms and use nonanimated section changes.
+
+Same-day centering follow-up: removed the next-section arrow. At 320px and 390px, the tab row and destination rail share the same left edge and width, tabs have equal widths and 44px heights, and the page has no horizontal overflow. Native scrolling still switches Create to You; keyboard ArrowRight and Tab reach You and then Saved. The 39-test suite, type-check, lint (same four warnings), and webpack production build passed again.
