@@ -13,6 +13,7 @@ Let people discover authored visual Worlds, understand relationships, and create
 - Typography: `--font-sans` for reading, `--font-mono` for supporting metadata. No new fonts, external assets, or dependencies for navigation.
 - Spacing: 4px rhythm; mobile dock 12px viewport gutter, 6px internal padding, 44px minimum controls, 56px destination row.
 - Layers: mobile dock z40, existing dialogs z50 and above. No navigation overlay or body scroll lock.
+- Dock finish: shallow graphite gradient, translucent highlight along the upper edge, a quiet selected-section pill, and consistent inset icon wells. Explore uses ice cyan, Create pale lavender, and You neutral silver; persistent Feed and keyboard focus retain cyan. Selection is also identified by shape/underline, never color alone. No looping glow or entrance animation.
 
 ## Mobile information architecture
 
@@ -42,6 +43,8 @@ Sections switch the dock's destinations, not the current page. Native horizontal
 ## Comparative evidence
 
 The synthesis takes concise grouped labels and explicit overflow controls from [Carbon's tab guidance](https://carbondesignsystem.com/components/tabs/usage/) and focus/hidden-panel principles from the [WAI carousel pattern](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/). The [awesome-design-md index](https://github.com/VoltAgent/awesome-design-md) was inspected as a secondary reference; no brand assets or implementation were copied. This is a NODEINE navigation component, not an autoplay content carousel.
+
+The visual refinement also considered [Linear's March 2026 refresh](https://linear.app/now/behind-the-latest-design-refresh) (quieter navigation, softer structural separators) and [Geist's tabs](https://vercel.com/geist/tabs) (concise labels, instant sibling-view changes, visible focus). The dock tabs switch sibling navigation panels; the destinations inside remain ordinary page links. The final treatment retains NODEINE's own artwork-first identity.
 
 ## Verification gate
 

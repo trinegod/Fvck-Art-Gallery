@@ -141,19 +141,20 @@ function MobileNavigationDock({
   return (
     <nav
       aria-label="Primary app navigation"
+      data-section={mobileNavigationGroups[selectedGroup].id}
       className="nodeine-mobile-navigation fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-xl items-stretch gap-2 rounded-[1.35rem] border border-white/12 bg-zinc-950/95 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.75)] backdrop-blur-2xl lg:hidden"
     >
       <Link
         href="/feed"
         aria-current={activeDestination === "feed" ? "page" : undefined}
-        className={[destinationClassName, "!min-w-14 !flex-none", destinationState(activeDestination === "feed")].join(" ")}
+        className={[destinationClassName, "nodeine-nav-feed !min-w-14 !flex-none", destinationState(activeDestination === "feed")].join(" ")}
       >
         <Home className="size-5" aria-hidden="true" />
         Feed
       </Link>
 
       <div className="min-w-0 flex-1 border-l border-white/10 pl-2">
-        <div className="flex items-center border-b border-white/8">
+        <div className="flex items-center">
           <div role="tablist" aria-label="Navigation sections" className="flex min-w-0 flex-1">
             {mobileNavigationGroups.map((group, index) => (
               <button
@@ -178,7 +179,7 @@ function MobileNavigationDock({
                   event.preventDefault();
                   selectGroup(target, true);
                 }}
-                className={["nodeine-action relative min-h-11 min-w-11 flex-1 rounded-lg px-1 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300", selectedGroup === index ? "text-cyan-200 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-cyan-300" : "text-zinc-400 hover:text-white"].join(" ")}
+                className="nodeine-action nodeine-nav-section relative min-h-11 min-w-11 flex-1 rounded-lg px-1 text-xs font-medium text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
               >
                 {group.label}
                 {group.id === "you" && unreadActivityCount > 0 && (
@@ -196,7 +197,7 @@ function MobileNavigationDock({
             aria-label={"Show " + mobileNavigationGroups[nextGroup].label + " destinations"}
             aria-describedby={id + "-hint"}
             title={"Swipe or tap: " + mobileNavigationGroups[nextGroup].label}
-            className="nodeine-action grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
+            className="nodeine-action nodeine-nav-next grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
           >
             {nextGroup === 0 ? <ChevronLeft className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
           </button>
@@ -218,10 +219,10 @@ function MobileNavigationDock({
                 const active = activeDestination === destination.id;
                 const href = destination.id === "profile" ? profileHref : destination.href;
                 const current = active ? (pathname === href ? "page" : "location") : undefined;
-                const className = [destinationClassName, destinationState(active)].join(" ");
+                const className = [destinationClassName, "nodeine-nav-destination", destinationState(active)].join(" ");
                 const content = (
                   <>
-                    <span className="relative">
+                    <span className="nodeine-nav-icon relative grid size-7 place-items-center rounded-lg">
                       <Icon className="size-[18px]" aria-hidden="true" />
                       {destination.id === "activity" && unreadActivityCount > 0 && (
                         <span className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 font-mono text-[8px] leading-4 text-zinc-950">
@@ -234,9 +235,9 @@ function MobileNavigationDock({
                   </>
                 );
                 return destination.id === "archive" && onHome ? (
-                  <button key={destination.id} type="button" onClick={onHome} aria-current={current} className={className}>{content}</button>
+                  <button key={destination.id} type="button" onClick={onHome} aria-current={current} className={className} data-active={active}>{content}</button>
                 ) : (
-                  <Link key={destination.id} href={href} aria-current={current} prefetch={selectedGroup === index ? undefined : false} className={className}>{content}</Link>
+                  <Link key={destination.id} href={href} aria-current={current} prefetch={selectedGroup === index ? undefined : false} className={className} data-active={active}>{content}</Link>
                 );
               })}
             </div>

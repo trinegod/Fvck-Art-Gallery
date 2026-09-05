@@ -140,6 +140,93 @@
   transform: scale(0.965);
 }
 
+.nodeine-mobile-navigation {
+  --nav-section-accent: 165 243 252;
+  background:
+    radial-gradient(ellipse at 65% 0%, rgb(var(--nav-section-accent) / 6%), transparent 68%),
+    linear-gradient(165deg, rgb(24 26 31 / 97%), rgb(10 11 14 / 97%));
+  border-color: rgb(255 255 255 / 14%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    0 8px 24px rgb(0 0 0 / 35%),
+    0 24px 64px rgb(0 0 0 / 50%);
+}
+
+.nodeine-mobile-navigation[data-section="create"] {
+  --nav-section-accent: 221 214 254;
+}
+
+.nodeine-mobile-navigation[data-section="you"] {
+  --nav-section-accent: 229 231 235;
+}
+
+.nodeine-nav-feed[aria-current] {
+  background: linear-gradient(160deg, rgb(103 232 249 / 17%), rgb(103 232 249 / 5%));
+  box-shadow: inset 0 0 0 1px rgb(103 232 249 / 12%);
+}
+
+.nodeine-nav-feed svg {
+  filter: drop-shadow(0 0 7px rgb(103 232 249 / 15%));
+}
+
+.nodeine-nav-section::before {
+  position: absolute;
+  content: "";
+  inset: 7px 2px;
+  border-radius: 8px;
+  background: rgb(var(--nav-section-accent) / 0%);
+  pointer-events: none;
+}
+
+.nodeine-nav-section[aria-selected="true"] {
+  color: rgb(var(--nav-section-accent));
+}
+
+.nodeine-nav-section[aria-selected="true"]::before {
+  background: rgb(var(--nav-section-accent) / 8%);
+  box-shadow: inset 0 0 0 1px rgb(var(--nav-section-accent) / 9%);
+}
+
+.nodeine-nav-section[aria-selected="true"]::after {
+  position: absolute;
+  content: "";
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(var(--nav-section-accent));
+  bottom: 3px;
+  left: calc(50% - 6px);
+}
+
+.nodeine-nav-destination {
+  gap: 2px;
+}
+
+.nodeine-nav-icon {
+  background: rgb(255 255 255 / 3%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.nodeine-nav-destination[data-active="true"] {
+  background: rgb(var(--nav-section-accent) / 5%);
+  color: rgb(var(--nav-section-accent));
+}
+
+.nodeine-nav-destination[data-active="true"] .nodeine-nav-icon {
+  background: rgb(var(--nav-section-accent) / 11%);
+  box-shadow: inset 0 1px 0 rgb(var(--nav-section-accent) / 12%);
+}
+
+.nodeine-nav-next:hover {
+  color: rgb(var(--nav-section-accent));
+}
+
+.nodeine-mobile-navigation :is(a, button):focus-visible {
+  /* Keep keyboard focus independent from the decorative inset shadows. */
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 .nodeine-nav-rail {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;

@@ -13,6 +13,8 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Native image and short-form video playback across discovery, collection, World Thread, and Film Continuity Map views
 - Creator profiles with public portfolio routes
 - Personalized discovery, follows, likes, comments, activity, and private saves
+- A connected Feed with For You, Discover, and Following modes, plus World Portals for Gallery, Threads, Film, and Signals
+- A mobile dock with an always-accessible Feed and swipeable Explore, Create, and You sections, labeled tap controls, keyboard navigation, and activity indicators
 - World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, shareable Lineage Maps, and provenance-preserving forks
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes
@@ -28,6 +30,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 Visitors can:
 
 - Explore 18 themed visual-world collections containing 399 pieces
+- Browse the connected Feed, enter a World or Chronicle, and return to the originating artwork in the feed
 - Open individual pieces in an immersive lightbox
 - Navigate artwork with buttons or keyboard controls
 - View moods, tags, collection context, and creator information
@@ -83,6 +86,8 @@ npm run build
 
 ```text
 app/                     Archive, discovery, social, messaging, and admin experiences
+app/feed/                Connected Signal Deck with public inventory and social actions
+app/worlds/              World Portals with Gallery, Threads, Film, and Signals layers
 app/threads/             World Threads gallery, composer, detail, edit, and fork flows
 app/forge/               Creator-only Visual DNA and Prompt Foundry foundation
 lib/                     Thread contracts, Signal Trail ranking, and Visual DNA analysis
@@ -96,6 +101,8 @@ tests/                   Deterministic product and validation tests
 The World Threads v1 product contract, authorization model, and proof checklist are documented in `docs/WORLD_THREADS_V1.md`.
 
 Forge capabilities, quality gates, rights boundaries, and future credit-ledger rules are documented in `docs/FORGE_CAPABILITY_MATRIX.md`.
+
+The connected feed is documented in `docs/FEED_V1.md`. Mobile grouping, interaction rules, and verification are in `docs/MOBILE_NAVIGATION.md`; the shared visual contract is in `DESIGN.md`.
 
 ## Curated world imports
 

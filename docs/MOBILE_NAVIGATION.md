@@ -2,6 +2,8 @@
 
 Implemented September 4, 2026. Replaces the More bottom sheet with an inline, swipeable dock across the app's mobile surfaces, including Creator Studio access and publishing.
 
+The visual pass uses a graphite floating surface, a subtle top highlight, inset icon controls, and distinct but restrained selected-section accents. The persistent Feed anchor remains cyan. See `DESIGN.md` for the comparative design references and originality boundary.
+
 ## Contract
 
 Feed remains fixed. Explore contains Discover, Archive, and Threads; Create contains Forge, Publish, and New Thread; You contains Saved, Inbox, Activity, and the viewer's Profile. The section labels and next-section arrow work without swiping. There is no drawer, modal focus trap, or body scroll lock.
