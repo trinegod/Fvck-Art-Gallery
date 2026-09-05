@@ -150,7 +150,7 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
       <div className="mx-auto max-w-7xl px-4 py-9 sm:px-8 sm:py-12">
         <CreatorGallery collections={collections} artworks={artworks} />
       </div>
-      <MobileAppNavigation profileHref={`/creator/${profile.username}`} />
+      <MobileAppNavigation />
     </main>
   );
 }

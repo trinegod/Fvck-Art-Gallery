@@ -140,6 +140,26 @@
   transform: scale(0.965);
 }
 
+.nodeine-nav-rail {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.nodeine-nav-rail::-webkit-scrollbar {
+  display: none;
+}
+
+@media (width < 64rem) {
+  /* Covers the archive header's nested dock as well as full-page Studio. */
+  main:has(.nodeine-mobile-navigation) {
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+
+  html:has(.nodeine-mobile-navigation) {
+    scroll-padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 .cn-toast {
   border-color: rgb(255 255 255 / 12%) !important;
   background: rgb(9 9 11 / 94%) !important;

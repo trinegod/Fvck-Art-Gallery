@@ -1,6 +1,18 @@
 # NODEINE Product Roadmap
 
-Updated August 2026. This file is the durable product memory for the launch path and the ideas we want to revisit after the current media expansion.
+Updated September 4, 2026. This file is the durable product memory for the launch path and the ideas we want to revisit after the current media expansion.
+
+## Current priority: discovery into creation
+
+The September 4 review of the “Explore Astra project potential” task established a connected loop: discover artwork, save it, develop an idea, and publish a credited interpretation.
+
+- **Implemented locally:** mobile navigation grouped into Explore, Create, and You, with Feed always accessible, native horizontal swiping, and labeled tap alternatives. Forge, Publish, and New Thread live in Create. See `docs/MOBILE_NAVIGATION.md`.
+- **Next Forge stage:** useful reference-conditioned image generation across creator-owned Worlds, with semantic reference analysis and creator-controlled World rules. Measure quality against diverse approved reference sets before exposing a paid generator.
+- **Revision history:** immutable originals, parent-linked versions, side-by-side comparison, branching, and restore before iterative generation/editing ships.
+- **Simpler onboarding:** guide creators through one World, a first upload, and one useful Forge or Thread action; introduce advanced tools progressively.
+- **Later discovery:** visual-intent search and creator-approved Thread suggestions. These are proposed integrations, not capabilities activated by changing the coding assistant.
+
+Forge currently performs browser-local pixel analysis and portable prompt construction only. Image generation, semantic AI interpretation, revision storage, and charging are not implemented by the navigation release. Provider choice, rights, server-side credentials, budgets, and benchmark gates remain in `docs/FORGE_CAPABILITY_MATRIX.md`.
 
 ## Launch target: the next 1–2 weeks
 

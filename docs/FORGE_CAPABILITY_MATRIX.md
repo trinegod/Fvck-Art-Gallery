@@ -3,6 +3,8 @@
 Status: working product contract
 Last updated: August 26, 2026
 
+September 4 priority note: Forge now has a first-class home in the mobile Create section. The next approved direction is reference-aware image generation for creator-owned Worlds, immutable revision history, and simpler onboarding. This navigation work does not enable generation, hosted semantic analysis, revision persistence, or billing. The first tracer slice below is implemented; the remaining release gates still apply.
+
 ## Product boundary
 
 NODEINE remains a free social art archive first. Forge is an optional creator system layered onto Worlds, artwork permissions, Threads, Signal Trails, Lineage, and Film Continuity. It must help creators understand, describe, generate, and refine work without silently changing canon or exposing private references.

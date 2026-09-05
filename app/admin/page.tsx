@@ -65,6 +65,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
+import MobileAppNavigation from "@/app/components/mobile-app-navigation";
 import {
   formatActivityCount,
   useUnreadActivityCount,
@@ -863,6 +864,7 @@ export default function AdminPage() {
             <Sparkles className="size-4 animate-pulse text-cyan-300" />
             Loading archive access
           </div>
+          <MobileAppNavigation />
         </main>
       </>
     );
@@ -1034,6 +1036,7 @@ export default function AdminPage() {
               Independent archive tools for artists building impossible worlds.
             </p>
           </section>
+          <MobileAppNavigation />
         </main>
       </>
     );
@@ -2008,6 +2011,7 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
         </section>
+        <MobileAppNavigation />
       </main>
     </>
   );

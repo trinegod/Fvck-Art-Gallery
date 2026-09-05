@@ -49,7 +49,9 @@ production dependency.
 - Visible actions are links or working controls; no decorative action buttons.
 - Only an opened discussion mounts its comments query.
 - Images below the first card are lazy-loaded; videos use `preload="none"`.
-- Mobile uses the existing app navigation and 44px minimum action targets.
+- Mobile keeps Feed accessible beside swipeable Explore, Create, and You
+  destination groups, with labeled section buttons, keyboard support, and 44px
+  minimum action targets. See `docs/MOBILE_NAVIGATION.md`.
 - Reduced-motion preferences retain usability without relying on animation.
 - Empty, missing-environment, signed-out Following, and no-layer-content states
   are explicit.
