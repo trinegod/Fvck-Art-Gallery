@@ -66,6 +66,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
+import DesktopAppNavigation from "@/app/components/desktop-app-navigation";
 import {
   formatActivityCount,
   useUnreadActivityCount,
@@ -860,6 +861,7 @@ export default function AdminPage() {
     return (
       <>
         <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-400">
+          <DesktopAppNavigation className="absolute right-8 top-8" />
           <div className="flex items-center gap-3 text-sm uppercase tracking-[0.24em]">
             <Sparkles className="size-4 animate-pulse text-cyan-300" />
             Loading archive access
@@ -874,6 +876,7 @@ export default function AdminPage() {
     return (
       <>
         <main className="relative min-h-screen overflow-hidden bg-zinc-950 px-5 py-12 text-zinc-100 sm:py-20">
+          <DesktopAppNavigation className="absolute right-8 top-6 z-10" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_85%_90%,rgba(8,145,178,0.08),transparent_32%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:52px_52px]" />
 
@@ -1088,6 +1091,7 @@ export default function AdminPage() {
         <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:56px_56px]" />
 
         <section className="relative mx-auto max-w-6xl">
+          <DesktopAppNavigation className="mb-6 justify-end" />
           <header className="flex flex-col gap-6 border-b border-white/10 pb-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Link

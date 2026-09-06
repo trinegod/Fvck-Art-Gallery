@@ -2,14 +2,18 @@ import Link from "next/link";
 import { ArrowUpRight, GitFork, Route } from "lucide-react";
 import PolishedImage from "@/app/components/polished-image";
 import type { WorldThread } from "@/lib/world-threads";
+import { appendFeedReturnContext, type FeedReturnContext } from "@/lib/feed-return";
 
-export default function ThreadCard({ thread }: { thread: WorldThread }) {
+export default function ThreadCard({ thread, feedReturn = null }: {
+  thread: WorldThread;
+  feedReturn?: FeedReturnContext | null;
+}) {
   const coverItems = thread.items.slice(0, 3);
 
   return (
     <article className="group overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.025] transition-colors hover:border-cyan-300/30">
       <Link
-        href={`/threads/${thread.slug}`}
+        href={feedReturn ? appendFeedReturnContext(`/threads/${thread.slug}`, feedReturn) : `/threads/${thread.slug}`}
         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300"
       >
         <div className="grid aspect-[4/3] grid-cols-3 gap-px overflow-hidden bg-black">

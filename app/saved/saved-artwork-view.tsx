@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
-import ActivityNavLink from "../components/activity-nav-link";
+import { createAccountScope, observeAccount } from "@/lib/activity-session";
+import DesktopAppNavigation from "../components/desktop-app-navigation";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
 import ArtworkLikeButton from "../components/artwork-like-button";
@@ -79,24 +80,13 @@ export default function SavedArtworkView() {
     const client = supabase;
     if (!client) return;
     const database = client;
-    let cancelled = false;
-    let authRefreshTimer: number | null = null;
+    const scope = createAccountScope();
 
     async function loadSavedArtwork(userId: string | null) {
-      if (!userId) {
-        if (!cancelled) {
-          setSavedArtworks([]);
-          setViewerProfile(null);
-          setLoadState("signed-out");
-          setError(null);
-        }
-        return;
-      }
-
-      if (!cancelled) {
-        setLoadState("loading");
-        setError(null);
-      }
+      const isCurrent = scope.latest("saved", userId);
+      if (!userId || !isCurrent()) return;
+      setLoadState("loading");
+      setError(null);
 
       const [savesResult, viewerProfileResult] = await Promise.all([
         database
@@ -111,7 +101,7 @@ export default function SavedArtworkView() {
           .maybeSingle(),
       ]);
 
-      if (cancelled) return;
+      if (!isCurrent()) return;
 
       if (savesResult.error) {
         setLoadState("unavailable");
@@ -140,7 +130,7 @@ export default function SavedArtworkView() {
         .select("id, collection_id, title, src, thumb_src, media_type, mood, tags")
         .in("id", artworkIds);
 
-      if (cancelled) return;
+      if (!isCurrent()) return;
       if (artworkError) {
         setLoadState("unavailable");
         setError(artworkError.message);
@@ -156,7 +146,7 @@ export default function SavedArtworkView() {
         .select("id, owner_id, title, world_code")
         .in("id", collectionIds);
 
-      if (cancelled) return;
+      if (!isCurrent()) return;
       if (collectionError) {
         setLoadState("unavailable");
         setError(collectionError.message);
@@ -172,7 +162,7 @@ export default function SavedArtworkView() {
         .select("id, username, display_name")
         .in("id", ownerIds);
 
-      if (cancelled) return;
+      if (!isCurrent()) return;
       if (profileError) {
         setLoadState("unavailable");
         setError(profileError.message);
@@ -211,23 +201,23 @@ export default function SavedArtworkView() {
       setLoadState("ready");
     }
 
-    database.auth.getUser().then(({ data }) => {
-      loadSavedArtwork(data.user?.id ?? null);
+    const stop = observeAccount(database.auth, userId => {
+      const changed = scope.account() !== userId;
+      scope.setAccount(userId);
+      if (changed || !userId) {
+        setSavedArtworks([]);
+        setViewerProfile(null);
+        setSelectedId(null);
+        setFocusMode(false);
+        setError(null);
+      }
+      if (userId) queueMicrotask(() => void loadSavedArtwork(userId));
+      else setLoadState("signed-out");
     });
 
-    const { data: authListener } = database.auth.onAuthStateChange(
-      (_event, session) => {
-        if (authRefreshTimer) window.clearTimeout(authRefreshTimer);
-        authRefreshTimer = window.setTimeout(() => {
-          loadSavedArtwork(session?.user.id ?? null);
-        }, 0);
-      }
-    );
-
     return () => {
-      cancelled = true;
-      if (authRefreshTimer) window.clearTimeout(authRefreshTimer);
-      authListener.subscription.unsubscribe();
+      stop();
+      scope.clear();
     };
   }, []);
 
@@ -303,24 +293,7 @@ export default function SavedArtworkView() {
           >
             NODEINE
           </Link>
-          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
-            <Link href="/" className="text-zinc-400 hover:text-white">
-              Archive
-            </Link>
-            <Link href="/discover" className="text-zinc-400 hover:text-white">
-              Discover
-            </Link>
-            <Link href="/messages" className="text-zinc-400 hover:text-white">
-              Inbox
-            </Link>
-            <ActivityNavLink />
-            <Link href={profileHref} className="hidden text-zinc-400 hover:text-white sm:inline">
-              Profile
-            </Link>
-            <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
-              Studio
-            </Link>
-          </nav>
+          <DesktopAppNavigation />
         </div>
       </header>
 

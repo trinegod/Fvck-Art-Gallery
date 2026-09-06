@@ -1,4 +1,21 @@
-# Grouped mobile navigation
+# Compact section navigation
+
+## September 6, 2026 implementation
+
+The new local version replaces the two-level dock described below with one 70px row of ordinary links: **Feed `/feed`**, **Explore `/explore`**, **Create `/create`**, **You `/you`**. The former row measured 122px at the same phone sizes; this saves 52px, approximately 43%. This is a geometry comparison, not a claimed usability metric.
+
+- Explore contains artwork search, the collection archive, Threads, and credited previews of public Worlds.
+- Create contains Forge, Publish, New Thread, and an owner-only Your work list for private Thread drafts. Resume opens the existing editor. Forge projects/revisions are not persisted here.
+- You contains Saved, Inbox, Activity, and the current viewer's profile/access link. Visiting another artist does not change this target.
+- All four primary controls remain visible; no rail, second row, drawer, arrow, or swipe-only action remains. Selecting a section now navigates, so this must not be described as preserving unsaved forms or automatically saving drafts.
+- Links use normal Tab/Shift+Tab/Enter interaction, visible focus, and route-derived `aria-current`. They are not tabs. Direct URLs and history select the same section; Thread editing selects Create.
+- 12px outer gutters, 6px internal padding, and 56px-tall controls retain generous touch targets. The shared CSS reserves 6rem plus the bottom safe-area inset for scrolling content. Dialogs remain above the dock.
+- At 1024px and above, the dock is hidden and the shared four-link desktop navigation appears in page headers or the feed sidebar. Contextual actions such as Back to feed remain available.
+- Account-scoped asynchronous guards invalidate old private results after logout, account switch, or unmount. Supabase RLS remains the authorization boundary; client guards are not a substitute.
+
+Implementation: `lib/mobile-navigation.ts`, mobile/desktop navigation components, `app/explore`, `app/create`, `app/you`, shared CSS, and route-contract tests. See [repair verification](audits/2026-09-06-repair-verification.md) for checks and limitations. This update is not deployed until the release gate is explicitly completed.
+
+## Previous September 4 release (historical)
 
 Implemented September 4, 2026. Replaces the More bottom sheet with an inline, swipeable dock across the app's mobile surfaces, including Creator Studio access and publishing.
 

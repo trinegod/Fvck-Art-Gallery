@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,42 +16,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase-browser";
+import { createAccountScope, observeAccount, runAccountRequest } from "@/lib/activity-session";
+import { fetchActivity, persistActivitySeen, type ActivityKind, type NotificationRow, type ActivityProfile as ProfileRow, type ActivityArtwork as ArtworkRow, type ActivityConversation as ConversationRow } from "@/lib/activity-data";
 import MobileAppNavigation from "../components/mobile-app-navigation";
+import DesktopAppNavigation from "../components/desktop-app-navigation";
 import PolishedImage from "../components/polished-image";
 
-type ActivityKind = "follow" | "artwork_like" | "artwork_comment" | "message";
 type ActivityFilter = "all" | "unread";
 type LoadState = "loading" | "ready" | "signed-out" | "unavailable";
-
-type NotificationRow = {
-  id: string;
-  recipient_id: string;
-  actor_id: string;
-  kind: ActivityKind;
-  artwork_id: string | null;
-  conversation_id: string | null;
-  preview: string | null;
-  read_at: string | null;
-  created_at: string;
-};
-
-type ProfileRow = {
-  id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-};
-
-type ArtworkRow = {
-  id: string;
-  title: string;
-};
-
-type ConversationRow = {
-  id: string;
-  kind: "direct" | "group";
-  title: string | null;
-};
 
 function formatActivityTime(value: string) {
   const timestamp = new Date(value).getTime();
@@ -95,115 +67,53 @@ export default function ActivityView() {
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const accountScope = useRef(createAccountScope());
 
   const loadActivity = useCallback(async (userId: string, showLoader = true) => {
     const database = supabase;
-    if (!database) return;
+    if (!database || !accountScope.current.capture(userId)()) return;
 
     if (showLoader) setLoadState("loading");
 
-    const { data, error: notificationError } = await database
-      .from("notifications")
-      .select(
-        "id, recipient_id, actor_id, kind, artwork_id, conversation_id, preview, read_at, created_at"
-      )
-      .eq("recipient_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    if (notificationError) {
-      setError(notificationError.message);
+    await runAccountRequest(accountScope.current, userId, "activity", (isCurrent) => fetchActivity(database, userId, isCurrent), (result) => {
+      if (!result) return;
+      setNotifications(result.notifications);
+      setProfiles(result.profiles);
+      setArtworks(result.artworks);
+      setConversations(result.conversations);
+      setError(null);
+      setLoadState("ready");
+    }, (loadError) => {
+      setError(loadError instanceof Error ? loadError.message : "Activity could not be loaded. Please try again.");
       setLoadState("unavailable");
-      return;
-    }
-
-    const rows = (data ?? []) as NotificationRow[];
-    const actorIds = [...new Set(rows.map((row) => row.actor_id))];
-    const artworkIds = [
-      ...new Set(rows.flatMap((row) => (row.artwork_id ? [row.artwork_id] : []))),
-    ];
-    const conversationIds = [
-      ...new Set(
-        rows.flatMap((row) => (row.conversation_id ? [row.conversation_id] : []))
-      ),
-    ];
-
-    const [profileResult, artworkResult, conversationResult] = await Promise.all([
-      actorIds.length
-        ? database
-            .from("profiles")
-            .select("id, username, display_name, avatar_url")
-            .in("id", actorIds)
-        : Promise.resolve({ data: [], error: null }),
-      artworkIds.length
-        ? database.from("artworks").select("id, title").in("id", artworkIds)
-        : Promise.resolve({ data: [], error: null }),
-      conversationIds.length
-        ? database
-            .from("conversations")
-            .select("id, kind, title")
-            .in("id", conversationIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-
-    const relatedError =
-      profileResult.error ?? artworkResult.error ?? conversationResult.error;
-
-    if (relatedError) {
-      setError(relatedError.message);
-      setLoadState("unavailable");
-      return;
-    }
-
-    setNotifications(rows);
-    setProfiles((profileResult.data ?? []) as ProfileRow[]);
-    setArtworks((artworkResult.data ?? []) as ArtworkRow[]);
-    setConversations((conversationResult.data ?? []) as ConversationRow[]);
-    setError(null);
-    setLoadState("ready");
+    });
   }, []);
 
   useEffect(() => {
     const client = supabase;
     if (!client) return;
 
-    let cancelled = false;
-    let resolved = false;
-
-    function syncViewer(userId: string | null) {
-      if (cancelled) return;
-      resolved = true;
+    const scope = accountScope.current;
+    const stop = observeAccount(client.auth, (userId) => {
+      const changed = scope.account() !== userId;
+      scope.setAccount(userId);
       setViewerId(userId);
-
-      if (userId) {
-        loadActivity(userId);
-      } else {
+      if (changed || !userId) {
         setNotifications([]);
         setProfiles([]);
         setArtworks([]);
         setConversations([]);
-        setLoadState("signed-out");
+        setMarkingAll(false);
+        setError(null);
       }
-    }
-
-    client.auth.getUser().then(({ data }) => {
-      syncViewer(data.user?.id ?? null);
+      if (userId) {
+        setLoadState("loading");
+        queueMicrotask(() => void loadActivity(userId));
+      } else setLoadState("signed-out");
     });
-
-    const fallback = window.setTimeout(() => {
-      if (!resolved) syncViewer(null);
-    }, 2200);
-
-    const { data: authListener } = client.auth.onAuthStateChange(
-      (_event, session) => {
-        syncViewer(session?.user.id ?? null);
-      }
-    );
-
     return () => {
-      cancelled = true;
-      window.clearTimeout(fallback);
-      authListener.subscription.unsubscribe();
+      stop();
+      scope.clear();
     };
   }, [loadActivity]);
 
@@ -266,17 +176,18 @@ export default function ActivityView() {
     const destination = destinationFor(notification);
 
     if (!notification.read_at && client && viewerId) {
+      const isCurrent = accountScope.current.capture(viewerId);
+      if (!isCurrent()) return;
       const readAt = new Date().toISOString();
-      setNotifications((current) =>
-        current.map((item) =>
-          item.id === notification.id ? { ...item, read_at: readAt } : item
-        )
-      );
-      void client
-        .from("notifications")
-        .update({ read_at: readAt })
-        .eq("id", notification.id)
-        .eq("recipient_id", viewerId);
+      try {
+        const updated = await persistActivitySeen(client, viewerId, [notification.id], readAt);
+        if (!isCurrent()) return;
+        const persisted = new Map(updated.map(row => [row.id, row.read_at]));
+        setNotifications(current => current.map(item => persisted.has(item.id) ? {...item, read_at: persisted.get(item.id)!} : item));
+      } catch {
+        if (!isCurrent()) return;
+        toast.error("Opened activity, but its seen status could not be saved. Please try again from Activity.");
+      }
     }
 
     router.push(destination);
@@ -284,25 +195,23 @@ export default function ActivityView() {
 
   async function markAllRead() {
     const client = supabase;
-    if (!client || !viewerId || !unreadCount) return;
+    if (!client || !viewerId || !unreadCount || markingAll) return;
+    const isCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) return;
 
     setMarkingAll(true);
     const readAt = new Date().toISOString();
-    const { error: updateError } = await client
-      .from("notifications")
-      .update({ read_at: readAt })
-      .eq("recipient_id", viewerId)
-      .is("read_at", null);
-
-    if (updateError) {
+    try {
+      const updated = await persistActivitySeen(client, viewerId, notifications.filter(item => !item.read_at).map(item => item.id), readAt);
+      if (!isCurrent()) return;
+      const persisted = new Map(updated.map(row => [row.id, row.read_at]));
+      setNotifications(current => current.map(item => persisted.has(item.id) ? {...item, read_at: persisted.get(item.id)!} : item));
+      toast.success("Visible activity marked as seen");
+    } catch {
+      if (!isCurrent()) return;
       toast.error("Activity could not be marked as seen", {
-        description: updateError.message,
+        description: "Your unread activity is unchanged. Please try again.",
       });
-    } else {
-      setNotifications((current) =>
-        current.map((item) => ({ ...item, read_at: item.read_at ?? readAt }))
-      );
-      toast.success("You are all caught up");
     }
 
     setMarkingAll(false);
@@ -318,23 +227,7 @@ export default function ActivityView() {
           >
             NODEINE
           </Link>
-          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
-            <Link href="/" className="text-zinc-400 hover:text-white">
-              Archive
-            </Link>
-            <Link href="/discover" className="text-zinc-400 hover:text-white">
-              Discover
-            </Link>
-            <Link href="/saved" className="text-zinc-400 hover:text-white">
-              Saved
-            </Link>
-            <Link href="/messages" className="text-zinc-400 hover:text-white">
-              Inbox
-            </Link>
-            <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
-              Studio
-            </Link>
-          </nav>
+          <DesktopAppNavigation />
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mobileDestinationForPath, mobileGroupForPath, mobileNavigationGroups } from "../lib/mobile-navigation";
+import { appNavigationItems, appSectionForPath, mobileDestinationForPath, mobileGroupForPath, mobileNavigationGroups } from "../lib/mobile-navigation";
 
 test("the dock retains all destinations and gives creation its own section", () => {
   assert.deepEqual(mobileNavigationGroups.map((group) => group.label), ["Explore", "Create", "You"]);
@@ -28,4 +28,24 @@ test("signed-out profile fallback does not make Publish part of You", () => {
   assert.equal(mobileNavigationGroups[2].destinations[3].href, "/admin");
   assert.equal(mobileDestinationForPath("/admin"), "publish");
   assert.equal(mobileGroupForPath("/admin"), 1);
+});
+
+test("section landing pages stay selected when opened directly or restored from history", () => {
+  assert.equal(mobileGroupForPath("/explore"), 0);
+  assert.equal(mobileGroupForPath("/create"), 1);
+  assert.equal(mobileGroupForPath("/you"), 2);
+  assert.equal(mobileGroupForPath("/create-not-a-section"), 0);
+});
+
+test("the primary row has four real destinations, and private editing belongs to Create", () => {
+  assert.deepEqual(appNavigationItems.map(({ label, href }) => [label, href]), [
+    ["Feed", "/feed"], ["Explore", "/explore"], ["Create", "/create"], ["You", "/you"],
+  ]);
+  for (const [path, section] of [
+    ["/feed", "feed"], ["/feed-lab", "explore"], ["/explore", "explore"],
+    ["/create", "create"], ["/you", "you"], ["/forge", "create"],
+    ["/threads/new", "create"], ["/threads/chronicle/edit", "create"],
+    ["/threads/chronicle/editorial", "explore"], ["/messages", "you"],
+    ["/saved", "you"], ["/activity", "you"], ["/worlds/ashigara", "explore"],
+  ] as const) assert.equal(appSectionForPath(path), section, path);
 });

@@ -14,6 +14,7 @@ import ArtworkMedia, {
   isVideoArtwork,
 } from "@/app/components/artwork-media";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
+import DesktopAppNavigation from "@/app/components/desktop-app-navigation";
 import PolishedImage from "@/app/components/polished-image";
 import { getPublicWorld } from "@/lib/content-read-model";
 import type { FeedInventoryItem } from "@/lib/feed";
@@ -137,18 +138,21 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
       <header className="border-b border-white/10 px-5 py-4 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
-            href={feedReturn ? buildFeedReturnHref(feedReturn) : "/feed"}
-            className="inline-flex min-h-11 items-center gap-2 text-sm text-zinc-400 hover:text-white"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to feed
-          </Link>
-          <Link
             href="/feed"
-            className="inline-flex min-h-11 items-center text-sm font-light tracking-[0.24em] text-white hover:text-cyan-200"
+            className="inline-flex min-h-11 items-center text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             NODEINE
           </Link>
+          <div className="flex items-center gap-4 lg:gap-6">
+            <Link
+              href={feedReturn ? buildFeedReturnHref(feedReturn) : "/feed"}
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Back to feed
+            </Link>
+            <DesktopAppNavigation />
+          </div>
         </div>
       </header>
 

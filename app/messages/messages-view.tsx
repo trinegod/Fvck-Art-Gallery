@@ -5,6 +5,7 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -35,7 +36,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
-import ActivityNavLink from "../components/activity-nav-link";
+import { createAccountScope, observeAccount } from "@/lib/activity-session";
+import { fetchMessagePage, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
+import { syncMessageViewport } from "@/lib/message-viewport";
+import { persistMessageAttachment } from "@/lib/message-attachment";
+import DesktopAppNavigation from "../components/desktop-app-navigation";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
 import ArtworkShareDialog from "./artwork-share-dialog";
@@ -151,6 +156,14 @@ export default function MessagesView({
   const startedProfileRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const accountScope = useRef(createAccountScope());
+  const conversationVersion = useRef(0);
+  const [olderCursor, setOlderCursor] = useState<MessageCursor | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loadOlderRef = useRef<(() => Promise<void>) | null>(null);
+  const messagesScrollerRef = useRef<HTMLDivElement | null>(null);
+  const historyAnchor = useRef<{height: number; top: number} | null>(null);
+  const lastScrolledMessage = useRef<string | null>(null);
 
   const profileById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile])),
@@ -234,10 +247,12 @@ export default function MessagesView({
 
   const loadPendingInvites = useCallback(async () => {
     const client = supabase;
-    if (!client) return;
+    const isCurrent = accountScope.current.latest("invites");
+    if (!client || !isCurrent()) return;
     const { data, error: inviteError } = await client.rpc(
       "list_my_group_invites"
     );
+    if (!isCurrent()) return;
 
     if (inviteError) {
       if (!isMissingMessagingError(inviteError.code)) {
@@ -251,9 +266,9 @@ export default function MessagesView({
   }, []);
 
   const loadSharedArtworkState = useCallback(
-    async (messageRows: MessageRow[], userId: string) => {
+    async (messageRows: MessageRow[], userId: string, isCurrent = accountScope.current.capture(userId)) => {
       const client = supabase;
-      if (!client) return;
+      if (!client || !isCurrent()) return;
       const artworkIds = Array.from(
         new Set(
           messageRows
@@ -263,8 +278,6 @@ export default function MessagesView({
       );
 
       if (!artworkIds.length) {
-        setSharedArtworks(new Map());
-        setSavedArtworkIds(new Set());
         return;
       }
 
@@ -279,22 +292,21 @@ export default function MessagesView({
           .eq("user_id", userId)
           .in("artwork_id", artworkIds),
       ]);
+      if (!isCurrent()) return;
 
       if (artworkResult.error) {
         setError(artworkResult.error.message);
       } else {
         const artworkRows = (artworkResult.data ?? []) as SharedArtwork[];
-        setSharedArtworks(
-          new Map(artworkRows.map((artwork) => [artwork.id, artwork]))
-        );
+        setSharedArtworks(current => new Map([...current, ...artworkRows.map(artwork => [artwork.id, artwork] as const)]));
       }
 
       if (!saveResult.error) {
-        setSavedArtworkIds(
-          new Set(
-            (saveResult.data ?? []).map(
+        setSavedArtworkIds(current =>
+          new Set([...current,
+            ...(saveResult.data ?? []).map(
               (row: { artwork_id: string }) => row.artwork_id
-            )
+            )]
           )
         );
       }
@@ -304,9 +316,10 @@ export default function MessagesView({
 
   const loadInbox = useCallback(async (userId: string) => {
     const client = supabase;
-    if (!client) return;
+    const isCurrent = accountScope.current.latest("inbox", userId);
+    if (!client || !isCurrent()) return;
 
-    setLoadState("loading");
+    setLoadState(current => current === "ready" ? "ready" : "loading");
     setError(null);
 
     const membershipResult = await client
@@ -316,6 +329,7 @@ export default function MessagesView({
       )
       .eq("profile_id", userId)
       .order("joined_at", { ascending: false });
+    if (!isCurrent()) return;
 
     if (membershipResult.error) {
       setInbox([]);
@@ -338,6 +352,7 @@ export default function MessagesView({
       .select("id, username, display_name, avatar_url")
       .order("display_name")
       .limit(500);
+    if (!isCurrent()) return;
 
     if (allProfilesResult.error) {
       setLoadState("unavailable");
@@ -377,6 +392,7 @@ export default function MessagesView({
         .order("created_at", { ascending: false })
         .limit(300),
     ]);
+    if (!isCurrent()) return;
 
     const queryError =
       conversationResult.error ?? membersResult.error ?? messagesResult.error;
@@ -460,7 +476,7 @@ export default function MessagesView({
         )
       );
     }
-
+    if (!isCurrent()) return;
     setInbox(
       nextInbox.map((conversation) => ({
         ...conversation,
@@ -476,41 +492,45 @@ export default function MessagesView({
   useEffect(() => {
     const client = supabase;
     if (!client) return;
-    let cancelled = false;
-    let authResolved = false;
-
-    function syncViewer(userId: string | null) {
-      if (cancelled) return;
-      authResolved = true;
-      window.clearTimeout(authFallbackTimer);
+    const scope = accountScope.current;
+    const stop = observeAccount(client.auth, (userId) => {
+      const changed = scope.account() !== userId;
+      scope.setAccount(userId);
       setViewerId(userId);
       setAuthReady(true);
-
-      if (userId) {
-        loadInbox(userId);
-      } else {
+      if (changed || !userId) {
+        conversationVersion.current += 1;
         setInbox([]);
         setProfiles([]);
         setMessages([]);
         setPendingInvites([]);
-        setLoadState("signed-out");
+        setSharedArtworks(new Map());
+        setSavedArtworkIds(new Set());
+        setDraft("");
+        setError(null);
+        setOlderCursor(null);
+        setLoadingOlder(false);
+        setSending(false);
+        setUploadingMedia(false);
+        setCreatingGroup(false);
+        setStartingDirectId(null);
+        setBusyInviteId(null);
+        setSavingArtworkId(null);
+        setGroupTitle("");
+        setGroupSearch("");
+        setSelectedMemberIds([]);
+        setGroupSettingsOpen(false);
+        setNewMessageOpen(false);
+        setArtworkShareOpen(false);
+        startedProfileRef.current = null;
       }
-    }
-
-    const authFallbackTimer = window.setTimeout(() => {
-      if (!authResolved) syncViewer(null);
-    }, 2000);
-
-    client.auth.getUser().then(({ data }) => syncViewer(data.user?.id ?? null));
-
-    const { data: authListener } = client.auth.onAuthStateChange(
-      (_event, session) => syncViewer(session?.user.id ?? null)
-    );
-
+      if (userId) queueMicrotask(() => void loadInbox(userId));
+      else setLoadState("signed-out");
+    });
     return () => {
-      cancelled = true;
-      window.clearTimeout(authFallbackTimer);
-      authListener.subscription.unsubscribe();
+      stop();
+      scope.clear();
+      conversationVersion.current += 1;
     };
   }, [loadInbox]);
 
@@ -574,10 +594,13 @@ export default function MessagesView({
     }
 
     async function startConversation() {
+      const isCurrent = accountScope.current.capture(currentViewerId);
+      if (!isCurrent()) return;
       const { data, error: startError } = await database.rpc(
         "start_direct_conversation",
         { other_profile_id: initialProfileId }
       );
+      if (!isCurrent()) return;
 
       if (startError) {
         setError(
@@ -610,48 +633,78 @@ export default function MessagesView({
     const currentViewerId = viewerId;
     const currentConversationId = activeConversationId;
     let cancelled = false;
+    const version = ++conversationVersion.current;
+    const isAccountCurrent = accountScope.current.capture(currentViewerId);
+    const isCurrent = () => !cancelled && isAccountCurrent() && conversationVersion.current === version;
+    let nextCursor: MessageCursor | null = null;
+    let pagePending = false;
+    let initialPageReady = false;
+    let received: MessageRow[] = [];
+    historyAnchor.current = null;
+    lastScrolledMessage.current = null;
 
-    async function loadConversation() {
-      setConversationLoading(true);
-      const { data, error: messagesError } = await database
-        .from("messages")
-        .select(
-          "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
-        )
-        .eq("conversation_id", currentConversationId)
-        .order("created_at", { ascending: true })
-        .limit(200);
-
-      if (cancelled) return;
-
-      if (messagesError) {
-        setError(messagesError.message);
-        setMessages([]);
-        setSharedArtworks(new Map());
-        setSavedArtworkIds(new Set());
-      } else {
-        const messageRows = await hydrateMessages((data ?? []) as MessageRow[]);
-        if (cancelled) return;
-        setMessages(messageRows);
-        await loadSharedArtworkState(messageRows, currentViewerId);
-        await database
-          .from("conversation_members")
-          .update({ last_read_at: new Date().toISOString() })
-          .eq("conversation_id", currentConversationId)
-          .eq("profile_id", currentViewerId);
-        setInbox((current) =>
-          current.map((conversation) =>
-            conversation.id === currentConversationId
-              ? { ...conversation, unreadCount: 0 }
-              : conversation
-          )
-        );
+    async function markRetrievedRead(through: string | null) {
+      try {
+        if (!await persistConversationRead(database, currentViewerId, currentConversationId, through, isCurrent)) return;
+        // A message can arrive after our SELECT. Reload counts from its stored
+        // timestamp rather than clearing every unread message optimistically.
+        if (isCurrent()) await loadInbox(currentViewerId);
+      } catch {
+        if (isCurrent()) setError("Messages loaded, but the read status could not be saved. Reopen the conversation to retry.");
       }
-
-      setConversationLoading(false);
     }
 
-    loadConversation();
+    async function loadPage(before: MessageCursor | null) {
+      if (!isCurrent() || pagePending) return;
+      pagePending = true;
+      if (before) setLoadingOlder(true);
+      else setConversationLoading(true);
+      try {
+        const page = await fetchMessagePage(database, currentConversationId, before);
+        if (!isCurrent()) return;
+        const messageRows = await hydrateMessages(page.rows);
+        if (!isCurrent()) return;
+        await loadSharedArtworkState(messageRows, currentViewerId, isCurrent);
+        if (!isCurrent()) return;
+        if (before && messagesScrollerRef.current) {
+          historyAnchor.current = {
+            height: messagesScrollerRef.current.scrollHeight,
+            top: messagesScrollerRef.current.scrollTop,
+          };
+        }
+        received = mergeMessageHistory(received, messageRows);
+        setMessages(current => mergeMessageHistory(current, messageRows));
+        nextCursor = page.olderCursor;
+        setOlderCursor(nextCursor);
+        if (!before) {
+          initialPageReady = true;
+          setConversationLoading(false);
+          // The newest retrieved row (including buffered realtime inserts) is
+          // the watermark; never browser time or an unseen future message.
+          await markRetrievedRead(received.at(-1)?.created_at ?? null);
+        }
+      } catch {
+        if (isCurrent()) setError(before ? "Older messages could not be loaded. Please try again." : "Messages could not be loaded. Reopen the conversation to retry.");
+      } finally {
+        pagePending = false;
+        if (isCurrent()) {
+          setConversationLoading(false);
+          setLoadingOlder(false);
+        }
+      }
+    }
+    loadOlderRef.current = async () => {
+      if (nextCursor) await loadPage(nextCursor);
+    };
+    queueMicrotask(() => {
+      if (!isCurrent()) return;
+      setMessages([]);
+      setSharedArtworks(new Map());
+      setSavedArtworkIds(new Set());
+      setOlderCursor(null);
+      setLoadingOlder(false);
+      void loadPage(null);
+    });
 
     const channel = database
       .channel(`nodeine-conversation-${currentConversationId}`)
@@ -664,82 +717,79 @@ export default function MessagesView({
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         async (payload) => {
+          if (!isCurrent()) return;
           const [incoming] = await hydrateMessages([payload.new as MessageRow]);
-          setMessages((current) =>
-            current.some((message) => message.id === incoming.id)
-              ? current
-              : [...current, incoming]
-          );
-          if (incoming.artwork_id) {
-            const [artworkResult, saveResult] = await Promise.all([
-              database
-                .from("artworks")
-                .select("id, title, src, thumb_src, media_type, mood")
-                .eq("id", incoming.artwork_id)
-                .maybeSingle(),
-              database
-                .from("artwork_saves")
-                .select("artwork_id")
-                .eq("artwork_id", incoming.artwork_id)
-                .eq("user_id", currentViewerId)
-                .maybeSingle(),
-            ]);
-            if (artworkResult.data) {
-              const artwork = artworkResult.data as SharedArtwork;
-              setSharedArtworks((current) => {
-                const next = new Map(current);
-                next.set(artwork.id, artwork);
-                return next;
-              });
-            }
-            if (saveResult.data) {
-              setSavedArtworkIds((current) =>
-                new Set(current).add(incoming.artwork_id as string)
-              );
-            }
-          }
-          await database
-            .from("conversation_members")
-            .update({ last_read_at: new Date().toISOString() })
-            .eq("conversation_id", currentConversationId)
-            .eq("profile_id", currentViewerId);
+          if (!incoming || !isCurrent()) return;
+          await loadSharedArtworkState([incoming], currentViewerId, isCurrent);
+          if (!isCurrent()) return;
+          received = mergeMessageHistory(received, [incoming]);
+          setMessages(current => mergeMessageHistory(current, [incoming]));
+          if (initialPageReady) await markRetrievedRead(incoming.created_at);
         }
       )
       .subscribe();
 
     return () => {
       cancelled = true;
+      loadOlderRef.current = null;
       database.removeChannel(channel);
     };
   }, [
     activeConversationId,
     hydrateMessages,
+    loadInbox,
     loadSharedArtworkState,
     viewerId,
   ]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  useLayoutEffect(() => {
+    const result = syncMessageViewport({
+      loading: conversationLoading,
+      target: messagesEndRef.current,
+      scroller: messagesScrollerRef.current,
+      anchor: historyAnchor.current,
+      newestId: messages.at(-1)?.id ?? null,
+      previousId: lastScrolledMessage.current,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    });
+    lastScrolledMessage.current = result.previousId;
+    historyAnchor.current = result.anchor;
+  }, [messages, conversationLoading]);
+
+  const resetConversationComposer = useCallback(() => {
+    setSending(false);
+    setUploadingMedia(false);
+    setSavingArtworkId(null);
+    setDraft("");
+    setDragActive(false);
+    setArtworkShareOpen(false);
+    setGroupSettingsOpen(false);
+    setError(null);
+  }, []);
 
   useEffect(() => {
     function syncConversationFromHistory() {
       const conversationId = new URLSearchParams(window.location.search).get(
         "conversation"
       );
-      setActiveConversationId(
-        conversationId && uuidPattern.test(conversationId)
-          ? conversationId
-          : null
-      );
+      const next = conversationId && uuidPattern.test(conversationId) ? conversationId : null;
+      if (next !== activeConversationId) {
+        conversationVersion.current += 1;
+        resetConversationComposer();
+      }
+      setActiveConversationId(next);
     }
 
     window.addEventListener("popstate", syncConversationFromHistory);
     return () =>
       window.removeEventListener("popstate", syncConversationFromHistory);
-  }, []);
+  }, [activeConversationId, resetConversationComposer]);
 
   function selectConversation(conversationId: string) {
+    if (conversationId !== activeConversationId) {
+      conversationVersion.current += 1;
+      resetConversationComposer();
+    }
     setActiveConversationId(conversationId);
     window.history.pushState(
       null,
@@ -749,6 +799,8 @@ export default function MessagesView({
   }
 
   function closeConversation() {
+    conversationVersion.current += 1;
+    resetConversationComposer();
     setActiveConversationId(null);
     setMessages([]);
     setSharedArtworks(new Map());
@@ -757,12 +809,20 @@ export default function MessagesView({
     window.history.pushState(null, "", "/messages");
   }
 
+  function captureConversation() {
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const version = conversationVersion.current;
+    return () => isAccountCurrent() && conversationVersion.current === version;
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const client = supabase;
     const body = draft.trim();
 
     if (!client || !viewerId || !activeConversationId || !body || sending) return;
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return;
 
     setSending(true);
     setError(null);
@@ -779,6 +839,7 @@ export default function MessagesView({
         "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
       )
       .single();
+    if (!isCurrent()) return;
 
     if (sendError) {
       setError(sendError.message);
@@ -793,13 +854,15 @@ export default function MessagesView({
       setDraft("");
       await loadInbox(viewerId);
     }
-
+    if (!isCurrent()) return;
     setSending(false);
   }
 
   async function shareArtwork(artwork: SharedArtwork) {
     const client = supabase;
     if (!client || !viewerId || !activeConversationId || sending) return false;
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return false;
     setSending(true);
 
     const { data, error: shareError } = await client
@@ -815,6 +878,7 @@ export default function MessagesView({
         "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
       )
       .single();
+    if (!isCurrent()) return false;
 
     if (shareError) {
       setError(shareError.message);
@@ -835,6 +899,7 @@ export default function MessagesView({
       return next;
     });
     await loadInbox(viewerId);
+    if (!isCurrent()) return false;
     toast.success("Artwork shared");
     setSending(false);
     return true;
@@ -843,12 +908,15 @@ export default function MessagesView({
   async function saveSharedArtwork(artworkId: string) {
     const client = supabase;
     if (!client || !viewerId || savedArtworkIds.has(artworkId)) return;
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return;
     setSavingArtworkId(artworkId);
 
     const { error: saveError } = await client.from("artwork_saves").insert({
       artwork_id: artworkId,
       user_id: viewerId,
     });
+    if (!isCurrent()) return;
 
     if (saveError && saveError.code !== "23505") {
       toast.error("Artwork wasn't saved", { description: saveError.message });
@@ -864,6 +932,8 @@ export default function MessagesView({
   async function saveAllSharedArtwork() {
     const client = supabase;
     if (!client || !viewerId || savingArtworkId) return;
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return;
     const unsavedIds = Array.from(
       new Set(
         messages
@@ -890,6 +960,7 @@ export default function MessagesView({
         ignoreDuplicates: true,
       }
     );
+    if (!isCurrent()) return;
 
     if (saveError) {
       toast.error("Shared artwork wasn't saved", {
@@ -913,6 +984,9 @@ export default function MessagesView({
   async function sendAttachment(file: File) {
     const client = supabase;
     if (!client || !viewerId || !activeConversationId || uploadingMedia) return;
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return;
 
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
     const isImage = file.type.startsWith("image/");
@@ -950,45 +1024,27 @@ export default function MessagesView({
     setUploadingMedia(true);
     setError(null);
 
-    const { error: uploadError } = await client.storage
-      .from("conversation-media")
-      .upload(attachmentPath, file, {
-        contentType: mimeType,
-        upsert: false,
-      });
-
-    if (uploadError) {
+    let persisted: MessageRow | null;
+    try {
+      persisted = await persistMessageAttachment(client, {
+        accountId: viewerId, conversationId: activeConversationId,
+        path: attachmentPath, file, mime: mimeType, caption, messageType,
+      }, isAccountCurrent);
+    } catch (attachmentError) {
+      if (!isCurrent()) return;
       setUploadingMedia(false);
-      toast.error("Media wasn't uploaded", { description: uploadError.message });
+      toast.error("Media message wasn't sent", {description: attachmentError instanceof Error ? attachmentError.message : "Please try again."});
+      return;
+    }
+    if (!persisted || !isAccountCurrent()) return;
+
+    if (!isCurrent()) {
+      void loadInbox(viewerId);
       return;
     }
 
-    const { data, error: messageError } = await client
-      .from("messages")
-      .insert({
-        conversation_id: activeConversationId,
-        sender_id: viewerId,
-        body: caption,
-        message_type: messageType,
-        attachment_path: attachmentPath,
-        attachment_mime: mimeType,
-        attachment_name: file.name.slice(0, 180),
-      })
-      .select(
-        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
-      )
-      .single();
-
-    if (messageError) {
-      await client.storage.from("conversation-media").remove([attachmentPath]);
-      setUploadingMedia(false);
-      toast.error("Media message wasn't sent", {
-        description: messageError.message,
-      });
-      return;
-    }
-
-    const [message] = await hydrateMessages([data as MessageRow]);
+    const [message] = await hydrateMessages([persisted]);
+    if (!isCurrent()) return;
     setMessages((current) =>
       current.some((item) => item.id === message.id)
         ? current
@@ -997,6 +1053,7 @@ export default function MessagesView({
     setDraft("");
     setUploadingMedia(false);
     await loadInbox(viewerId);
+    if (!isCurrent()) return;
     toast.success(messageType === "image" ? "Image shared" : "Video shared");
   }
 
@@ -1025,6 +1082,8 @@ export default function MessagesView({
   async function respondToInvite(inviteId: string, accept: boolean) {
     const client = supabase;
     if (!client || !viewerId || busyInviteId) return;
+    const isCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setBusyInviteId(inviteId);
     const { data, error: inviteError } = await client.rpc(
       "respond_to_group_invite",
@@ -1033,6 +1092,7 @@ export default function MessagesView({
         accept_invite: accept,
       }
     );
+    if (!isCurrent()) return;
     setBusyInviteId(null);
 
     if (inviteError) {
@@ -1043,6 +1103,7 @@ export default function MessagesView({
     }
 
     await loadInbox(viewerId);
+    if (!isCurrent()) return;
     if (accept) {
       const conversationId = data as string;
       selectConversation(conversationId);
@@ -1060,6 +1121,8 @@ export default function MessagesView({
   async function startDirectMessage(profileId: string) {
     const client = supabase;
     if (!client || !viewerId || startingDirectId) return;
+    const isCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) return;
 
     setStartingDirectId(profileId);
     setError(null);
@@ -1068,6 +1131,7 @@ export default function MessagesView({
       "start_direct_conversation",
       { other_profile_id: profileId }
     );
+    if (!isCurrent()) return;
 
     if (startError) {
       const message = isMissingMessagingError(startError.code)
@@ -1094,6 +1158,7 @@ export default function MessagesView({
       `/messages?conversation=${conversationId}`
     );
     await loadInbox(viewerId);
+    if (!isCurrent()) return;
     setStartingDirectId(null);
   }
 
@@ -1122,6 +1187,8 @@ export default function MessagesView({
       return;
     }
 
+    const isCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setCreatingGroup(true);
     setError(null);
 
@@ -1132,6 +1199,7 @@ export default function MessagesView({
         member_ids: selectedMemberIds,
       }
     );
+    if (!isCurrent()) return;
 
     if (groupError) {
       setError(groupError.message);
@@ -1150,13 +1218,12 @@ export default function MessagesView({
         `/messages?conversation=${conversationId}`
       );
       await loadInbox(viewerId);
+      if (!isCurrent()) return;
       toast.success("Group created and invitations sent");
     }
 
     setCreatingGroup(false);
   }
-
-  const viewerProfile = viewerId ? profileById.get(viewerId) ?? null : null;
 
   return (
     <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
@@ -1168,26 +1235,7 @@ export default function MessagesView({
           >
             NODEINE
           </Link>
-          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
-            <Link href="/" className="text-zinc-400 hover:text-white">
-              Archive
-            </Link>
-            <Link href="/discover" className="text-zinc-400 hover:text-white">
-              Discover
-            </Link>
-            <Link href="/saved" className="text-zinc-400 hover:text-white">
-              Saved
-            </Link>
-            <ActivityNavLink />
-            <Link
-              href={
-                viewerProfile ? `/creator/${viewerProfile.username}` : "/admin"
-              }
-              className="text-cyan-300 hover:text-cyan-200"
-            >
-              Profile
-            </Link>
-          </nav>
+          <DesktopAppNavigation />
         </div>
       </header>
 
@@ -1507,6 +1555,7 @@ export default function MessagesView({
                 </header>
 
                 <div
+                  ref={messagesScrollerRef}
                   className={`relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 ${
                     dragActive ? "bg-cyan-300/[0.035]" : ""
                   }`}
@@ -1534,6 +1583,11 @@ export default function MessagesView({
                     </div>
                   ) : messages.length ? (
                     <div className="mx-auto flex max-w-3xl flex-col gap-3">
+                      {olderCursor && (
+                        <Button type="button" variant="outline" className="min-h-11 self-center border-white/15 text-zinc-300" disabled={loadingOlder} onClick={() => void loadOlderRef.current?.()}>
+                          {loadingOlder ? <><LoaderCircle className="size-4 animate-spin" /> Loading older messages…</> : "Load older messages"}
+                        </Button>
+                      )}
                       {messages.map((message) => {
                         const mine = message.sender_id === viewerId;
                         const sender = profileById.get(message.sender_id);

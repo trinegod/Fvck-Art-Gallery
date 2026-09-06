@@ -92,6 +92,14 @@ export type WorldThreadMutationResult = {
   threadSlug: string;
 };
 
+export type OwnedWorldThreadDraft = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  updatedAt: string;
+};
+
 type ThreadRow = {
   id: string;
   owner_id: string;
@@ -429,6 +437,45 @@ export async function getWorldThreadBySlug(
   if (!data) return null;
   const [thread] = await hydrateThreads(database, [data as ThreadRow]);
   return thread ?? null;
+}
+
+/** Read with the caller's browser session. Private drafts never use publicDatabase. */
+export async function getOwnedWorldThreadDrafts(
+  database: SupabaseClient,
+  ownerId: string,
+  { offset = 0, pageSize = 12 }: { offset?: number; pageSize?: number } = {}
+): Promise<{ drafts: OwnedWorldThreadDraft[]; hasMore: boolean }> {
+  const { data: authData, error: authError } = await database.auth.getUser();
+  if (authError) throw authError;
+  if (!ownerId || authData.user?.id !== ownerId) {
+    return { drafts: [], hasMore: false };
+  }
+
+  const size = Math.min(48, Math.max(1, Math.trunc(pageSize) || 12));
+  const start = Math.max(0, Math.trunc(offset) || 0);
+  const { data, error } = await database
+    .from("world_threads")
+    .select("id, title, slug, summary, updated_at")
+    .eq("owner_id", ownerId)
+    .eq("visibility", "draft")
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(start, start + size);
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<
+    Pick<ThreadRow, "id" | "title" | "slug" | "summary" | "updated_at">
+  >;
+  return {
+    drafts: rows.slice(0, size).map((row) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      summary: row.summary,
+      updatedAt: row.updated_at,
+    })),
+    hasMore: rows.length > size,
+  };
 }
 
 export async function getComposerArtwork(

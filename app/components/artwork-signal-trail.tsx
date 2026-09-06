@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Waypoints } from "lucide-react";
 import type { RankedSignalTrailArtwork } from "@/lib/signal-trails";
+import { appendFeedReturnContext, type FeedReturnContext } from "@/lib/feed-return";
 import { ArtworkMediaBadge } from "./artwork-media";
 import PolishedImage from "./polished-image";
 
@@ -10,10 +11,12 @@ export type ArtworkSignalTrailItem = RankedSignalTrailArtwork & {
 
 type ArtworkSignalTrailProps = {
   items: ArtworkSignalTrailItem[];
+  feedReturn?: FeedReturnContext | null;
 };
 
 export default function ArtworkSignalTrail({
   items,
+  feedReturn = null,
 }: ArtworkSignalTrailProps) {
   if (!items.length) return null;
 
@@ -49,7 +52,7 @@ export default function ArtworkSignalTrail({
           {items.map((item) => (
             <Link
               key={item.id}
-              href={`/artwork/${item.id}`}
+              href={feedReturn ? appendFeedReturnContext(`/artwork/${item.id}`, feedReturn) : `/artwork/${item.id}`}
               className="group overflow-hidden rounded-xl border border-white/10 bg-black outline-none transition hover:border-cyan-300/45 focus-visible:ring-2 focus-visible:ring-cyan-300"
               aria-label={`Open ${item.title}, connected because: ${item.reason}`}
             >

@@ -84,7 +84,7 @@ export default function ThreadDetail({
               <GitFork className="size-3.5" aria-hidden="true" />
               Forked with lineage intact from
               {thread.forkedFrom ? (
-                <Link href={`/threads/${thread.forkedFrom.slug}`} className="font-medium underline decoration-violet-300/40 underline-offset-4 hover:text-white">
+                <Link href={feedReturn ? appendFeedReturnContext(`/threads/${thread.forkedFrom.slug}`, feedReturn) : `/threads/${thread.forkedFrom.slug}`} className="font-medium underline decoration-violet-300/40 underline-offset-4 hover:text-white">
                   {thread.forkedFrom.title}
                 </Link>
               ) : (
@@ -314,7 +314,7 @@ export default function ThreadDetail({
           {responses.length ? (
             <div className="mt-7 grid gap-5 lg:grid-cols-2">
               {responses.map((response) => (
-                <ThreadCard key={response.id} thread={response} />
+                <ThreadCard key={response.id} thread={response} feedReturn={feedReturn} />
               ))}
             </div>
           ) : (

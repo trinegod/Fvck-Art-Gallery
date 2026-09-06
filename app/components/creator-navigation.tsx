@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ExternalLink,
   FlaskConical,
-  Home,
   Layers3,
   LogOut,
   MessageCircle,
@@ -32,6 +31,8 @@ import {
 import { supabase } from "@/lib/supabase-browser";
 import PolishedImage from "./polished-image";
 import MobileAppNavigation from "./mobile-app-navigation";
+import DesktopAppNavigation from "./desktop-app-navigation";
+import { createAccountScope, observeAccount, runAccountRequest } from "@/lib/activity-session";
 import {
   formatActivityCount,
   useUnreadActivityCount,
@@ -64,46 +65,21 @@ export default function CreatorNavigation({
     if (!client) return;
     const database = client;
 
-    let cancelled = false;
-
-    async function syncViewer(userId: string | null) {
-      if (!userId) {
-        if (!cancelled) {
-          setSignedIn(false);
-          setProfile(null);
-          setAuthReady(true);
-        }
-        return;
-      }
-
-      setSignedIn(true);
-
-      const { data } = await database
-        .from("profiles")
-        .select("username, display_name, avatar_url")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (!cancelled) {
-        setProfile((data as ViewerProfile | null) ?? null);
-        setAuthReady(true);
-      }
-    }
-
-    database.auth.getUser().then(({ data }) => {
-      syncViewer(data.user?.id ?? null);
+    const scope = createAccountScope();
+    const stop = observeAccount(database.auth, (userId) => {
+      scope.setAccount(userId);
+      setSignedIn(Boolean(userId));
+      setProfile(null);
+      setAuthReady(!userId);
+      if (!userId) return;
+      void runAccountRequest(scope, userId, "profile", async () => {
+        const { data, error } = await database.from("profiles")
+          .select("username, display_name, avatar_url").eq("id", userId).maybeSingle();
+        if (error) throw error;
+        return data as ViewerProfile | null;
+      }, (data) => { setProfile(data); setAuthReady(true); }, () => setAuthReady(true));
     });
-
-    const { data: authListener } = database.auth.onAuthStateChange(
-      (_event, session) => {
-        syncViewer(session?.user.id ?? null);
-      }
-    );
-
-    return () => {
-      cancelled = true;
-      authListener.subscription.unsubscribe();
-    };
+    return () => { scope.clear(); stop(); };
   }, []);
 
   if (hidden) return null;
@@ -136,78 +112,11 @@ export default function CreatorNavigation({
 
   return (
     <>
-      <nav
+      <div
         aria-label="Creator controls"
         className="relative z-20 hidden w-full items-center justify-end gap-2 lg:flex"
       >
-        <Button
-          render={<Link href="/feed" />}
-          nativeButton={false}
-          variant="ghost"
-          className="h-10 px-3 text-zinc-400 hover:text-white"
-        >
-          <Home data-icon="inline-start" />
-          Feed
-        </Button>
-
-        <Button
-          render={<Link href="/discover" />}
-          nativeButton={false}
-          variant="ghost"
-          className="h-10 px-3 text-zinc-400 hover:text-white"
-        >
-          <Search data-icon="inline-start" />
-          Discover
-        </Button>
-
-        <Button
-          render={<Link href="/threads" />}
-          nativeButton={false}
-          variant="ghost"
-          className="h-10 px-3 text-zinc-400 hover:text-white"
-        >
-          <Waypoints data-icon="inline-start" />
-          Threads
-        </Button>
-
-        {signedIn && (
-          <Button
-            render={<Link href="/forge" />}
-            nativeButton={false}
-            variant="ghost"
-            className="h-10 px-3 text-zinc-400 hover:text-white"
-          >
-            <FlaskConical data-icon="inline-start" />
-            Forge
-          </Button>
-        )}
-
-        <Button
-          render={<Link href="/messages" />}
-          nativeButton={false}
-          variant="ghost"
-          className="h-10 px-3 text-zinc-400 hover:text-white"
-        >
-          <MessageCircle data-icon="inline-start" />
-          Inbox
-        </Button>
-
-        <Button
-          render={<Link href="/activity" />}
-          nativeButton={false}
-          variant="ghost"
-          className="h-10 px-3 text-zinc-400 hover:text-white"
-        >
-          <span className="relative" data-icon="inline-start">
-            <Bell className="size-4" />
-            {unreadActivityCount > 0 && (
-              <span className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 font-mono text-[8px] leading-4 text-zinc-950">
-                {formatActivityCount(unreadActivityCount)}
-              </span>
-            )}
-          </span>
-          Activity
-        </Button>
+        <DesktopAppNavigation />
 
         <Button
           type="button"
@@ -349,7 +258,7 @@ export default function CreatorNavigation({
             {creatorAvatar}
           </Button>
         )}
-      </nav>
+      </div>
 
       <MobileAppNavigation onHome={onGoHome} profileHref={profileHref} />
     </>

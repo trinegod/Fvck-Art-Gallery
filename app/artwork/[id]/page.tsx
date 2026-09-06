@@ -21,7 +21,7 @@ import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkMedia from "../../components/artwork-media";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
-import ActivityNavLink from "../../components/activity-nav-link";
+import DesktopAppNavigation from "../../components/desktop-app-navigation";
 import MobileAppNavigation from "../../components/mobile-app-navigation";
 import PolishedImage from "../../components/polished-image";
 import ProfileFollowControl from "../../components/profile-follow-control";
@@ -285,32 +285,7 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
           >
             NODEINE
           </Link>
-          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
-            <Link href="/" className="text-zinc-400 hover:text-white">
-              Archive
-            </Link>
-            <Link href="/discover" className="text-zinc-400 hover:text-white">
-              Discover
-            </Link>
-            <Link href="/saved" className="text-zinc-400 hover:text-white">
-              Saved
-            </Link>
-            <Link href="/threads" className="text-zinc-400 hover:text-white">
-              Threads
-            </Link>
-            <Link href="/messages" className="text-zinc-400 hover:text-white">
-              Inbox
-            </Link>
-            <ActivityNavLink />
-            {creator && (
-              <Link
-                href={`/creator/${creator.username}`}
-                className="text-cyan-300 hover:text-cyan-200"
-              >
-                Creator
-              </Link>
-            )}
-          </nav>
+          <DesktopAppNavigation />
         </div>
       </header>
 
@@ -425,7 +400,7 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
           <ArtworkComments artworkId={artwork.id} />
         </aside>
       </div>
-      <ArtworkSignalTrail items={signalTrail} />
+      <ArtworkSignalTrail items={signalTrail} feedReturn={feedReturn} />
       <MobileAppNavigation />
     </main>
   );

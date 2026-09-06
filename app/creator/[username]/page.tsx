@@ -5,7 +5,7 @@ import CreatorGallery, {
   type CreatorArtwork,
   type CreatorCollection,
 } from "./creator-gallery";
-import ActivityNavLink from "../../components/activity-nav-link";
+import DesktopAppNavigation from "../../components/desktop-app-navigation";
 import PolishedImage from "../../components/polished-image";
 import MobileAppNavigation from "../../components/mobile-app-navigation";
 import ProfileFollowControl from "../../components/profile-follow-control";
@@ -82,29 +82,12 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
       <header className="border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
-            href="/"
-            className="text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
+            href="/feed"
+            className="inline-flex min-h-11 items-center text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             NODEINE
           </Link>
-          <nav className="hidden items-center gap-5 text-xs uppercase tracking-[0.18em] lg:flex">
-            <Link href="/" className="text-zinc-400 hover:text-white">
-              Archive
-            </Link>
-            <Link href="/discover" className="text-zinc-400 hover:text-white">
-              Discover
-            </Link>
-            <Link href="/saved" className="text-zinc-400 hover:text-white">
-              Saved
-            </Link>
-            <Link href="/messages" className="text-zinc-400 hover:text-white">
-              Inbox
-            </Link>
-            <ActivityNavLink />
-            <Link href="/admin" className="text-cyan-300 hover:text-cyan-200">
-              Studio
-            </Link>
-          </nav>
+          <DesktopAppNavigation />
         </div>
       </header>
 

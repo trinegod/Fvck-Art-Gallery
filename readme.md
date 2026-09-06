@@ -6,7 +6,15 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
-## September 4, 2026 release
+## September 6, 2026 working update — not deployed yet
+
+- One compact bottom row opens Feed, Explore, Create, and You. Shared desktop navigation uses the same destinations.
+- Explore groups discovery, the archive, Threads, and credited World previews; You groups saves, conversations, activity, and the current account.
+- Create adds an owner-only Your work index to resume private Thread drafts. Forge revisions are not stored here.
+- Audit repairs address stale private state after account changes, individual Activity seen updates, newest-message pagination/read position, cold feed scrolling, browser history, and multi-hop return links.
+- Verification and remaining authenticated/device checks are recorded in [Repair verification](docs/audits/2026-09-06-repair-verification.md). No new audio service, chat themes, generation provider, or database migration is enabled by this update.
+
+## September 4, 2026 public release
 
 - A cleaner mobile dock keeps Feed fixed and groups destinations under Explore, Create, and You.
 - Equally sized, centered section tabs replace the extra arrow. Native horizontal swiping, labeled tap controls, keyboard navigation, and activity indicators remain available.
@@ -25,7 +33,7 @@ Deployment and recovery boundaries are documented in [Release and backup notes](
 - Creator profiles with public portfolio routes
 - Personalized discovery, follows, likes, comments, activity, and private saves
 - A connected Feed with For You, Discover, and Following modes, plus World Portals for Gallery, Threads, Film, and Signals
-- A mobile dock with an always-accessible Feed and swipeable Explore, Create, and You sections, labeled tap controls, keyboard navigation, and activity indicators
+- A compact mobile dock with four labeled section links, keyboard navigation, and activity indicators; secondary destinations live in Explore, Create, and You
 - World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, shareable Lineage Maps, and provenance-preserving forks
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes

@@ -16,7 +16,6 @@ import {
   ScanLine,
   Sparkles,
   SunMedium,
-  Waypoints,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +33,7 @@ import {
 } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
+import DesktopAppNavigation from "@/app/components/desktop-app-navigation";
 import PolishedImage from "@/app/components/polished-image";
 import { supabase } from "@/lib/supabase-browser";
 import {
@@ -355,26 +355,18 @@ export default function ForgeLab({
       <header className="border-b border-white/10 bg-zinc-950/90 px-5 py-4 backdrop-blur-xl sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
-            href="/"
-            className="text-lg font-light tracking-[0.24em] text-white transition-colors hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            href="/feed"
+            className="inline-flex min-h-11 items-center text-lg font-light tracking-[0.24em] text-white transition-colors hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
             NODEINE
           </Link>
           <div className="flex items-center gap-2">
-            <Button
-              render={<Link href="/threads" />}
-              nativeButton={false}
-              variant="ghost"
-              className="hidden text-zinc-400 sm:inline-flex"
-            >
-              <Waypoints data-icon="inline-start" />
-              Threads
-            </Button>
+            <DesktopAppNavigation />
             <Button
               render={<Link href="/admin" />}
               nativeButton={false}
               variant="outline"
-              className="h-10 border-white/12 bg-black/30 px-3 text-zinc-200"
+              className="h-11 border-white/12 bg-black/30 px-3 text-zinc-200 lg:hidden"
             >
               <ArrowLeft data-icon="inline-start" />
               Creator Studio

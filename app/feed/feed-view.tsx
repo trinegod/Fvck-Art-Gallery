@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
-  Archive,
   ArrowUpRight,
   Bookmark,
-  Compass,
   FlaskConical,
   Heart,
-  Home,
   Layers3,
   LoaderCircle,
   MessageCircle,
@@ -18,7 +16,6 @@ import {
   Search,
   Sparkles,
   UserCheck,
-  Waypoints,
 } from "lucide-react";
 import { toast } from "sonner";
 import ArtworkComments from "@/app/components/artwork-comments";
@@ -26,6 +23,7 @@ import ArtworkMedia, {
   isVideoArtwork,
 } from "@/app/components/artwork-media";
 import ArtworkShareButton from "@/app/components/artwork-share-button";
+import DesktopAppNavigation from "@/app/components/desktop-app-navigation";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
 import PolishedImage from "@/app/components/polished-image";
 import {
@@ -40,12 +38,15 @@ import {
   appendFeedReturnContext,
   buildFeedReturnHref,
 } from "@/lib/feed-return";
+import {
+  feedRestoreCount,
+  observeFeedViewport,
+  readFeedLocation,
+} from "@/lib/feed-navigation";
 import { supabase } from "@/lib/supabase-browser";
 
 type FeedViewProps = {
   inventory: FeedInventoryItem[];
-  initialMode: FeedMode;
-  initialArtworkId?: string | null;
 };
 
 type SignalState = "loading" | "ready" | "signed-out" | "unavailable";
@@ -84,10 +85,10 @@ function firstThread(entry: FeedEntry) {
 
 export default function FeedView({
   inventory,
-  initialMode,
-  initialArtworkId = null,
 }: FeedViewProps) {
-  const [feedMode, setFeedMode] = useState<FeedMode>(initialMode);
+  const searchParams = useSearchParams();
+  const queryKey = searchParams.toString();
+  const { mode: feedMode, signalId: requestedArtworkId } = readFeedLocation(searchParams);
   const [signals, setSignals] = useState<FeedSignals>(EMPTY_FEED_SIGNALS);
   const [signalState, setSignalState] = useState<SignalState>(
     supabase ? "loading" : "unavailable"
@@ -100,12 +101,14 @@ export default function FeedView({
   const [followingError, setFollowingError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(feedBatchSize);
   const [discussionId, setDiscussionId] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(initialArtworkId);
+  const [activeId, setActiveId] = useState<string | null>(requestedArtworkId);
   const [busyEngagements, setBusyEngagements] = useState<Set<string>>(
     () => new Set()
   );
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const restoredArtworkRef = useRef(false);
+  const feedEntriesRef = useRef<HTMLDivElement>(null);
+  const pendingArtworkRef = useRef<string | null>(requestedArtworkId);
+  const lastRecordedQueryRef = useRef<string | null>(null);
 
   useEffect(() => {
     const client = supabase;
@@ -206,7 +209,11 @@ export default function FeedView({
     [feedMode, inventory, signals]
   );
   const visibleEntries = entries.slice(0, visibleCount);
+  const visibleEntryKey = visibleEntries.map((entry) => entry.id).join(",");
   const hasMore = visibleCount < entries.length;
+  const entriesReady = feedMode === "following"
+    ? followingState === "ready"
+    : signalState !== "loading";
   const activeEntry =
     entries.find((entry) => entry.id === activeId) ?? entries[0] ?? null;
   const worldInterlude = entries[3] ?? entries[0] ?? null;
@@ -222,55 +229,53 @@ export default function FeedView({
       : modeCopy[feedMode];
 
   useEffect(() => {
-    function restoreModeFromHistory() {
-      const requested = new URL(window.location.href).searchParams.get("mode");
-      if (requested === "for-you" || requested === "discover" || requested === "following") {
-        setFeedMode(requested);
-        setVisibleCount(feedBatchSize);
-        setDiscussionId(null);
-      }
-    }
-    window.addEventListener("popstate", restoreModeFromHistory);
-    return () => window.removeEventListener("popstate", restoreModeFromHistory);
-  }, []);
-
-  useEffect(() => {
-    if (
-      !initialArtworkId ||
-      restoredArtworkRef.current ||
-      !entries.length ||
-      signalState === "loading" ||
-      (feedMode === "following" && followingState === "loading")
-    ) {
+    // Scrolling updates the URL, but must not restart the feed or scroll itself.
+    // A Link, Back/Forward, or a different query is a genuine navigation.
+    if (lastRecordedQueryRef.current === queryKey) {
+      lastRecordedQueryRef.current = null;
       return;
     }
-    const index = entries.findIndex((entry) => entry.id === initialArtworkId);
-    if (index < 0) return;
+    lastRecordedQueryRef.current = null;
+    pendingArtworkRef.current = requestedArtworkId;
+    const frame = requestAnimationFrame(() => {
+      setVisibleCount(feedBatchSize);
+      setDiscussionId(null);
+      setActiveId(requestedArtworkId);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [queryKey, requestedArtworkId]);
+
+  useEffect(() => {
+    const targetId = pendingArtworkRef.current;
+    if (!targetId || !entriesReady) return;
+    if (!entries.some((entry) => entry.id === targetId)) {
+      pendingArtworkRef.current = null;
+      return;
+    }
     let scrollFrame = 0;
     const revealFrame = requestAnimationFrame(() => {
-      setVisibleCount((count) => Math.max(count, index + 1));
+      setVisibleCount((count) => feedRestoreCount(entries.map((entry) => entry.id), targetId, count));
       scrollFrame = requestAnimationFrame(() => {
-        document.getElementById(`signal-${initialArtworkId}`)?.scrollIntoView({
-          block: "start",
-        });
-        restoredArtworkRef.current = true;
+        document.getElementById(`signal-${targetId}`)?.scrollIntoView({ block: "start" });
+        pendingArtworkRef.current = null;
       });
     });
     return () => {
       cancelAnimationFrame(revealFrame);
       cancelAnimationFrame(scrollFrame);
     };
-  }, [entries, feedMode, followingState, initialArtworkId, signalState]);
+  }, [entries, entriesReady, requestedArtworkId, queryKey]);
 
   function changeMode(mode: FeedMode) {
     if (mode === feedMode) return;
-    setFeedMode(mode);
     setVisibleCount(feedBatchSize);
     setDiscussionId(null);
     setActiveId(null);
-    restoredArtworkRef.current = true;
+    pendingArtworkRef.current = null;
+    // Next's patched History API copies its internal route state and updates
+    // useSearchParams. Passing history.state would bypass that synchronization.
     window.history.pushState(null, "", modeHref(mode));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   async function toggleEngagement(
@@ -354,54 +359,28 @@ export default function FeedView({
   }
 
   useEffect(() => {
-    const targets = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-feed-entry]")
-    );
-    if (!targets.length || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (observations) => {
-        const visible = observations
-          .filter((observation) => observation.isIntersecting)
-          .sort(
-            (left, right) =>
-              Math.abs(left.boundingClientRect.top) -
-              Math.abs(right.boundingClientRect.top)
-          )[0];
-        if (visible?.target instanceof HTMLElement) {
-          const nextId = visible.target.dataset.feedEntry ?? null;
-          setActiveId(nextId);
-          if (nextId) {
-            window.history.replaceState(
-              null,
-              "",
-              buildFeedReturnHref({ mode: feedMode, signalId: nextId })
-            );
-          }
-        }
+    if (!entriesReady || !feedEntriesRef.current) return;
+    return observeFeedViewport({
+      cards: Array.from(feedEntriesRef.current.querySelectorAll("[data-feed-entry]")),
+      sentinel: loadMoreRef.current,
+      hasMore,
+      onActive(nextId) {
+        // Do not replace a deep return target while its cards are being revealed.
+        if (pendingArtworkRef.current) return;
+        setActiveId(nextId);
+        const href = buildFeedReturnHref({ mode: feedMode, signalId: nextId });
+        const nextQuery = href.slice(href.indexOf("?") + 1).split("#")[0];
+        if (window.location.search.slice(1) === nextQuery) return;
+        lastRecordedQueryRef.current = nextQuery;
+        window.history.replaceState(null, "", href);
       },
-      { rootMargin: "-18% 0px -58% 0px", threshold: 0.08 }
-    );
-    for (const target of targets) observer.observe(target);
-    return () => observer.disconnect();
-  }, [feedMode, visibleEntries.length]);
-
-  useEffect(() => {
-    const target = loadMoreRef.current;
-    if (!target || !hasMore || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
+      onLoadMore() {
         setVisibleCount((count) =>
           Math.min(count + feedBatchSize, entries.length)
         );
       },
-      { rootMargin: "500px 0px" }
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [entries.length, hasMore]);
+    });
+  }, [entriesReady, entries.length, feedMode, hasMore, visibleEntryKey]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,.10),transparent_28%),#09090b] pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
@@ -430,13 +409,7 @@ export default function FeedView({
               Worlds in motion
             </p>
 
-            <nav className="mt-10 space-y-1" aria-label="Feed navigation">
-              <LeftRailLink href="/feed" icon={<Home />} label="Feed" active />
-              <LeftRailLink href="/" icon={<Archive />} label="Archive" />
-              <LeftRailLink href="/discover" icon={<Compass />} label="Discover" />
-              <LeftRailLink href="/threads" icon={<Waypoints />} label="Threads" />
-              <LeftRailLink href="/forge" icon={<FlaskConical />} label="Forge" />
-            </nav>
+            <DesktopAppNavigation className="mt-10 !flex !flex-col !items-stretch" />
 
             <div className="mt-10 rounded-2xl border border-white/8 bg-white/[0.025] p-4">
               <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500">
@@ -532,7 +505,7 @@ export default function FeedView({
               actionLabel="Discover Worlds"
             />
           ) : (
-            <div className="space-y-5 px-3 py-5 sm:space-y-7 sm:px-6 sm:py-7">
+            <div ref={feedEntriesRef} className="space-y-5 px-3 py-5 sm:space-y-7 sm:px-6 sm:py-7">
               {visibleEntries.map((entry, index) => (
                 <div key={entry.id}>
                   <FeedCard
@@ -646,35 +619,6 @@ export default function FeedView({
 
       <MobileAppNavigation />
     </main>
-  );
-}
-
-function LeftRailLink({
-  href,
-  icon,
-  label,
-  active = false,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition ${
-        active
-          ? "bg-cyan-300/10 text-cyan-100"
-          : "text-zinc-500 hover:bg-white/5 hover:text-white"
-      }`}
-    >
-      <span className="[&>svg]:size-4" aria-hidden="true">
-        {icon}
-      </span>
-      {label}
-    </Link>
   );
 }
 

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
+import { createAccountScope, observeAccount } from "@/lib/activity-session";
 import {
   createWorldThread,
   getComposerArtwork,
@@ -124,6 +125,7 @@ export default function ThreadComposer({
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [accountScope] = useState(createAccountScope);
 
   useEffect(() => {
     const client = supabase;
@@ -131,8 +133,10 @@ export default function ThreadComposer({
     const database = client;
     let cancelled = false;
     let requestNumber = 0;
+    let resolvedOwner: string | null | undefined;
 
     async function load(userId: string | null) {
+      if (cancelled || accountScope.account() !== userId) return;
       const request = ++requestNumber;
       if (!userId) {
         if (!cancelled) setLoadState("signed-out");
@@ -205,12 +209,29 @@ export default function ThreadComposer({
       }
     }
 
-    database.auth.getUser().then(({ data }) => load(data.user?.id ?? null));
+    const stopObserving = observeAccount(database.auth, (userId) => {
+      if (cancelled || (resolvedOwner === userId && accountScope.account() === userId)) return;
+      resolvedOwner = userId;
+      ++requestNumber;
+      accountScope.setAccount(userId);
+      // An account change must erase the previous owner's private editor,
+      // including any in-flight save response, before loading the new one.
+      setArtworks([]);
+      setThreadId(null);
+      setDraft(emptyDraft);
+      setQuery("");
+      setError(null);
+      setSaving(false);
+      setLoadState(userId ? "loading" : "signed-out");
+      if (userId) void Promise.resolve().then(() => load(userId));
+    });
 
     return () => {
       cancelled = true;
+      accountScope.clear();
+      stopObserving();
     };
-  }, [mode, seedArtworkId, slug]);
+  }, [accountScope, mode, seedArtworkId, slug]);
 
   const selectedIds = useMemo(
     () => new Set(draft.items.map((item) => item.artworkId)),
@@ -290,7 +311,9 @@ export default function ThreadComposer({
   async function submitThread(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const database = supabase;
-    if (!database || saving) return;
+    const ownerId = accountScope.account();
+    if (!database || saving || !ownerId || loadState !== "ready") return;
+    const isCurrentAccount = accountScope.capture(ownerId);
 
     const validation = validateWorldThreadDraft(draft);
     if (validation.error || !validation.value) {
@@ -301,13 +324,29 @@ export default function ThreadComposer({
     setSaving(true);
     setError(null);
     try {
+      const { data: authData, error: authError } = await database.auth.getUser();
+      if (!isCurrentAccount()) return;
+      if (authError && authError.name !== "AuthSessionMissingError") {
+        throw new Error("Your session could not be verified. Your edits are still here; check your connection and try again.");
+      }
+      if (authError || authData.user?.id !== ownerId) {
+        accountScope.clear();
+        setArtworks([]);
+        setThreadId(null);
+        setDraft(emptyDraft);
+        setSaving(false);
+        setLoadState("signed-out");
+        return;
+      }
       const result =
         mode === "edit" && threadId
           ? await updateWorldThread(database, threadId, validation.value)
           : await createWorldThread(database, validation.value);
+      if (!isCurrentAccount()) return;
       router.push(`/threads/${result.threadSlug}`);
       router.refresh();
     } catch (saveError) {
+      if (!isCurrentAccount()) return;
       setError(
         saveError instanceof Error
           ? saveError.message
@@ -361,11 +400,11 @@ export default function ThreadComposer({
         <div className="flex flex-col gap-5 border-b border-white/10 pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Link
-              href={mode === "edit" && slug ? `/threads/${slug}` : "/threads"}
+              href={draft.visibility === "draft" ? "/create" : mode === "edit" && slug ? `/threads/${slug}` : "/threads"}
               className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-zinc-500 hover:text-white"
             >
               <ArrowLeft className="size-3.5" aria-hidden="true" />
-              {mode === "edit" ? "Back to thread" : "All threads"}
+              {draft.visibility === "draft" ? "Your work" : mode === "edit" ? "Back to thread" : "All threads"}
             </Link>
             <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-300">
               {mode === "edit" ? "Refine the lineage" : "Draw a new lineage"}
@@ -387,7 +426,7 @@ export default function ThreadComposer({
             ) : (
               <Check className="size-4" aria-hidden="true" />
             )}
-            {saving ? "Saving path" : mode === "edit" ? "Save changes" : "Create thread"}
+            {saving ? "Saving path" : draft.visibility === "draft" ? "Save private draft" : mode === "edit" ? "Publish changes" : "Publish thread"}
           </Button>
         </div>
 
@@ -647,7 +686,7 @@ function ComposerStatus({
   actionLabel?: string;
 }) {
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <ThreadHeader />
       <div className="grid min-h-[calc(100svh-73px)] place-items-center px-5 py-16">
         <div className="max-w-md text-center">
@@ -659,12 +698,17 @@ function ComposerStatus({
           <h1 className="mt-5 text-2xl font-medium text-white">{title}</h1>
           <p className="mt-3 text-sm leading-6 text-zinc-400">{detail}</p>
           {actionHref && actionLabel && (
-            <Link href={actionHref} className="mt-6 inline-flex min-h-10 items-center rounded-full bg-cyan-300 px-5 text-sm font-semibold text-zinc-950 hover:bg-cyan-200">
+            <Link href={actionHref} className="mt-6 inline-flex min-h-11 items-center rounded-full bg-cyan-300 px-5 text-sm font-semibold text-zinc-950 hover:bg-cyan-200">
               {actionLabel}
             </Link>
           )}
+          <Link href="/create" className="mt-3 flex min-h-11 items-center justify-center gap-2 text-sm text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to Create
+          </Link>
         </div>
       </div>
+      <MobileAppNavigation />
     </main>
   );
 }
