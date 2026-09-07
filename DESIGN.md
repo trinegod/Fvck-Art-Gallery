@@ -31,6 +31,8 @@ Archive retains its existing name and collection-browser destination. Individual
 
 Selecting a section navigates to its page. No second row, More drawer, arrows, hidden panel, or discovery gesture is required. Routes and browser history select the owning section; editing a Thread belongs to Create. At 1024px and above the same four destinations appear in a shared desktop header or the feed sidebar. Existing contextual actions remain alongside, not inside, primary navigation. Navigation does not auto-save an unfinished form.
 
+**Focused conversation exception:** below 1024px, an authenticated, resolved conversation uses one contextual header and no global brand row or bottom dock. Remove the dock's reserved padding at the same time, retaining the bottom safe area once. Keep Back to inbox obvious. The inbox, unresolved destinations, signed-out, and unavailable states retain global navigation; desktop keeps its split pane and shared header. Selection alone is not enough to hide navigation. See the [measured chat-space audit](docs/audits/2026-09-07-mobile-chat-space.md).
+
 ## Interaction and accessibility
 
 - Ordinary link semantics: Tab/Shift+Tab traverse destinations and Enter opens them. Do not apply tab/carousel roles or capture arrow keys.
@@ -63,10 +65,13 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 - Store palette, artwork ID or a bounded locally re-encoded JPEG, visibility, and dimming under an account-and-conversation key. If storage is blocked, preserve temporary choices and explain they will not persist. Never store messages, external image URLs, signed URLs, or audio recordings in appearance preferences.
 - The primary **Done** action is visible in the sticky footer; reset remains secondary. Disable Done/source-changing controls during preparation, and cancel unfinished preparation on closing the dialog. Choices apply immediately; Done closes the panel, not a shared-theme publish action.
 - The header retains appearance and one labeled conversation-options button; save-all artwork, group settings, and personal clearing live there. Keep edit/remove actions beside the current viewer's messages, not in the global navigation. Destructive actions require explicit confirmation and explain whose copy is affected.
+- The compact header can wrap for larger text. One **Add attachment** menu contains **Photo or video** and **Artwork from your worlds**, while the microphone remains explicit. Keep the mobile textarea at 16px, Back/Send at least 44px, and restore attachment-trigger focus after the artwork picker closes. Do not change send/upload behavior as part of layout work.
 - Voice recording starts only after a microphone action, then offers Stop, Preview, Discard, and gated Send. Avoid autoplay. State uncertainty honestly after a lost delivery response, and keep permission-denied, unsupported-browser, expired-playback, and pending-activation states understandable.
 
 ## Loading identity
 
 The original **World Aperture** combines a framed world, geometric portal, and one quiet orbiting point. Keep the familiar map/lens cue small and separate from the optional NODEINE wordmark. Use it only while a route or data region is actually pending; retain informative skeletons and loaded navigation. No forced startup duration, fake progress, imported combat effects, or full-screen overlay on finished content. The 7.2-second orbit becomes static under reduced motion. See `docs/design/loading-screen-concept.md`.
+
+Center the complete mark/status group in the current viewport when the inbox itself is pending; use the contained inline variant only for conversation-panel loading. The initial inbox must not use an arbitrary partial-viewport height. A viewport-aligned status has no blocking backdrop and does not intercept navigation.
 
 The earlier public appearance release is recorded in `docs/audits/2026-09-07-chat-release.md`; the expanded local review is recorded in `docs/audits/2026-09-07-chat-expansion.md`. Real voice-note components are now in source, with private sending and message controls gated by separate database/runtime approval. Live audio rooms remain a simulation on the separate `codex/chat-visual-study` branch.

@@ -38,12 +38,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope, observeAccount } from "@/lib/activity-session";
 import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
 import { syncMessageViewport } from "@/lib/message-viewport";
+import { getMessagesShellMode } from "@/lib/messages-shell";
 import { persistMessageAttachment } from "@/lib/message-attachment";
 import { CHAT_PALETTES } from "@/lib/chat-appearance";
 import { VOICE_NOTE_BUCKET } from "@/lib/voice-note-upload";
@@ -209,6 +211,14 @@ export default function MessagesView({
   const activeConversation = inbox.find(
     (conversation) => conversation.id === activeConversationId
   );
+  const shellMode = getMessagesShellMode({
+    authReady,
+    loadState,
+    viewerId,
+    selectedConversationId: activeConversationId,
+    resolvedConversationId: activeConversation?.id ?? null,
+  });
+  const focusedConversation = shellMode === "conversation";
   const currentVoiceKey = viewerId && activeConversationId
     ? `${viewerId}:${activeConversationId}` : null;
   const controlsEnabled = messageControls?.key === currentVoiceKey && messageControls.enabled;
@@ -1437,12 +1447,13 @@ export default function MessagesView({
 
   return (
     <main
+      data-chat-shell={shellMode}
       // The contained inbox reserves dock space inside its panels. Override the
       // global page-level dock padding so the same space is not reserved twice.
       style={loadState === "ready" ? { paddingBottom: 0 } : undefined}
       className={`${loadState === "ready" ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0"} bg-zinc-950 text-zinc-100`}
     >
-      <header className="shrink-0 border-b border-white/10 px-5 py-5 sm:px-8">
+      <header data-chat-part="brand" className={`${focusedConversation ? "hidden lg:block" : "block"} shrink-0 border-b border-white/10 px-5 py-5 sm:px-8`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
             href="/"
@@ -1455,7 +1466,7 @@ export default function MessagesView({
       </header>
 
       {!authReady || loadState === "loading" ? (
-        <WorldLoadingScreen variant="inline" label="Opening your inbox…" className="min-h-[70svh]" />
+        <WorldLoadingScreen variant="viewport" label="Opening your inbox…" />
       ) : loadState === "signed-out" ? (
         <div className="grid min-h-[70svh] place-items-center px-5 text-center">
           <div className="max-w-md">
@@ -1488,7 +1499,7 @@ export default function MessagesView({
           </div>
         </div>
       ) : (
-        <section className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 overflow-hidden lg:grid-cols-[390px_minmax(0,1fr)]">
+        <section className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[390px_minmax(0,1fr)]">
           <aside
             className={`min-h-0 border-white/10 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:border-r lg:pb-0 ${
               activeConversationId ? "hidden lg:flex" : "flex"
@@ -1694,18 +1705,19 @@ export default function MessagesView({
           </aside>
 
           <section
+            data-chat-part="conversation"
             style={{ "--chat-bubble": palette.background, "--chat-ink": palette.foreground } as CSSProperties}
-            className={`min-h-0 ${
+            className={`min-h-0 min-w-0 ${
               activeConversationId ? "flex" : "hidden lg:flex"
-            } flex-col pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-0`}
+            } flex-col ${focusedConversation ? "pb-[env(safe-area-inset-bottom)]" : "pb-[calc(5.75rem+env(safe-area-inset-bottom))]"} lg:pb-0`}
           >
             {activeConversation ? (
               <>
-                <header className="flex min-h-[76px] shrink-0 flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:gap-3 sm:px-6">
+                <header data-chat-part="conversation-header" className="flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-zinc-950/95 px-3 py-2 sm:px-6 lg:min-h-[76px] lg:gap-3 lg:py-3">
                   <button
                     type="button"
                     onClick={closeConversation}
-                    className="nodeine-action grid size-10 shrink-0 place-items-center rounded-full text-zinc-400 hover:bg-white/5 hover:text-white lg:hidden"
+                    className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full text-zinc-300 hover:bg-white/5 hover:text-white lg:hidden"
                     aria-label="Back to inbox"
                   >
                     <ArrowLeft className="size-5" />
@@ -1717,20 +1729,21 @@ export default function MessagesView({
                     className="size-10"
                   />
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-sm font-medium text-white">
-                      {activeConversation.kind === "direct" && activeConversation.otherProfile ? (
-                        <Link href={`/creator/${activeConversation.otherProfile.username}`} title="View creator profile" className="nodeine-action flex min-h-11 items-center rounded-md focus-visible:outline-2 focus-visible:outline-cyan-300">
-                          <span className="truncate">{conversationName(activeConversation)}</span>
-                        </Link>
-                      ) : <span className="block truncate">{conversationName(activeConversation)}</span>}
-                    </h2>
-                    <p className="mt-0.5 truncate text-xs text-zinc-600">
-                      {activeConversation.kind === "group"
-                        ? `${activeConversation.memberCount} ${activeConversation.memberCount === 1 ? "member" : "members"}`
-                        : activeConversation.otherProfile
-                          ? `@${activeConversation.otherProfile.username}`
-                          : "Private conversation"}
-                    </p>
+                    {activeConversation.kind === "direct" && activeConversation.otherProfile ? (
+                      <Link href={`/creator/${activeConversation.otherProfile.username}`} title="View creator profile" className="nodeine-action flex min-h-11 min-w-0 flex-col justify-center rounded-md focus-visible:outline-2 focus-visible:outline-cyan-300">
+                        <h2 className="w-full truncate text-sm font-medium text-white">{conversationName(activeConversation)}</h2>
+                        <p className="mt-0.5 w-full truncate text-xs text-zinc-400">@{activeConversation.otherProfile.username}</p>
+                      </Link>
+                    ) : (
+                      <div className="flex min-h-11 min-w-0 flex-col justify-center">
+                        <h2 className="truncate text-sm font-medium text-white">{conversationName(activeConversation)}</h2>
+                        <p className="mt-0.5 truncate text-xs text-zinc-400">
+                          {activeConversation.kind === "group"
+                            ? `${activeConversation.memberCount} ${activeConversation.memberCount === 1 ? "member" : "members"}`
+                            : "Private conversation"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <ChatAppearanceDialog key={`${viewerId}:${activeConversationId}`} appearance={appearance} temporary={temporary} artworks={themeArtworks} onChange={updateAppearance} />
                   <button type="button" aria-label="Conversation options" title="Conversation options"
@@ -1741,7 +1754,7 @@ export default function MessagesView({
                   {activeConversation.kind === "direct" && activeConversation.otherProfile && (
                     <Link
                       href={`/creator/${activeConversation.otherProfile.username}`}
-                      className="nodeine-action hidden min-h-10 items-center rounded-lg border border-white/10 px-3 text-xs text-zinc-400 hover:border-cyan-300/40 hover:text-cyan-200 sm:inline-flex"
+                      className="nodeine-action hidden min-h-11 items-center rounded-lg border border-white/10 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 lg:inline-flex"
                     >
                       Profile
                     </Link>
@@ -1749,12 +1762,13 @@ export default function MessagesView({
                 </header>
 
                 <div
+                  data-chat-part="history"
                   ref={messagesScrollerRef}
                   style={backgroundSource ? {
                     backgroundImage: `linear-gradient(rgb(9 11 15 / ${appearance.dim / 100}), rgb(9 11 15 / ${appearance.dim / 100})), url(${JSON.stringify(backgroundSource)})`,
                     backgroundSize: "cover", backgroundPosition: "center 25%",
                   } : undefined}
-                  className={`relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 ${
+                  className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 lg:py-5 ${
                     dragActive ? "bg-cyan-300/[0.035]" : ""
                   }`}
                   onDragEnter={handleMediaDrag}
@@ -1915,8 +1929,9 @@ export default function MessagesView({
                 </div>
 
                 <form
+                  data-chat-part="composer"
                   onSubmit={sendMessage}
-                  className="shrink-0 border-t border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-xl sm:px-6"
+                  className="shrink-0 border-t border-white/10 bg-zinc-950/95 px-3 py-2 backdrop-blur-xl sm:px-6 lg:py-3"
                 >
                   <div className="mx-auto flex max-w-3xl items-end gap-2">
                     <input
@@ -1930,31 +1945,22 @@ export default function MessagesView({
                         event.target.value = "";
                       }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => attachmentInputRef.current?.click()}
-                      disabled={uploadingMedia || sending || voiceSending}
-                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
-                      aria-label="Share image or video"
-                      title="Share image or video"
-                    >
-                      {uploadingMedia ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <ImagePlus className="size-4" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setArtworkShareOpen(true)}
-                      disabled={uploadingMedia || sending || voiceSending}
-                      className="nodeine-action inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-xs text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:opacity-60"
-                      aria-label="Choose artwork from your worlds"
-                      title="Choose artwork from your worlds"
-                    >
-                      <BookmarkPlus className="size-4" />
-                      <span className="hidden sm:inline">Worlds</span>
-                    </button>
+                    <DropdownMenu key={currentVoiceKey}>
+                      <DropdownMenuTrigger
+                        disabled={uploadingMedia || sending || voiceSending}
+                        render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
+                      >
+                        {uploadingMedia ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-5" />}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start" sideOffset={10} className="min-w-56 rounded-2xl border border-white/10 bg-zinc-950 p-2 text-zinc-100 shadow-2xl motion-reduce:animate-none! motion-reduce:transition-none!">
+                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || voiceSending} onClick={() => attachmentInputRef.current?.click()}>
+                          <ImagePlus className="size-4 text-cyan-200" /> Photo or video
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || voiceSending} onClick={() => setArtworkShareOpen(true)}>
+                          <BookmarkPlus className="size-4 text-cyan-200" /> Artwork from your worlds
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <button
                       type="button"
                       onClick={() => setVoiceDialogKey(currentVoiceKey)}
@@ -1965,7 +1971,7 @@ export default function MessagesView({
                     >
                       <Mic className="size-4" />
                     </button>
-                    <label className="min-w-0 flex-1">
+                    <label className="flex min-w-0 flex-1">
                       <span className="sr-only">Message</span>
                       <textarea
                         value={draft}
@@ -1986,14 +1992,14 @@ export default function MessagesView({
                           uploadingMedia ? "Uploading media..." : "Message..."
                         }
                         disabled={uploadingMedia}
-                        className="max-h-32 min-h-11 w-full resize-none rounded-2xl border border-white/12 bg-black/50 px-4 py-2.5 text-sm leading-6 text-white outline-none placeholder:text-zinc-600 focus:border-cyan-300"
+                        className="max-h-32 min-h-11 w-full resize-none rounded-2xl border border-white/12 bg-white/[.035] px-3 py-2.5 text-base leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-cyan-300 lg:text-sm"
                       />
                     </label>
                     <Button
                       type="submit"
                       size="icon-lg"
                       disabled={sending || uploadingMedia || voiceSending || !draft.trim()}
-                      className="shrink-0 rounded-full"
+                      className="size-11 shrink-0 rounded-full"
                       aria-label="Send message"
                     >
                       {sending ? (
@@ -2023,6 +2029,11 @@ export default function MessagesView({
                     Choose a conversation, message a creator from their profile,
                     or start a group for the people building alongside you.
                   </p>
+                  {activeConversationId && (
+                    <button type="button" onClick={closeConversation} className="nodeine-action mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 text-sm text-zinc-200 hover:border-cyan-300/50 hover:text-cyan-200">
+                      <ArrowLeft className="size-4" /> Back to inbox
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -2289,7 +2300,7 @@ export default function MessagesView({
         />
       )}
 
-      <MobileAppNavigation />
+      <MobileAppNavigation hidden={focusedConversation} />
     </main>
   );
 }

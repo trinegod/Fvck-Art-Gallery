@@ -1,14 +1,34 @@
 .centered {
+  box-sizing: border-box;
   display: grid;
-  min-height: 100svh;
+  min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
   overflow: clip;
   padding: 2rem 1.25rem;
   color: var(--foreground);
   background:
-    radial-gradient(circle at 50% 46%, rgb(103 232 249 / 7%), transparent 19rem),
+    radial-gradient(circle at 50% 50%, rgb(103 232 249 / 7%), transparent 19rem),
     radial-gradient(ellipse at 50% 115%, rgb(255 255 255 / 3%), transparent 32rem),
     var(--background);
+}
+
+.viewport {
+  min-height: 12rem;
+  color: var(--foreground);
+}
+
+/* Center the complete mark/label group, independent of the retained header and
+   dock. This is not a full-screen layer: navigation remains visible and usable. */
+.viewport .status {
+  position: fixed;
+  top: 50vh;
+  top: 50dvh;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 2.5rem);
+  pointer-events: none;
 }
 
 .inline {
@@ -51,7 +71,8 @@
   margin-top: 0.875rem;
 }
 
-.inline .label {
+.inline .label,
+.viewport .label {
   margin-top: 0.75rem;
   font-size: 0.8125rem;
 }

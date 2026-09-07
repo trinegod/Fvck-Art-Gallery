@@ -6,6 +6,17 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 7, 2026 — focused mobile chat and centered loading
+
+The review branch now gives an open mobile conversation more space: one contextual header, no global bottom dock, and no empty dock reserve. Back restores the normal inbox navigation; unresolved conversations retain an explicit escape. The desktop split view remains intact.
+
+- At 390×844, the measured message region grows from 518.5px to 717px (about 38%), and the text field from 160px to 210px. Larger-text wrapping and 44px action targets are preserved.
+- **Add attachment** groups photo/video and World artwork sharing; the microphone stays visible. Message delivery, private-audio gates, and deletion/editing activation are unchanged.
+- The original **World Aperture** and “Opening your inbox…” status are centered together horizontally and vertically in the current viewport. Panel loading remains contained; there is no artificial wait.
+- [Verification and limitations](docs/audits/2026-09-07-mobile-chat-space.md). The three self-contained project handoffs are ready for [Trinefield](docs/handoffs/trinefield-motion-prompt.md), [BIAO](docs/handoffs/biao-motion-prompt.md), and [108 Yokai](docs/handoffs/108-yokai-motion-prompt.md). Those other repositories were not changed.
+
+The prior immutable chat preview below remains a historical checkpoint. Use the latest verified review URL recorded in the [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) for this follow-up. Stable production links above are not changed by review-branch publication.
+
 ## September 7, 2026 — chat expansion review candidate
 
 This is feature-branch work for review, not an announcement that new audio or database capabilities are live on the public links above.

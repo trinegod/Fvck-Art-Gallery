@@ -1,5 +1,11 @@
 # Release and backup notes
 
+## Focused mobile chat follow-up — September 7, 2026
+
+The same review branch now includes the focused mobile conversation shell, compact attachment menu, viewport-centered World Aperture, and three cross-project handoff prompts. See the [measured audit](audits/2026-09-07-mobile-chat-space.md) for 156 passing tests, build results, independent audit repairs, and real-device limits. The [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) records the verified deployment URL and source SHA after publication; the new iCloud release manifest records its exact backup commit and checksums. Do not treat the older immutable preview below as containing this follow-up.
+
+Publishing this branch updates a review preview only. Neither stable production host nor backend capability activation is included. The other-project handoffs are instructions to copy, not evidence those projects were changed.
+
 ## Chat expansion preview — September 7, 2026
 
 The owner approved pushing a phone-accessible preview and refreshing the iCloud backup. The review branch is `codex/slim-navigation-audit-repairs`; Vercel's existing GitHub integration deployed application commit `479c8a517d05666a04e7dea73f970a6660562486` successfully. Reused that verified deployment instead of creating a duplicate:

@@ -1,4 +1,51 @@
-# Mobile chat space: source-only layout audit
+# Mobile chat space: audit and review implementation
+
+## Implemented review follow-up
+
+The implementation below was compared with pre-change commit `1d330579339e8d0c88a0d5c59112782c77466159` on `codex/slim-navigation-audit-repairs`. This is a review candidate; stable production promotion and backend activation remain separate approvals. The original source-only audit is preserved afterward as historical reasoning.
+
+### What changed
+
+- `getMessagesShellMode` derives focused presentation from ready auth, a viewer, and the selected conversation actually resolving in the inbox. It does not create a second navigation state or reset drafts on resize.
+- A focused mobile chat hides the redundant brand row and dock together with the dock reserve, retaining one bottom safe-area inset. Inbox, stale-ID, signed-out, and unavailable states keep global navigation. A stale-ID placeholder also has Back to inbox.
+- A 64px normal mobile contextual header and 63px normal composer leave more space to messages. The header can wrap for larger text. Back, attachment, microphone, and Send targets are at least 44px. Desktop retains its 390px inbox column and global header.
+- One attachment menu groups photo/video and World artwork sharing. The microphone is still directly accessible; the mobile input uses 16px type. Existing send, upload, sharing, authorization, and destructive-action behavior is untouched.
+- The existing World Aperture/status group uses viewport centering for inbox pending work and dynamic-viewport centering for standalone fallbacks. Conversation-only loading stays inline.
+
+### Observed browser evidence
+
+Authenticated local browser checks used an existing conversation without publishing new messages, selecting upload files, recording audio, editing/deleting messages, or disclosing conversation contents in these notes. Measurements use CSS pixels and zero emulated safe-area inset.
+
+| Viewport | Header | Message region | Composer | Result |
+| --- | ---: | ---: | ---: | --- |
+| 390×844 before | 87px, plus 69px brand row | 518.5px | 77.5px | 92px dock reserve; input 160px wide |
+| 390×844 after | 64px | 717px | 63px | No dock/reserve; input 210px wide |
+| 320×568 after | 64px | 441px | 63px | Pane exactly 320px wide; input 140px; Send inside viewport |
+| 844×390 | 64px | 263px | 63px | Short landscape; conversation remains usable |
+| 1023×768 | 64px | 641px | 63px | Focused mobile treatment |
+| 1024×768 | 76px, plus 85px desktop header | 536px | 71px | 390px inbox column retained |
+| 1280×900 | 76px, plus 85px desktop header | 668px | 71px | Desktop split view retained |
+
+The 390px message-region gain is **198.5px, approximately 38%**; this is measured layout space, not a claimed improvement in user task performance.
+
+- Back to inbox restores brand/dock and hides the mobile conversation pane. Direct conversation reload resolves to the focused shell. A syntactically valid but absent conversation ID retains dock and an explicit Back action, without exposing a composer.
+- Add attachment opens two labeled menu items, at least 44px high. Mouse selection opens the artwork dialog. Keyboard ArrowDown opens the menu, ArrowDown/Enter opens artwork selection, and Escape closes the dialog and returns focus to Add attachment. Escape from the menu also returns focus to its trigger. No artwork was shared.
+- A temporary development-only fixture rendered the actual loading component at 320×568, 390×844, and 844×390. Viewport-mode mark/status centers were exactly the viewport midpoint; standalone mode differed by less than 0.004 CSS pixels horizontally. There is one polite status and no pointer-intercepting layer. The fixture was removed before the build/commit and is not deployed.
+- The same temporary fixture rendered actual MessagesView at 320×568 with a 24px root font. The header wrapped; header and composer actions remained within x=18…302, with 66px targets and a 306px message region. This is a larger-font check, not a physical-phone accessibility certification.
+
+### Audit repairs and automated coverage
+
+Independent audits checked standards/accessibility and request/privacy regressions. Findings were repaired: mobile header wrapping for larger text, and a reduced-motion override strong enough to beat shared popup state animations. Browser measurement also caught a 337px intrinsic grid overflowing the clipped 320px pane; an explicit one-column minmax grid and shrinkable pane now keep it at 320px.
+
+New tests cover resolved-state presentation, account/pending/error transitions, actual call-site bindings, wrapping/motion contracts, rendered loading semantics, original SVG usage, route fallback, and CSS centering. Pure state/source assertions do not substitute for mounted interaction tests. The generated reduced-motion CSS contains `animation: none !important`; OS-level reduced-motion emulation is not claimed.
+
+Final checks: **156 automated tests passed**; TypeScript passed; ESLint had no errors and five pre-existing warnings (four admin image-optimization notices and one unused catch binding in message actions); the webpack production build passed. Both independent reviewers rechecked their fixes and reported no remaining blockers in scope. The temporary fixture is absent from the production route table.
+
+### Remaining checks and gates
+
+Real iOS/Android keyboard fit, browser-bar changes, nonzero safe areas, touch/VoiceOver, full zoom, native file-picker cancellation, live group creation/leave, account-switch browser flows, and pending/error real-device delivery still need review. Do not interpret narrowed viewport checks as keyboard-device coverage. Voice/private delivery and edit/remove/clear SQL remain unactivated. No paid provider, database migration, production deployment, or other-project code is part of this layout change.
+
+## Original source-only audit (before implementation)
 
 September 7, 2026. Owner direction: give an open mobile conversation substantially more message space; remove the global Feed/Explore/Create/You dock inside that conversation. Icon-only global navigation elsewhere remains a possibility, not approval to redesign it.
 

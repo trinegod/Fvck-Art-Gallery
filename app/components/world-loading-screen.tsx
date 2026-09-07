@@ -5,8 +5,8 @@ type WorldLoadingScreenProps = {
   /** A concise, present-tense description of the real pending work. */
   label?: string;
   className?: string;
-  /** `centered` is for route fallbacks; `inline` fits an unresolved content region. */
-  variant?: "centered" | "inline";
+  /** Standalone route, viewport-aligned status inside a retained shell, or contained panel. */
+  variant?: "centered" | "viewport" | "inline";
   /** Optional current wordmark. The symbol itself remains usable if the name changes. */
   showWordmark?: boolean;
 };
@@ -17,7 +17,8 @@ function classNames(...values: Array<string | undefined>) {
 
 /**
  * A lightweight status for a real Suspense boundary or unresolved data region.
- * It is not an overlay and intentionally contains no timing or completion logic.
+ * It never adds a blocking backdrop and contains no timing or completion logic.
+ * Viewport mode positions only the status group, leaving a loaded shell usable.
  */
 export default function WorldLoadingScreen({
   label = "Opening the archive…",
@@ -33,11 +34,15 @@ export default function WorldLoadingScreen({
     </div>
   );
 
-  if (variant === "inline") {
-    return <div className={classNames(styles.inline, className)}>{content}</div>;
+  if (variant !== "centered") {
+    return (
+      <div className={classNames(styles[variant], className)} data-world-loading={variant}>
+        {content}
+      </div>
+    );
   }
 
-  return <main className={classNames(styles.centered, className)}>{content}</main>;
+  return <main className={classNames(styles.centered, className)} data-world-loading="centered">{content}</main>;
 }
 
 export type { WorldLoadingScreenProps };

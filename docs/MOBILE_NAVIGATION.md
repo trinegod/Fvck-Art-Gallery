@@ -1,5 +1,11 @@
 # Compact section navigation
 
+## September 7 focused-chat review update
+
+An authenticated, resolved mobile conversation now hides the global brand row and bottom dock, removes the dock's 92px reserve, and retains the bottom safe area and an explicit Back to inbox action. The inbox and stale/unavailable/signed-out states retain global navigation. Desktop keeps its header and split pane. One labeled attachment menu widens the composer without removing photo/video or World artwork sharing. The existing World Aperture inbox loading status now centers in the viewport, not a partial-height panel.
+
+At 390×844, the measured message region grows from 518.5px to 717px (about 38%); this is geometry, not a usability or performance metric. See the [chat-space audit](audits/2026-09-07-mobile-chat-space.md) for widths, keyboard checks, audit fixes, and physical-phone limits. This is review-branch work, not production promotion or audio/database activation.
+
 ## September 6, 2026 implementation
 
 The new local version replaces the two-level dock described below with one 70px row of ordinary links: **Feed `/feed`**, **Explore `/explore`**, **Create `/create`**, **You `/you`**. The former row measured 122px at the same phone sizes; this saves 52px, approximately 43%. This is a geometry comparison, not a claimed usability metric.
