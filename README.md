@@ -6,13 +6,16 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
-## September 6, 2026 working update — not deployed yet
+## September 7, 2026 — personal chat appearance and navigation repairs
 
 - One compact bottom row opens Feed, Explore, Create, and You. Shared desktop navigation uses the same destinations.
 - Explore groups discovery, the archive, Threads, and credited World previews; You groups saves, conversations, activity, and the current account.
 - Create adds an owner-only Your work index to resume private Thread drafts. Forge revisions are not stored here.
 - Audit repairs address stale private state after account changes, individual Activity seen updates, newest-message pagination/read position, cold feed scrolling, browser history, and multi-hop return links.
-- Verification and remaining authenticated/device checks are recorded in [Repair verification](docs/audits/2026-09-06-repair-verification.md). No new audio service, chat themes, generation provider, or database migration is enabled by this update.
+- The real inbox now has an initial personal-appearance slice: opaque Glacier/Orchid/Ember bubbles, background selection from artwork shared in the active conversation, dimming, hide-artwork, and reset. Preferences are scoped to the viewer and conversation on this device; shared group-wide themes are not implemented yet.
+- The authenticated mobile audit fixed conversation height and double-reserved dock spacing, keeping the composer visible on normal and short screens. Temporary appearance choices remain labeled correctly if browser storage is blocked, including when returning to a conversation.
+- The approved visual study is preserved on [`codex/chat-visual-study`](https://github.com/trinegod/Fvck-Art-Gallery/tree/codex/chat-visual-study). Its simulated voice notes/rooms are not included in the release source; actual voice notes, shared room-wide themes, and live audio remain unimplemented.
+- Verification and remaining physical-device checks are recorded in [Repair verification](docs/audits/2026-09-06-repair-verification.md), [Authenticated appearance audit](docs/audits/2026-09-07-chat-release.md), and the [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1). No new audio service, generation provider, or database migration is enabled by this update. The checklist records deployment completion separately from source verification.
 
 ## September 4, 2026 public release
 
@@ -38,6 +41,7 @@ Deployment and recovery boundaries are documented in [Release and backup notes](
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes
 - Direct and group messaging with realtime delivery, invitations, owner/admin/member roles, private media sharing, moderation controls, and archive-to-chat artwork cards
+- Personal chat appearance with readable opaque bubbles, shared-artwork backgrounds, dimming, and hide/reset controls scoped to this device and conversation
 - A Bulk Drop Studio for publishing up to 50 images or videos in one batch
 - An administrative workspace for managing creator profiles, collections, artwork, and media
 - Supabase-backed content with a resilient local fallback when the database is unavailable

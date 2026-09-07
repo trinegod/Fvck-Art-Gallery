@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   DragEvent,
   FormEvent,
   useCallback,
@@ -40,6 +41,7 @@ import { createAccountScope, observeAccount } from "@/lib/activity-session";
 import { fetchMessagePage, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
 import { syncMessageViewport } from "@/lib/message-viewport";
 import { persistMessageAttachment } from "@/lib/message-attachment";
+import { CHAT_PALETTES } from "@/lib/chat-appearance";
 import DesktopAppNavigation from "../components/desktop-app-navigation";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
@@ -47,6 +49,8 @@ import ArtworkShareDialog from "./artwork-share-dialog";
 import ChatArtworkCard from "./chat-artwork-card";
 import ConversationAvatar from "./conversation-avatar";
 import GroupSettingsDialog from "./group-settings-dialog";
+import ChatAppearanceDialog from "./chat-appearance-dialog";
+import { useChatAppearance } from "./use-chat-appearance";
 import type {
   ConversationRow,
   InboxConversation,
@@ -173,6 +177,15 @@ export default function MessagesView({
   const activeConversation = inbox.find(
     (conversation) => conversation.id === activeConversationId
   );
+  const { appearance, temporary, updateAppearance } = useChatAppearance(viewerId, activeConversationId);
+  const themeArtworks = Array.from(sharedArtworks.values()).filter(artwork =>
+    artwork.media_type === "image" && messages.some(message =>
+      message.conversation_id === activeConversationId && message.artwork_id === artwork.id
+    )
+  );
+  const backgroundArtwork = !appearance.hidden
+    ? themeArtworks.find(artwork => artwork.id === appearance.artworkId) : undefined;
+  const palette = CHAT_PALETTES[appearance.palette];
 
   const filteredInbox = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1226,8 +1239,13 @@ export default function MessagesView({
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
-      <header className="border-b border-white/10 px-5 py-5 sm:px-8">
+    <main
+      // The contained inbox reserves dock space inside its panels. Override the
+      // global page-level dock padding so the same space is not reserved twice.
+      style={loadState === "ready" ? { paddingBottom: 0 } : undefined}
+      className={`${loadState === "ready" ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-0"} bg-zinc-950 text-zinc-100`}
+    >
+      <header className="shrink-0 border-b border-white/10 px-5 py-5 sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
             href="/"
@@ -1278,9 +1296,9 @@ export default function MessagesView({
           </div>
         </div>
       ) : (
-        <section className="mx-auto grid max-w-7xl lg:h-[calc(100svh-73px)] lg:grid-cols-[390px_minmax(0,1fr)]">
+        <section className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 overflow-hidden lg:grid-cols-[390px_minmax(0,1fr)]">
           <aside
-            className={`border-white/10 lg:min-h-0 lg:border-r ${
+            className={`min-h-0 border-white/10 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:border-r lg:pb-0 ${
               activeConversationId ? "hidden lg:flex" : "flex"
             } flex-col`}
           >
@@ -1484,13 +1502,14 @@ export default function MessagesView({
           </aside>
 
           <section
+            style={{ "--chat-bubble": palette.background, "--chat-ink": palette.foreground } as CSSProperties}
             className={`min-h-0 ${
               activeConversationId ? "flex" : "hidden lg:flex"
             } flex-col pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-0`}
           >
             {activeConversation ? (
               <>
-                <header className="flex min-h-[76px] items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
+                <header className="flex min-h-[76px] shrink-0 flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:gap-3 sm:px-6">
                   <button
                     type="button"
                     onClick={closeConversation}
@@ -1506,8 +1525,12 @@ export default function MessagesView({
                     className="size-10"
                   />
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-medium text-white">
-                      {conversationName(activeConversation)}
+                    <h2 className="text-sm font-medium text-white">
+                      {activeConversation.kind === "direct" && activeConversation.otherProfile ? (
+                        <Link href={`/creator/${activeConversation.otherProfile.username}`} title="View creator profile" className="nodeine-action flex min-h-11 items-center rounded-md focus-visible:outline-2 focus-visible:outline-cyan-300">
+                          <span className="truncate">{conversationName(activeConversation)}</span>
+                        </Link>
+                      ) : <span className="block truncate">{conversationName(activeConversation)}</span>}
                     </h2>
                     <p className="mt-0.5 truncate text-xs text-zinc-600">
                       {activeConversation.kind === "group"
@@ -1517,6 +1540,7 @@ export default function MessagesView({
                           : "Private conversation"}
                     </p>
                   </div>
+                  <ChatAppearanceDialog key={`${viewerId}:${activeConversationId}`} appearance={appearance} temporary={temporary} artworks={themeArtworks} onChange={updateAppearance} />
                   {messages.some((message) => message.artwork_id) && (
                     <button
                       type="button"
@@ -1544,10 +1568,10 @@ export default function MessagesView({
                       <Settings className="size-4" />
                     </button>
                   )}
-                  {activeConversation.otherProfile && (
+                  {activeConversation.kind === "direct" && activeConversation.otherProfile && (
                     <Link
                       href={`/creator/${activeConversation.otherProfile.username}`}
-                      className="nodeine-action inline-flex min-h-10 items-center rounded-lg border border-white/10 px-3 text-xs text-zinc-400 hover:border-cyan-300/40 hover:text-cyan-200"
+                      className="nodeine-action hidden min-h-10 items-center rounded-lg border border-white/10 px-3 text-xs text-zinc-400 hover:border-cyan-300/40 hover:text-cyan-200 sm:inline-flex"
                     >
                       Profile
                     </Link>
@@ -1556,6 +1580,10 @@ export default function MessagesView({
 
                 <div
                   ref={messagesScrollerRef}
+                  style={backgroundArtwork ? {
+                    backgroundImage: `linear-gradient(rgb(9 11 15 / ${appearance.dim / 100}), rgb(9 11 15 / ${appearance.dim / 100})), url(${JSON.stringify(backgroundArtwork.src)})`,
+                    backgroundSize: "cover", backgroundPosition: "center 25%",
+                  } : undefined}
                   className={`relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 ${
                     dragActive ? "bg-cyan-300/[0.035]" : ""
                   }`}
@@ -1615,7 +1643,7 @@ export default function MessagesView({
                               }`}
                             >
                               {!mine && activeConversation.kind === "group" && (
-                                <p className="mb-1 px-1 text-[11px] text-zinc-600">
+                                <p className="mb-1 w-fit max-w-full break-words rounded-md bg-[#202632] px-2 py-1 text-[11px] text-[#c7cfde]">
                                   {sender?.display_name ?? "NODEINE creator"}
                                 </p>
                               )}
@@ -1631,8 +1659,8 @@ export default function MessagesView({
                                     <div
                                       className={`rounded-2xl px-4 py-2.5 text-left text-sm leading-6 ${
                                         mine
-                                          ? "rounded-br-md bg-cyan-300 text-zinc-950"
-                                          : "rounded-bl-md border border-white/10 bg-white/[0.045] text-zinc-200"
+                                          ? "rounded-br-md bg-[var(--chat-bubble)] text-[var(--chat-ink)]"
+                                          : "rounded-bl-md border border-white/10 bg-[#252d3a] text-[#f2f3f8]"
                                       }`}
                                     >
                                       <p className="whitespace-pre-wrap break-words">
@@ -1643,7 +1671,7 @@ export default function MessagesView({
                                 </div>
                               ) : mediaMessage && message.attachmentUrl ? (
                                 <div
-                                  className={`overflow-hidden rounded-2xl border bg-black/40 ${
+                                  className={`overflow-hidden rounded-2xl border bg-zinc-950 ${
                                     mine
                                       ? "rounded-br-md border-cyan-300/25"
                                       : "rounded-bl-md border-white/10"
@@ -1675,8 +1703,8 @@ export default function MessagesView({
                                 <div
                                   className={`rounded-2xl px-4 py-2.5 text-left text-sm leading-6 ${
                                     mine
-                                      ? "rounded-br-md bg-cyan-300 text-zinc-950"
-                                      : "rounded-bl-md border border-white/10 bg-white/[0.045] text-zinc-200"
+                                      ? "rounded-br-md bg-[var(--chat-bubble)] text-[var(--chat-ink)]"
+                                      : "rounded-bl-md border border-white/10 bg-[#252d3a] text-[#f2f3f8]"
                                   }`}
                                 >
                                   <p className="whitespace-pre-wrap break-words">
@@ -1687,7 +1715,7 @@ export default function MessagesView({
                                   </p>
                                 </div>
                               )}
-                              <time className="mt-1 block px-1 text-[10px] text-zinc-700">
+                              <time className="mt-1 inline-block rounded-md bg-[#202632] px-2 py-1 text-[10px] text-[#c7cfde]">
                                 {formatMessageTime(message.created_at)}
                               </time>
                             </div>
@@ -1698,12 +1726,12 @@ export default function MessagesView({
                     </div>
                   ) : (
                     <div className="grid min-h-full place-items-center text-center">
-                      <div className="max-w-sm">
+                      <div className="max-w-sm rounded-2xl bg-zinc-950 p-4">
                         <MessageCircle className="mx-auto size-9 text-cyan-300" />
                         <h3 className="mt-4 text-xl font-light text-white">
                           Say something real
                         </h3>
-                        <p className="mt-2 text-sm leading-6 text-zinc-600">
+                        <p className="mt-2 text-sm leading-6 text-zinc-400">
                           This is the beginning of this conversation. Keep it
                           creative, respectful, and human.
                         </p>
@@ -1714,7 +1742,7 @@ export default function MessagesView({
 
                 <form
                   onSubmit={sendMessage}
-                  className="border-t border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-xl sm:px-6"
+                  className="shrink-0 border-t border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-xl sm:px-6"
                 >
                   <div className="mx-auto flex max-w-3xl items-end gap-2">
                     <input

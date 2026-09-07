@@ -49,3 +49,15 @@ The earlier visual refinement also considered [Linear's March 2026 refresh](http
 ## Verification gate
 
 Test phone widths 320px and 390px, tablet width, desktop breakpoint, keyboard traversal, direct routes, history navigation, Studio escape path, and bottom-content clearance. Keep automated route-mapping tests with the shared destination model. See `docs/MOBILE_NAVIGATION.md` and `docs/audits/2026-09-06-repair-verification.md` for delivery evidence and limitations.
+
+## Chat appearance — initial local slice
+
+The owner approved the artwork-first chat direction and confirmed the name **NODEINE**. The real inbox's appearance dialog keeps customization contextual, outside the primary navigation. These settings affect the current viewer and conversation on this device, not another participant. A shared room theme is not yet implemented.
+
+- Outgoing bubble presets: Glacier `#8de6ed` / ink `#0b2025`; Orchid `#d7c1f4` / `#271831`; Ember `#f2c28a` / `#2b190d`.
+- Incoming text: `#f2f3f8` on opaque `#252d3a`. Sender names and timestamps: `#c7cfde` on opaque `#202632`. Media cards retain opaque graphite surfaces. Artwork must never determine text contrast.
+- Choose background images from artwork already shared and available in the active conversation; keep no-artwork, personal hide, dimming (35–85%), and reset controls visible. No arbitrary URL input or uncredited decorative asset library.
+- Palette selection uses labels and a checkmark in addition to color. Controls are at least 44px; no new animation. The dialog scrolls within a short viewport.
+- Store only palette, artwork ID, visibility, and dimming under an account-and-conversation key. If storage is blocked, preserve temporary choices and explain they will not persist. Never store messages or signed URLs in appearance preferences.
+
+Authenticated runtime evidence and rollout boundaries are recorded in `docs/audits/2026-09-07-chat-release.md`. Voice notes and live-room controls remain simulations on the separate `codex/chat-visual-study` archive branch, outside the release source.
