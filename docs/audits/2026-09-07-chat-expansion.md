@@ -1,6 +1,6 @@
 # Chat expansion review — September 7, 2026
 
-Base: `71bb8fe8b35887922c12b75841ec786fcf384d54` on `codex/slim-navigation-audit-repairs`. This document describes a source/local-browser review, not a public rollout or proof that production SQL is activated.
+Base: `71bb8fe8b35887922c12b75841ec786fcf384d54` on `codex/slim-navigation-audit-repairs`. Application candidate: `479c8a517d05666a04e7dea73f970a6660562486`. This document records source/local-browser evidence and the subsequently approved preview, not a production promotion or proof that SQL is activated.
 
 ## Implemented
 
@@ -35,6 +35,7 @@ Three agent workstreams covered voice/controls, loading/backend, and independent
 | Narrow phone | 320×568 and 390px-wide checks showed no document-level horizontal overflow. At 320×568 the appearance dialog stayed inside the viewport and Done remained visible with a 44px target. The microphone entry was 44px at 390px. |
 | Actual gated UI | Voice panel opens with explicit Record and a pending-activation explanation. Message actions and personal clearing are disabled when their RPC is unavailable. No simulated success path. |
 | Loading | Observed the actual pending inbox fallback in the signed-in browser; it retained the app shell. Reduced-motion styling is source-checked, not physical-device preference QA. |
+| Approved Vercel preview | Existing GitHub-triggered deployment is READY at the immutable link below; metadata matches `479c8a5`, and the cloud Turbopack build succeeded. Public signed-out feed artwork loaded; 390px feed/messages checks had no horizontal overflow. No Vercel login wall; chats correctly require NODEINE sign-in. |
 
 ## Not verified or activated
 
@@ -48,6 +49,6 @@ Three agent workstreams covered voice/controls, loading/backend, and independent
 
 ## Review route
 
-Open the local server's `/messages`, select a conversation, then use **Chat appearance → device photo → Done**. The microphone next to the composer opens **Voice notes**; recording is an explicit user action and private sending remains gated. **Conversation options** holds save-all, group settings where applicable, and personal clearing. Own-message options remain beside your messages and inactive until approved backend activation.
+Open the [live preview's messages](https://fvck-art-gallery-efr2wo7x6-satur-n.vercel.app/messages), sign in, select a conversation, then use **Chat appearance → device photo → Done**. The microphone next to the composer opens **Voice notes**; recording is an explicit user action and private sending remains gated. **Conversation options** holds save-all, group settings where applicable, and personal clearing. Own-message options remain beside your messages and inactive until approved backend activation. The local server's `/messages` remains an alternative.
 
-Next: approve a disposable-database migration test and real-device recording session using [voice rollout](../VOICE_NOTES_ROLLOUT.md) and [message controls rollout](../MESSAGE_CONTROLS_ROLLOUT.md), then review before public deployment. The September 8 10:00 AM America/Phoenix reminder points back to this task.
+Next: review the preview, then approve a disposable-database migration test and real-device recording session using [voice rollout](../VOICE_NOTES_ROLLOUT.md) and [message controls rollout](../MESSAGE_CONTROLS_ROLLOUT.md). Production promotion remains separate. The September 8 10:00 AM America/Phoenix reminder points back to this task.

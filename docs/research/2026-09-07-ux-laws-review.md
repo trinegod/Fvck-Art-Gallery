@@ -4,6 +4,8 @@ Checked September 7, 2026. This is a bounded source review of the law names visi
 
 ## Bottom line
 
+Update: the owner subsequently supplied the full [UX Design Instructions](../design/ux-instructions-supplied.md). These are preserved separately from the screenshot and distilled into the [project review playbook](../design/ux-review-playbook.md). Its 20 recommendations are a different list: some repeat named principles, and it includes Goal-Gradient rather than the screenshot's Occam/Pareto ending. The linked Google Doc was also retrieved; it is a design-tool index, assessed [separately](2026-09-07-design-resource-index.md). Earlier statements below about not obtaining a creator download describe the initial reel review, not the later user-supplied text.
+
 The list is useful as a vocabulary for hypotheses. It mixes motor-control and memory experiments, perceptual-organization principles, design heuristics, historical aphorisms, and management/economic rules. Those categories call for different uses: test a UI hypothesis with people and telemetry; do not turn a slogan into a hard product rule.
 
 In particular, a Claude-flavored instruction or rule-list format is not exclusive to Claude, and its formatting does not establish that its claims are true or generally applicable. Treat the list as a starting point for scoped design decisions, then measure task success, error rate, time, comprehension, and accessibility in the relevant product.
@@ -57,7 +59,7 @@ These are portable starting points, not claims about their current implementatio
 
 | Product | Transferable idea | First validation question |
 | --- | --- | --- |
-| Yokai Fourth Portal | Use a small familiar entry/navigation grammar around the portal, while reserving the distinctive world art for the destination itself. | Can a first-time visitor identify where to enter, return, and resume without a tutorial? |
+| 108 Yokai — Fourth Portal | Use a small familiar entry/navigation grammar around the portal, while reserving the distinctive world art for the destination itself. | Can a first-time visitor identify where to enter, return, and resume without a tutorial? |
 | Trinefield | Keep NODEINE’s outward link/context legible and use a short, truthful handoff state rather than a decorative loading interstitial. | Does the handoff preserve provenance and make the next destination unmistakable? |
 | Biao | Apply progressive disclosure to operational choices and strict confirmation/reconciliation to impactful actions; do not use “be liberal in what you accept” for trusted data. | Which rare, high-consequence action currently lacks a clear review, cancel, or uncertain-outcome path? |
 

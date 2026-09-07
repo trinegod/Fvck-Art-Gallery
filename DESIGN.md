@@ -1,6 +1,8 @@
 # NODEINE interface contract
 
-Status: existing archive identity preserved; compact section navigation implemented locally September 6, 2026. Deployment is a separate gate.
+Status: existing archive identity preserved; compact section navigation is in the earlier public release. The September 7 chat expansion is available in a separate review preview; production promotion and backend activation remain separate gates.
+
+For new or revised UI flows, apply the owner's [UX review playbook](docs/design/ux-review-playbook.md) alongside this visual contract. It translates the supplied 20 recommendations into task, accessibility, feedback, recovery, and verification checks without importing another product's style.
 
 ## Job and visual direction
 

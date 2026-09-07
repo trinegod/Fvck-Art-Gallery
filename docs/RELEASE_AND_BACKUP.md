@@ -1,8 +1,17 @@
 # Release and backup notes
 
-## Pending chat expansion
+## Chat expansion preview — September 7, 2026
 
-The September 7 chat expansion is a review candidate on `codex/slim-navigation-audit-repairs`, not a new public deployment. The public appearance/navigation release remains unchanged until approval. No production voice bucket, message-controls SQL, live-room provider, or model provider has been activated by this work. Review `VOICE_NOTES_ROLLOUT.md`, `MESSAGE_CONTROLS_ROLLOUT.md`, and `audits/2026-09-07-chat-expansion.md` before applying migrations or updating either public host. A source checkpoint or GitHub issue update is not a deployment or a live database backup.
+The owner approved pushing a phone-accessible preview and refreshing the iCloud backup. The review branch is `codex/slim-navigation-audit-repairs`; Vercel's existing GitHub integration deployed application commit `479c8a517d05666a04e7dea73f970a6660562486` successfully. Reused that verified deployment instead of creating a duplicate:
+
+- [Review feed](https://fvck-art-gallery-efr2wo7x6-satur-n.vercel.app/feed)
+- [Review chats](https://fvck-art-gallery-efr2wo7x6-satur-n.vercel.app/messages) — normal NODEINE sign-in required
+- Vercel build: READY, default Turbopack; deployment metadata matches the application commit and review branch.
+- Public signed-out browser check: feed artwork loaded; feed and messages had no document overflow at 390px; the chat route presented the expected sign-in state without a Vercel protection wall.
+
+The stable production aliases and `main` remain on `71bb8fe8b35887922c12b75841ec786fcf384d54`. Subsequent documentation-only commits add the supplied UX guide and design-repository research without changing the code in the reviewed preview. The backup manifest records its own source commit separately from the preview's application commit.
+
+No production voice bucket, message-controls SQL, live-room provider, or model provider has been activated. Review `VOICE_NOTES_ROLLOUT.md`, `MESSAGE_CONTROLS_ROLLOUT.md`, and `audits/2026-09-07-chat-expansion.md` before applying migrations or updating either stable public host. A source checkpoint or GitHub issue update is not a live database backup.
 
 ## Public delivery
 
@@ -23,7 +32,7 @@ The existing iCloud Drive folder is `Steven Project Backups`:
 - `Releases/NODEINE/` holds timestamped release backups. Each release directory contains a tracked-source archive, a self-contained Git bundle, a manifest identifying the commit, and SHA-256 checksums.
 - `Full Snapshot - 2026-08-29` is the earlier frozen snapshot and must remain untouched.
 
-Release archives include committed application code, documentation, migrations, and bundled artwork/video assets. Git bundles retain local refs and their reachable history. Environment files, provider keys, dependencies, and build caches are not added to these release packages. Existing private files in the older mirror are not removed or republished.
+Release archives include committed application code, documentation, migrations, and bundled artwork/video assets. Git bundles retain normal branches, tags, remote-tracking refs, HEAD, and their reachable history; internal transient tool refs are excluded. Environment files, provider keys, dependencies, and build caches are not added to these release packages. Existing private files in the older mirror are not removed or republished. Each new manifest records the actual backup verification; this document alone is not evidence that a copy completed.
 
 These are application/repository backups, not exports of live Supabase database rows, private storage, authentication accounts, or Vercel configuration. Those services require their own recovery procedures. Never claim that a local checksum proves a completed iCloud server upload: local backup verification and cloud synchronization are separate checks.
 

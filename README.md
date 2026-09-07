@@ -10,6 +10,8 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 This is feature-branch work for review, not an announcement that new audio or database capabilities are live on the public links above.
 
+**Phone-ready review:** [Open the chat expansion preview](https://fvck-art-gallery-efr2wo7x6-satur-n.vercel.app/messages) or [browse its feed](https://fvck-art-gallery-efr2wo7x6-satur-n.vercel.app/feed). This immutable preview runs application commit `479c8a5`; conversations require normal NODEINE sign-in. The stable production addresses above remain on the earlier release.
+
 - Chat appearance now has an explicit **Done** action and a device-photo background picker. Photos are resized and re-encoded locally; preferences remain personal to this device, account, and conversation. No background photo is uploaded or sent to another participant.
 - Real voice recording, preview, discard, delivery integration, and playback components are implemented. Recording requires an explicit microphone action; private sending is capability-gated until the SQL and real-device/security checks pass.
 - Own-text editing, own-message removal (including voice notes), and **Clear chat for me** have server-checked implementations. These controls remain disabled without the new migration. Clearing your view does not delete another member's copy.
@@ -17,6 +19,7 @@ This is feature-branch work for review, not an announcement that new audio or da
 - An original, name-independent **World Aperture** loading mark accompanies actual pending work, with static reduced-motion support and no artificial splash delay.
 - Review evidence and activation limits: [Chat expansion audit](docs/audits/2026-09-07-chat-expansion.md), [Voice rollout](docs/VOICE_NOTES_ROLLOUT.md), and [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
 - Separate research—not imported app features: [Elemental Sandbox assessment](docs/research/2026-09-07-elemental-sandbox.md), [logo-reveal review](docs/research/2026-09-07-logo-reveal-review.md), and [UX-laws review](docs/research/2026-09-07-ux-laws-review.md). Live audio rooms and in-app image generation remain unconnected.
+- The supplied UX instructions are preserved in a [reusable review playbook](docs/design/ux-review-playbook.md), linked from the repository's agent instructions. The [design-resource assessment](docs/research/2026-09-07-design-resource-index.md) covers the Google Doc's nine linked repositories and one unlinked item; no external skills or packages were installed.
 
 ## September 7, 2026 — earlier public appearance and navigation release
 

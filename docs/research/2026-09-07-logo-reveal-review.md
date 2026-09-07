@@ -17,7 +17,7 @@ For NODEINE, the implemented **World Aperture** already provides an original nam
 ## Portable proposals, not implemented changes
 
 - **NODEINE:** a brief, optional identity reveal at a genuine entry boundary; ordinary chat/feed loads retain useful shells and honest status.
-- **Yokai Fourth Portal:** a richer original ink/ritual entrance with visible Skip and static poster, isolated from navigation and content loading.
+- **108 Yokai — Fourth Portal:** a richer original ink/ritual entrance with visible Skip and static poster, isolated from navigation and content loading.
 - **Trinefield:** a portfolio hero or project-transition demonstration where a visitor deliberately chooses to play the animation. Résumé, work and contact remain available without it.
 - **Biao:** a restrained brush/line accent near meaningful content. Keep text readable/selectable and avoid slowing a frequent operational task with repeated intros.
 

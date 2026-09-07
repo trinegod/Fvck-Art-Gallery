@@ -70,7 +70,7 @@ The following are design recommendations inferred from the source, not claims ab
 | Project | Useful visual idea | Small first implementation |
 | --- | --- | --- |
 | NODEINE / Forge | World-specific atmosphere and layered preview controls | An opt-in “World atmosphere” preview with three curated presets and controls for palette, intensity, and motion. Start with original CSS/SVG or a cleared short loop; keep the feed and chat static. Store a bounded settings snapshot and offer reset before considering a full shader editor. |
-| 108 / One Way Yokai — Fourth Portal | Ink tide, ritual rings, restrained ember/void motifs | One original portal entrance or chapter-transition vignette, with a static poster and Skip control. A ritual shape can echo the selected world's artwork without importing the combat system, stranger's avatar, or bundled models. |
+| 108 Yokai — Fourth Portal | Ink tide, ritual rings, restrained ember/void motifs | One original portal entrance or chapter-transition vignette, with a static poster and Skip control. A ritual shape can echo the selected world's artwork without importing the combat system, stranger's avatar, or bundled models. |
 | Trinefield portfolio | Interactive demonstration of design judgment | One optional “Play with the atmosphere” hero panel with labelled controls, before/after comparison, and a concise technical explanation. Keep projects, résumé, contact, and navigation immediately available without waiting for WebGL. |
 | Biao Chinese site | A controlled brush/ink reveal rather than a game effect | Original SVG mask or brief ink transition beside meaningful content. Keep Chinese text selectable/readable, avoid cultural motifs used without context, preserve mobile zoom, and provide a no-motion presentation. |
 
