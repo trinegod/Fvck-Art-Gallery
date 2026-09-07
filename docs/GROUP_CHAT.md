@@ -4,6 +4,8 @@ Group chat already exists; this update does not introduce a second implementatio
 
 ## Existing path
 
+The inline-voice review adds a visible **New group** shortcut in the inbox, opening this same creation flow directly. The existing **+ → Group chat** path remains available. No group schema or membership rule changes in this revision.
+
 Open **You → Inbox → + → Group chat**, enter a name, and select 2–20 other creators. **Create group** creates an owner membership and sends invitations; selected creators become active members only after accepting. The current UI deliberately requires three intended participants including the owner. The expansion SQL permits one invitee, but the UI keeps its existing two-invitee minimum.
 
 Pending invitations appear in the recipient's inbox with Accept/Decline. Accept opens the group through `/messages?conversation=…`. Group conversations use the same text, artwork, and image/video message paths as direct conversations, with member count and a group avatar in the compact contextual header. Voice remains subject to the separate voice rollout gate.

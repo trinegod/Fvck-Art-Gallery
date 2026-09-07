@@ -1,385 +1,125 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LoaderCircle, Mic, RotateCcw, Send, Square, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { LoaderCircle, Mic, Send, Square, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  createVoiceNoteRecorder,
-  MAX_VOICE_NOTE_DURATION_MS,
-  type VoiceNoteRecorderEvent,
-  type VoiceNoteRecorderFailure,
-} from "@/lib/voice-note-recorder";
+import { createVoiceNoteRecorder, MAX_VOICE_NOTE_DURATION_MS } from "@/lib/voice-note-recorder";
+import { createVoiceNoteSession, type VoiceNotePayload } from "@/lib/voice-note-session";
 import VoiceNotePlayer from "./voice-note-player";
 
-export type VoiceNotePayload = {
-  file: File;
-  mimeType: string;
-  extension: string;
-  durationMs: number;
-};
-
+export type { VoiceNotePayload } from "@/lib/voice-note-session";
 type VoiceNoteComposerProps = {
-  /** Changes when an account or conversation changes, invalidating local audio. */
   conversationKey: string;
-  /** Enables the explicit Send action; recording and local preview remain usable when false. */
   sendEnabled: boolean;
-  /** Honest explanation shown alongside the disabled Send action. */
   disabledReason?: string;
-  /** Parent-owned persistence. The component never accesses Supabase. */
-  onSend?: (voiceNote: VoiceNotePayload) => Promise<void> | void;
-  /** Temporarily disable all actions (for example, while another composer action runs). */
+  onSend?: (note: VoiceNotePayload) => Promise<void> | void;
   disabled?: boolean;
+  onActiveChange?: (active: boolean) => void;
+  /** Existing attachment button and text/send controls are preserved when idle. */
+  attachment?: ReactNode;
+  children?: ReactNode;
   className?: string;
+  /** Injected media boundary for deterministic, microphone-free verification. */
+  recorderFactory?: typeof createVoiceNoteRecorder;
 };
+const iconButton = "nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-45";
+const formatTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
-type ComposerPhase =
-  | "idle"
-  | "requesting"
-  | "recording"
-  | "stopping"
-  | "preview"
-  | "sending"
-  | "error";
+export default function VoiceNoteComposer({ conversationKey, sendEnabled, disabledReason, onSend, disabled = false, onActiveChange, attachment, children, className, recorderFactory = createVoiceNoteRecorder }: VoiceNoteComposerProps) {
+  const [session] = useState(() => createVoiceNoteSession(recorderFactory()));
+  const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
+  const { phase, note } = state;
+  const active = phase !== "idle" && phase !== "error";
+  const [elapsed, setElapsed] = useState(0);
+  const micRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const previouslyActive = useRef(false);
+  const sendRef = useRef<HTMLButtonElement>(null);
+  const previousPhase = useRef(phase);
+  const lastVoiceFocus = useRef<HTMLElement | null>(null);
+  const statusId = useId();
 
-type LocalPreview = VoiceNotePayload & { url: string };
-
-function formatDuration(durationMs: number) {
-  const totalSeconds = Math.ceil(Math.max(0, durationMs) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function failureMessage(failure: VoiceNoteRecorderFailure) {
-  return failure.message;
-}
-
-export default function VoiceNoteComposer({
-  conversationKey,
-  sendEnabled,
-  disabledReason,
-  onSend,
-  disabled = false,
-  className,
-}: VoiceNoteComposerProps) {
-  const [phase, setPhase] = useState<ComposerPhase>("idle");
-  const [preview, setPreview] = useState<LocalPreview | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const previewUrlRef = useRef<string | null>(null);
-  const instanceRef = useRef(0);
-
-  const revokePreviewUrl = useCallback(() => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-  }, []);
-
-  const revokePreview = useCallback(() => {
-    revokePreviewUrl();
-    setPreview(null);
-  }, [revokePreviewUrl]);
-
-  const [recorder] = useState(() => createVoiceNoteRecorder());
-
-  const handleRecorderEvent = useCallback((event: VoiceNoteRecorderEvent) => {
-    if (event.type === "recording") {
-      setPhase("recording");
-      setError(null);
-      setRecordingStartedAt(Date.now());
-      setElapsedMs(0);
-      return;
-    }
-    if (event.type === "request-cancelled") {
-      setRecordingStartedAt(null);
-      setElapsedMs(0);
-      if (event.reason === "timed-out") {
-        setPhase("error");
-        setError("Microphone permission request timed out. Check your browser and try again.");
-      } else {
-        setPhase("idle");
-        setError(null);
-      }
-      return;
-    }
-    if (event.type === "failed") {
-      setPhase("error");
-      setError(failureMessage(event.failure));
-      setRecordingStartedAt(null);
-      setElapsedMs(0);
-      return;
-    }
-
-    const note = event.note;
-    const file = new File(
-      [note.blob],
-      `voice-note-${Date.now()}.${note.extension}`,
-      { type: note.mimeType }
-    );
-    revokePreview();
-    const url = URL.createObjectURL(note.blob);
-    previewUrlRef.current = url;
-    setPreview({ ...note, file, url });
-    setPhase("preview");
-    setRecordingStartedAt(null);
-    setElapsedMs(note.durationMs);
-    setError(
-      event.reason === "max-duration"
-        ? "Maximum voice-note length reached (1:00). Review it before sending."
-        : null
-    );
-  }, [revokePreview]);
-
-  useLayoutEffect(
-    () => recorder.subscribe(handleRecorderEvent),
-    [recorder, handleRecorderEvent]
-  );
-
-  const resetComposer = useCallback(() => {
-    recorder.discard();
-    revokePreview();
-    setPhase("idle");
-    setError(null);
-    setRecordingStartedAt(null);
-    setElapsedMs(0);
-  }, [recorder, revokePreview]);
-
+  useLayoutEffect(() => () => session.reset(), [session, conversationKey]);
+  useLayoutEffect(() => { if (disabled) session.reset(); }, [disabled, session]);
+  useEffect(() => { onActiveChange?.(active); }, [active, onActiveChange]);
   useEffect(() => {
-    if (phase !== "recording" || recordingStartedAt === null) return;
-    const update = () =>
-      setElapsedMs(
-        Math.min(MAX_VOICE_NOTE_DURATION_MS, Date.now() - recordingStartedAt)
-      );
+    if (active && !previouslyActive.current) cancelRef.current?.focus({ preventScroll: true });
+    if (!active && previouslyActive.current) micRef.current?.focus({ preventScroll: true });
+    const removedControlHadFocus = lastVoiceFocus.current && !lastVoiceFocus.current.isConnected && document.activeElement === document.body;
+    if (phase === "preview" && previousPhase.current !== "preview" && removedControlHadFocus) {
+      const target = sendRef.current?.disabled ? cancelRef.current : sendRef.current;
+      target?.focus({ preventScroll: true });
+    }
+    previouslyActive.current = active;
+    previousPhase.current = phase;
+  }, [active, phase]);
+  useEffect(() => {
+    if (phase !== "recording" || state.startedAt === null) return;
+    const update = () => setElapsed(Math.min(MAX_VOICE_NOTE_DURATION_MS, Math.max(0, Date.now() - state.startedAt!)));
     update();
-    const interval = window.setInterval(update, 250);
-    return () => window.clearInterval(interval);
-  }, [phase, recordingStartedAt]);
+    const timer = window.setInterval(update, 200);
+    return () => window.clearInterval(timer);
+  }, [phase, state.startedAt]);
 
-  useLayoutEffect(() => {
-    // A locally captured blob must never bleed into a different account/chat.
-    const instance = ++instanceRef.current;
-    recorder.discard();
-    revokePreviewUrl();
-    queueMicrotask(() => {
-      if (instance !== instanceRef.current) return;
-      setPreview(null);
-      setPhase("idle");
-      setError(null);
-      setRecordingStartedAt(null);
-      setElapsedMs(0);
-    });
-    return () => {
-      instanceRef.current += 1;
-      recorder.discard();
-      revokePreviewUrl();
-    };
-  }, [conversationKey, recorder, revokePreviewUrl]);
-
-  useLayoutEffect(() => {
-    if (!disabled) return;
-    const instance = ++instanceRef.current;
-    recorder.discard();
-    revokePreviewUrl();
-    queueMicrotask(() => {
-      if (instance !== instanceRef.current) return;
-      setPreview(null);
-      setPhase("idle");
-      setError(null);
-      setRecordingStartedAt(null);
-      setElapsedMs(0);
-    });
-  }, [disabled, recorder, revokePreviewUrl]);
-
-  const startRecording = () => {
-    if (
-      disabled ||
-      phase === "requesting" ||
-      phase === "recording" ||
-      phase === "stopping" ||
-      phase === "sending"
-    ) {
-      return;
-    }
-    resetComposer();
-    setPhase("requesting");
-    void recorder.start();
-  };
-
-  const stopRecording = () => {
-    if (recorder.stop()) {
-      setPhase("stopping");
-    }
-  };
-
-  const sendPreview = async () => {
-    if (!preview || disabled || !sendEnabled || !onSend || phase === "sending") {
-      return;
-    }
-    const instance = instanceRef.current;
-    setPhase("sending");
-    setError(null);
-    try {
-      await onSend(preview);
-      if (instance !== instanceRef.current) return;
-      revokePreview();
-      setPhase("idle");
-      setElapsedMs(0);
-    } catch (sendError) {
-      if (instance !== instanceRef.current) return;
-      setPhase("preview");
-      const uncertain =
-        typeof sendError === "object" &&
-        sendError !== null &&
-        "outcome" in sendError &&
-        sendError.outcome === "unknown";
-      setError(
-        uncertain && sendError instanceof Error
-          ? sendError.message
-          : sendError instanceof Error
-          ? `Voice note wasn't sent: ${sendError.message}`
-          : "Voice note wasn't sent. Please try again."
-      );
-    }
-  };
-
-  const canRecord =
-    !disabled &&
-    phase !== "requesting" &&
-    phase !== "recording" &&
-    phase !== "stopping" &&
-    phase !== "sending";
-  const sendUnavailable = !sendEnabled || !onSend;
-  const sendUnavailableMessage =
-    disabledReason ??
-    "Voice-note sending is not activated yet. You can still record and review a note locally.";
-
+  const canSend = sendEnabled && Boolean(onSend) && !disabled && !state.deliveryUncertain;
+  const levels = [...Array(Math.max(0, 28 - state.levels.length)).fill(0), ...state.levels];
   return (
-    <section
-      className={cn(
-        "rounded-2xl border border-white/10 bg-black/30 p-3 text-sm text-zinc-300",
-        className
-      )}
-      aria-label="Voice note"
-    >
-      {phase === "preview" || phase === "sending" ? (
-        <div className="space-y-3">
-          {preview && (
-            <VoiceNotePlayer
-              src={preview.url}
-              mimeType={preview.mimeType}
-              label={`Voice note, ${formatDuration(preview.durationMs)}`}
-            />
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-11"
-              disabled={disabled || phase === "sending"}
-              onClick={resetComposer}
-            >
-              <Trash2 className="size-3.5" />
-              Discard
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="min-h-11"
-              disabled={disabled || sendUnavailable || phase === "sending"}
-              onClick={() => void sendPreview()}
-              aria-describedby={sendUnavailable ? "voice-note-send-status" : undefined}
-            >
-              {phase === "sending" ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                <Send />
-              )}
-              {phase === "sending" ? "Sending" : "Send voice note"}
-            </Button>
-          </div>
-          {sendUnavailable && (
-            <p
-              id="voice-note-send-status"
-              className="text-xs leading-5 text-amber-200/80"
-            >
-              {sendUnavailableMessage}
-            </p>
-          )}
-        </div>
-      ) : phase === "requesting" ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <LoaderCircle className="size-4 animate-spin text-cyan-200" aria-hidden="true" />
-          <p className="flex-1 text-xs leading-5 text-zinc-400">
-            Waiting for microphone permission…
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11"
-            onClick={() => recorder.cancelPendingRequest()}
-          >
-            Cancel
-          </Button>
-        </div>
-      ) : phase === "recording" || phase === "stopping" ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 font-medium text-rose-200">
-            <span className="size-2 rounded-full bg-rose-300" aria-hidden="true" />
-            {phase === "stopping"
-              ? "Finalizing voice note…"
-              : `Recording ${formatDuration(elapsedMs)} / 1:00`}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11"
-            disabled={disabled || phase === "stopping"}
-            onClick={stopRecording}
-          >
-            <Square className="size-3.5 fill-current" />
-            Stop
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-h-11"
-            disabled={phase === "stopping"}
-            onClick={resetComposer}
-          >
-            <Trash2 className="size-3.5" />
-            Discard
-          </Button>
+    <div className={cn("min-w-0", className)} data-voice-phase={phase}>
+      {!active ? (
+        <div className="nodeine-chat-composer-row">
+          {attachment}
+          <button ref={micRef} type="button" onClick={() => { setElapsed(0); session.start(); }} disabled={disabled}
+            className={cn(iconButton, "border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10")}
+            aria-label="Record voice note" title="Record voice note (up to 1 minute or 4 MiB)">
+            <Mic className="size-4" aria-hidden="true" />
+          </button>
+          {children}
+          <span className="sr-only">Up to 1 minute or 4 MiB. Recording starts when you press the microphone; send only when you choose.</span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11"
-            disabled={!canRecord}
-            onClick={startRecording}
-          >
-            {phase === "error" ? <RotateCcw /> : <Mic />}
-            {phase === "error" ? "Try recording again" : "Record voice note"}
-          </Button>
-          <p className="text-xs leading-5 text-zinc-500">
-            Up to 1 minute or 4 MiB. You review audio before it is sent.
-          </p>
-        </div>
+        <section aria-label="Voice note recorder" className="min-w-0" onFocusCapture={event => { lastVoiceFocus.current = event.target as HTMLElement; }} onKeyDown={event => {
+          if (event.key === "Escape" && phase !== "sending") { event.preventDefault(); session.reset(); }
+        }}>
+          <div className="nodeine-voice-row flex min-w-0 items-center gap-1.5">
+            <button ref={cancelRef} type="button" onClick={() => session.reset()} disabled={phase === "sending"}
+              className={cn(iconButton, "text-zinc-400 hover:bg-rose-300/10 hover:text-rose-200")}
+              aria-label="Discard voice note" title="Discard voice note">
+              <Trash2 className="size-4" aria-hidden="true" />
+            </button>
+            {note ? (
+              <VoiceNotePlayer key={note.url} src={note.url} mimeType={note.mimeType} durationMs={note.durationMs} outgoing className="nodeine-voice-content min-w-0 flex-1" label="Unsent voice note" />
+            ) : (
+              <div className="nodeine-voice-content flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-[#252d3a] px-3 text-zinc-100">
+                {phase === "recording" ? <>
+                  <span className="size-2 shrink-0 rounded-full bg-rose-300" aria-hidden="true" />
+                  <span className="shrink-0 text-xs tabular-nums" aria-label={`Recorded ${formatTime(elapsed)} of 1 minute`}>{formatTime(elapsed)}<span className="text-zinc-400"> / 1:00</span></span>
+                  <div className="flex h-7 min-w-0 flex-1 items-center justify-end gap-[2px] overflow-hidden" aria-hidden="true" data-live-waveform>
+                    {levels.map((level, index) => <span key={index} className="w-[3px] min-w-[2px] rounded-full bg-cyan-200" style={{ height: `${Math.max(2, Math.sqrt(level) * 28)}px` }} />)}
+                  </div>
+                </> : <>
+                  <LoaderCircle className="size-4 shrink-0 motion-safe:animate-spin" aria-hidden="true" />
+                  <span className="text-xs leading-4">{phase === "requesting" ? "Allow microphone access…" : "Finishing…"}</span>
+                </>}
+              </div>
+            )}
+            {phase === "recording" && <button type="button" className={cn(iconButton, "text-zinc-300 hover:bg-white/10")} onClick={() => session.stop()} aria-label="Stop and review voice note" title="Stop and review">
+              <Square className="size-4 fill-current" aria-hidden="true" />
+            </button>}
+            <button ref={sendRef} type="button" className={cn(iconButton, "bg-[var(--chat-bubble,#8de6ed)] text-[var(--chat-ink,#0b2025)] hover:brightness-110")}
+              disabled={!canSend || !["recording", "preview"].includes(phase)}
+              onClick={() => { if (!onSend || !canSend) return; if (phase === "recording") session.stopAndSend(onSend); else void session.send(onSend); }}
+              aria-label={phase === "sending" ? "Sending voice note" : "Send voice note"} title="Send voice note"
+              aria-describedby={!canSend ? statusId : undefined}>
+              {phase === "sending" ? <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
+            </button>
+          </div>
+          <p className="sr-only" role="status" aria-live="polite">{phase === "recording" ? "Recording. Stop to review, send, or discard." : phase === "preview" ? "Voice note ready. Send or discard." : phase === "sending" ? "Sending voice note." : phase === "requesting" ? "Waiting for microphone permission." : "Finishing recording."}</p>
+          {state.meterUnavailable && phase === "recording" && <p className="mt-1 text-xs text-zinc-400">Recording; live level display unavailable.</p>}
+          {!canSend && <p id={statusId} className="mt-2 text-xs leading-5 text-amber-100">{state.deliveryUncertain ? "Delivery unconfirmed. Check the conversation before recording another note." : disabledReason ?? "Voice-note delivery is not activated. Recording stays on this device."}</p>}
+        </section>
       )}
-      {error && (
-        <p className="mt-2 text-xs leading-5 text-rose-200" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+      {state.notice && <p className="mt-1 text-xs leading-5 text-zinc-400" role="status">{state.notice}</p>}
+      {state.error && <p className="mt-2 text-xs leading-5 text-rose-200" role="alert">{state.error}</p>}
+    </div>
   );
 }

@@ -19,7 +19,6 @@ import {
   ImagePlus,
   LoaderCircle,
   MessageCircle,
-  Mic,
   MoreHorizontal,
   Plus,
   Search,
@@ -154,7 +153,7 @@ export default function MessagesView({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [voiceDialogKey, setVoiceDialogKey] = useState<string | null>(null);
+  const [voiceActiveKey, setVoiceActiveKey] = useState<string | null>(null);
   const [voiceSending, setVoiceSending] = useState(false);
   const voiceSendLock = useRef<symbol | null>(null);
   const [voiceCapability, setVoiceCapability] = useState<{
@@ -223,6 +222,10 @@ export default function MessagesView({
   const focusedConversation = shellMode === "conversation";
   const currentVoiceKey = viewerId && activeConversationId
     ? `${viewerId}:${activeConversationId}` : null;
+  const voiceActive = Boolean(currentVoiceKey && voiceActiveKey === currentVoiceKey);
+  const onVoiceActiveChange = useCallback((active: boolean) => {
+    setVoiceActiveKey(current => active ? currentVoiceKey : current === currentVoiceKey ? null : current);
+  }, [currentVoiceKey]);
   const controlsEnabled = messageControls?.key === currentVoiceKey && messageControls.enabled;
   const membershipCutoff = activeConversation?.clearedBefore ?? null;
   const controlsCutoff = messageControls?.key === currentVoiceKey ? messageControls.clearedBefore : null;
@@ -609,7 +612,7 @@ export default function MessagesView({
         setLoadingOlder(false);
         setSending(false);
         setUploadingMedia(false);
-        setVoiceDialogKey(null);
+        setVoiceActiveKey(null);
         setVoiceSending(false);
         setVoiceCapability(null);
         setMessageControls(null);
@@ -911,7 +914,7 @@ export default function MessagesView({
   const resetConversationComposer = useCallback(() => {
     setSending(false);
     setUploadingMedia(false);
-    setVoiceDialogKey(null);
+    setVoiceActiveKey(null);
     setVoiceSending(false);
     voiceSendLock.current = null;
     setConversationOptionsKey(null);
@@ -982,7 +985,7 @@ export default function MessagesView({
     const client = supabase;
     const body = draft.trim();
 
-    if (!client || !viewerId || !activeConversationId || !body || sending || uploadingMedia || voiceSending) return;
+    if (!client || !viewerId || !activeConversationId || !body || sending || uploadingMedia || voiceSending || voiceActive) return;
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
 
@@ -1237,7 +1240,7 @@ export default function MessagesView({
 
   async function sendAttachment(file: File) {
     const client = supabase;
-    if (!client || !viewerId || !activeConversationId || uploadingMedia || voiceSending) return;
+    if (!client || !viewerId || !activeConversationId || uploadingMedia || voiceSending || voiceActive) return;
     const isAccountCurrent = accountScope.current.capture(viewerId);
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
@@ -1564,6 +1567,15 @@ export default function MessagesView({
                   <Plus />
                 </Button>
               </div>
+              <button type="button" onClick={() => {
+                setNewMessageMode("group");
+                setGroupTitle("");
+                setGroupSearch("");
+                setSelectedMemberIds([]);
+                setNewMessageOpen(true);
+              }} className="nodeine-action mt-2 flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-cyan-200 hover:bg-cyan-300/10 focus-visible:outline-2 focus-visible:outline-cyan-300">
+                <Users className="size-4" aria-hidden="true" /> New group
+              </button>
 
               <label className="relative mt-5 block">
                 <span className="sr-only">Search people and conversations</span>
@@ -1858,7 +1870,7 @@ export default function MessagesView({
                               />
                             )}
                             <div
-                              className={`min-w-0 max-w-[min(82%,42rem)] sm:max-w-[min(72%,42rem)] ${
+                              className={`min-w-0 max-w-[min(82%,42rem)] sm:max-w-[min(72%,42rem)] ${message.message_type === "voice" ? "w-72" : ""} ${
                                 mine ? "text-right" : "text-left"
                               }`}
                             >
@@ -1892,7 +1904,7 @@ export default function MessagesView({
                                   )}
                                 </div>
                               ) : message.message_type === "voice" && message.attachmentUrl ? (
-                                <VoiceNotePlayer key={message.attachmentUrl} src={message.attachmentUrl} mimeType={message.attachment_mime} />
+                                <VoiceNotePlayer key={message.attachmentUrl} src={message.attachmentUrl} mimeType={message.attachment_mime} durationMs={message.voice_duration_ms} outgoing={mine} />
                               ) : mediaMessage && message.attachmentUrl ? (
                                 <div
                                   className={`overflow-hidden rounded-2xl border bg-zinc-950 ${
@@ -1978,7 +1990,6 @@ export default function MessagesView({
                   onSubmit={sendMessage}
                   className="nodeine-chat-composer shrink-0 border-t border-white/10 bg-zinc-950/95 px-3 py-2 backdrop-blur-xl sm:px-6 lg:py-3"
                 >
-                  <div className="nodeine-chat-composer-row">
                     <input
                       ref={attachmentInputRef}
                       type="file"
@@ -1990,7 +2001,15 @@ export default function MessagesView({
                         event.target.value = "";
                       }}
                     />
-                    <DropdownMenu key={currentVoiceKey}>
+                  <VoiceNoteComposer
+                    key={currentVoiceKey}
+                    conversationKey={currentVoiceKey ?? "unavailable"}
+                    sendEnabled={voiceEnabled}
+                    disabledReason={voiceDisabledReason}
+                    disabled={sending || uploadingMedia}
+                    onActiveChange={onVoiceActiveChange}
+                    onSend={sendVoiceNote}
+                    attachment={<DropdownMenu key={currentVoiceKey}>
                       <DropdownMenuTrigger
                         disabled={uploadingMedia || sending || voiceSending}
                         render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
@@ -2005,17 +2024,8 @@ export default function MessagesView({
                           <BookmarkPlus className="size-4 text-cyan-200" /> Artwork from your worlds
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
-                    <button
-                      type="button"
-                      onClick={() => setVoiceDialogKey(currentVoiceKey)}
-                      disabled={uploadingMedia || sending || voiceSending}
-                      className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-60"
-                      aria-label="Open voice notes"
-                      title="Voice notes"
-                    >
-                      <Mic className="size-4" />
-                    </button>
+                    </DropdownMenu>}
+                  >
                     <label className="nodeine-chat-composer-input flex min-w-0">
                       <span className="sr-only">Message</span>
                       <textarea
@@ -2053,7 +2063,7 @@ export default function MessagesView({
                         <Send />
                       )}
                     </Button>
-                  </div>
+                  </VoiceNoteComposer>
                   {error && (
                     <p className="mt-2 text-xs text-rose-300" role="alert">
                       {error}
@@ -2110,30 +2120,6 @@ export default function MessagesView({
             {clearError && <p role="alert" className="text-xs text-rose-200">{clearError}</p>}
           </div>
           <Button type="button" className="min-h-11" onClick={() => {setConversationOptionsKey(null); setClearArmed(false);}}>Done</Button>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(currentVoiceKey && voiceDialogKey === currentVoiceKey)} onOpenChange={open => {
-        if (!open) setVoiceDialogKey(null);
-      }}>
-        <DialogContent className="max-h-[85svh] overflow-y-auto border-white/10 bg-zinc-950 text-white sm:max-w-md [&_[data-slot=dialog-close]]:size-11">
-          <DialogHeader className="pr-10">
-            <DialogTitle>Say it in your own voice</DialogTitle>
-            <DialogDescription>Record, listen back, then choose whether to send. Closing this panel discards any unsent recording.</DialogDescription>
-          </DialogHeader>
-          {currentVoiceKey && voiceDialogKey === currentVoiceKey && (
-            <>
-              {!voiceEnabled && <p className="rounded-xl border border-amber-200/15 bg-amber-200/5 p-3 text-xs leading-5 text-amber-100" role="status">{voiceDisabledReason} You can record and preview here; nothing uploads until you choose Send.</p>}
-              <VoiceNoteComposer
-                key={currentVoiceKey}
-                conversationKey={currentVoiceKey}
-                sendEnabled={voiceEnabled}
-                disabledReason={voiceDisabledReason}
-                disabled={sending || uploadingMedia}
-                onSend={sendVoiceNote}
-              />
-            </>
-          )}
         </DialogContent>
       </Dialog>
 

@@ -1,5 +1,11 @@
 # Voice notes rollout
 
+## Inline interaction review — September 7 follow-up
+
+The owner rejected the released dialog-plus-Record interaction. The review candidate now starts recording on a single microphone action in the actual message composer, shows a real input-level trace and timer, and supports direct Send or optional Stop/listen-back. Sent and preview audio use the selected text-bubble palette with compact accessible playback/seek controls. The one-minute/4MiB server limits, private bucket, and authorization rules are unchanged; no new database migration is needed for this UI revision.
+
+The separate [inline-voice audit](audits/2026-09-07-inline-voice-review.md) records source, synthetic browser evidence, and remaining phone/network checks. A published review preview does not promote the public app.
+
 Status, September 7, 2026: the owner explicitly authorized activation. The reviewed migration has been applied to the existing NODEINE Supabase project after a successful rollback rehearsal with42 database assertions plus a coverage guard. A fresh metadata query confirms the capability, voice column, validation trigger, three storage policies, private bucket and4MiB limit; authenticated execution is allowed and anonymous execution is denied. Local recording/preview remain independent of sending. Physical-device recording/playback and the full HTTP/Storage/concurrency matrix below are still outstanding and are not implied by database activation.
 
 ## Activation record

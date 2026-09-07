@@ -5,6 +5,11 @@ import {
   type VoiceNoteFormat,
 } from "./voice-note-format";
 import { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_DURATION_MS } from "./voice-note-upload";
+import {
+  createVoiceNoteLevelMonitor,
+  type VoiceNoteLevelCallbacks,
+  type VoiceNoteLevelMonitor,
+} from "./voice-note-level";
 
 export { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_DURATION_MS };
 export const MICROPHONE_REQUEST_TIMEOUT_MS = 15_000;
@@ -29,6 +34,8 @@ export type VoiceNoteRecorderFailure = {
 
 export type VoiceNoteRecorderEvent =
   | { type: "recording"; format: VoiceNoteFormat }
+  | { type: "level"; level: number }
+  | { type: "level-unavailable" }
   | { type: "request-cancelled"; reason: "cancelled" | "timed-out" }
   | { type: "completed"; note: VoiceNote; reason: "stopped" | "max-duration" }
   | { type: "failed"; failure: VoiceNoteRecorderFailure };
@@ -61,6 +68,7 @@ export type VoiceNoteRecorderDependencies = {
   setTimer: (callback: () => void, delayMs: number) => VoiceNoteTimer;
   clearTimer: (timer: VoiceNoteTimer) => void;
   createBlob: (parts: BlobPart[], options: BlobPropertyBag) => Blob;
+  startLevelMonitor?: (stream: MediaStreamLike, callbacks: VoiceNoteLevelCallbacks) => VoiceNoteLevelMonitor;
 };
 
 export type VoiceNoteRecorderOptions = {
@@ -130,6 +138,7 @@ export function browserVoiceNoteRecorderDependencies(): VoiceNoteRecorderDepende
     setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
     clearTimer: (timer) => window.clearTimeout(timer as number),
     createBlob: (parts, options) => new Blob(parts, options),
+    startLevelMonitor: (stream, callbacks) => createVoiceNoteLevelMonitor(stream, callbacks),
   };
 }
 
@@ -154,6 +163,8 @@ export class VoiceNoteRecorder {
   private stopReason: "stopped" | "max-duration" = "stopped";
   private byteLimitExceeded = false;
   private disposed = false;
+  private levelMonitor: VoiceNoteLevelMonitor | null = null;
+  private levelToken = 0;
   private listeners = new Set<(event: VoiceNoteRecorderEvent) => void>();
 
   constructor(
@@ -269,6 +280,9 @@ export class VoiceNoteRecorder {
       this.stop("max-duration");
     }, this.maxDurationMs);
     this.emit({ type: "recording", format });
+    if (this.recorder === recorder && !this.stopping && !this.disposed) {
+      this.startLevelMonitor(stream, recorder);
+    }
     return { ok: true, format };
   }
 
@@ -282,11 +296,15 @@ export class VoiceNoteRecorder {
 
   stop(reason: "stopped" | "max-duration" = "stopped") {
     const recorder = this.recorder;
-    if (!recorder || this.stopping) return false;
+    if (!recorder) return false;
+    // The duration ceiling may already have requested an asynchronous stop.
+    // A second user Stop/Send must still await that accepted final recording.
+    if (this.stopping) return true;
 
     this.stopping = true;
     this.stopReason = reason;
     this.clearDurationTimer();
+    this.stopLevelMonitor();
     try {
       if (recorder.state !== "inactive") recorder.stop();
       else this.onRecorderStop(reason);
@@ -303,6 +321,7 @@ export class VoiceNoteRecorder {
     this.requestToken += 1;
     this.clearRequestTimer();
     this.clearDurationTimer();
+    this.stopLevelMonitor();
     const recorder = this.recorder;
     this.recorder = null;
     if (recorder) {
@@ -347,6 +366,7 @@ export class VoiceNoteRecorder {
     const recorder = this.recorder;
     if (!recorder) return;
     this.clearDurationTimer();
+    this.stopLevelMonitor();
 
     const durationMs = Math.min(
       this.maxDurationMs,
@@ -408,6 +428,50 @@ export class VoiceNoteRecorder {
     }
   }
 
+  private startLevelMonitor(stream: MediaStreamLike, recorder: MediaRecorderLike) {
+    const token = ++this.levelToken;
+    const isCurrent = () => token === this.levelToken
+      && this.recorder === recorder && !this.stopping && !this.disposed;
+    const unavailable = () => {
+      if (!isCurrent()) return;
+      this.stopLevelMonitor();
+      this.emit({ type: "level-unavailable" });
+    };
+
+    try {
+      if (!this.dependencies.startLevelMonitor) {
+        unavailable();
+        return;
+      }
+      const monitor = this.dependencies.startLevelMonitor(stream, {
+        onLevel: (level) => {
+          if (!isCurrent()) return;
+          if (!Number.isFinite(level)) {
+            unavailable();
+            return;
+          }
+          this.emit({ type: "level", level: Math.min(1, Math.max(0, level)) });
+        },
+        onUnavailable: unavailable,
+      });
+      // Callbacks can synchronously stop/discard while the monitor is being built.
+      if (!isCurrent()) {
+        try { monitor.stop(); } catch { /* Recording cleanup must still finish. */ }
+        return;
+      }
+      this.levelMonitor = monitor;
+    } catch {
+      unavailable();
+    }
+  }
+
+  private stopLevelMonitor() {
+    this.levelToken += 1;
+    const monitor = this.levelMonitor;
+    this.levelMonitor = null;
+    try { monitor?.stop(); } catch { /* Do not prevent microphone cleanup. */ }
+  }
+
   private clearDurationTimer() {
     if (this.durationTimer !== null) {
       this.dependencies.clearTimer(this.durationTimer);
@@ -418,6 +482,7 @@ export class VoiceNoteRecorder {
   private releaseResources() {
     this.clearRequestTimer();
     this.clearDurationTimer();
+    this.stopLevelMonitor();
     const recorder = this.recorder;
     this.recorder = null;
     if (recorder) {

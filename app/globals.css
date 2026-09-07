@@ -224,6 +224,13 @@
     grid-column: 1 / -1;
     order: -1;
   }
+  .nodeine-voice-row {
+    flex-wrap: wrap;
+  }
+  .nodeine-voice-content {
+    flex-basis: 100%;
+    order: -1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

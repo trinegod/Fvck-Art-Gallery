@@ -6,9 +6,18 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 7, 2026 — inline voice review
+
+The owner-requested revision removes the voice-note dialog and second Record action. Press the microphone to start immediately; a compact live input-level trace and timer replace the text row. Send finishes and submits the recording; Stop offers optional listen-back. Discard preserves the existing text draft. Playback bubbles use the current outgoing chat palette, with Play/Pause, duration, and a real seek line instead of native browser controls.
+
+- One-minute/4MiB limits and the already activated private delivery backend are unchanged. No new migration or audio provider.
+- **New group** is now directly visible in the inbox and opens the existing invitation-based group flow.
+- 245 automated tests pass. Actual browser checks use synthetic audio, not the owner's microphone or messages; physical phone recording/delivery still needs review. [Evidence and review status](docs/audits/2026-09-07-inline-voice-review.md), [official messaging references](docs/research/2026-09-07-inline-voice-messaging-references.md).
+- This is a review candidate; stable public links remain on the preceding release until owner approval. Publishing, GitHub, and backup evidence are recorded separately from implementation.
+
 ## September 7, 2026 — focused mobile chat and centered loading
 
-### Latest approved release
+### Previous approved release
 
 - Mobile conversations use the full screen without the global brand row, bottom dock or wasted dock padding. Outside conversations, a 54px icon-only dock retains four 44px accessible destinations and unread indicators. Desktop chat uses the available width with a 280–360px inbox column.
 - Both **Opening your inbox…** and **Opening your conversation…** center the complete World Aperture/status group in the correct viewport or message panel. Enlarged text reflows without squeezing the message input.
