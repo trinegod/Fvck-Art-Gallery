@@ -6,7 +6,19 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
-## September 7, 2026 — personal chat appearance and navigation repairs
+## September 7, 2026 — chat expansion review candidate
+
+This is feature-branch work for review, not an announcement that new audio or database capabilities are live on the public links above.
+
+- Chat appearance now has an explicit **Done** action and a device-photo background picker. Photos are resized and re-encoded locally; preferences remain personal to this device, account, and conversation. No background photo is uploaded or sent to another participant.
+- Real voice recording, preview, discard, delivery integration, and playback components are implemented. Recording requires an explicit microphone action; private sending is capability-gated until the SQL and real-device/security checks pass.
+- Own-text editing, own-message removal (including voice notes), and **Clear chat for me** have server-checked implementations. These controls remain disabled without the new migration. Clearing your view does not delete another member's copy.
+- Contextual conversation options keep the header and mobile dock compact. Whole-group deletion is temporarily unavailable in this client while its private-file cleanup protocol is upgraded; leaving a group is separate.
+- An original, name-independent **World Aperture** loading mark accompanies actual pending work, with static reduced-motion support and no artificial splash delay.
+- Review evidence and activation limits: [Chat expansion audit](docs/audits/2026-09-07-chat-expansion.md), [Voice rollout](docs/VOICE_NOTES_ROLLOUT.md), and [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
+- Separate research—not imported app features: [Elemental Sandbox assessment](docs/research/2026-09-07-elemental-sandbox.md), [logo-reveal review](docs/research/2026-09-07-logo-reveal-review.md), and [UX-laws review](docs/research/2026-09-07-ux-laws-review.md). Live audio rooms and in-app image generation remain unconnected.
+
+## September 7, 2026 — earlier public appearance and navigation release
 
 - One compact bottom row opens Feed, Explore, Create, and You. Shared desktop navigation uses the same destinations.
 - Explore groups discovery, the archive, Threads, and credited World previews; You groups saves, conversations, activity, and the current account.
@@ -14,7 +26,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Audit repairs address stale private state after account changes, individual Activity seen updates, newest-message pagination/read position, cold feed scrolling, browser history, and multi-hop return links.
 - The real inbox now has an initial personal-appearance slice: opaque Glacier/Orchid/Ember bubbles, background selection from artwork shared in the active conversation, dimming, hide-artwork, and reset. Preferences are scoped to the viewer and conversation on this device; shared group-wide themes are not implemented yet.
 - The authenticated mobile audit fixed conversation height and double-reserved dock spacing, keeping the composer visible on normal and short screens. Temporary appearance choices remain labeled correctly if browser storage is blocked, including when returning to a conversation.
-- The approved visual study is preserved on [`codex/chat-visual-study`](https://github.com/trinegod/Fvck-Art-Gallery/tree/codex/chat-visual-study). Its simulated voice notes/rooms are not included in the release source; actual voice notes, shared room-wide themes, and live audio remain unimplemented.
+- The approved visual study is preserved on [`codex/chat-visual-study`](https://github.com/trinegod/Fvck-Art-Gallery/tree/codex/chat-visual-study). Its simulated voice notes/rooms were not included in that public release. See the newer review-candidate status above for subsequent voice-note work; shared room-wide themes and live audio remain unimplemented.
 - Verification and remaining physical-device checks are recorded in [Repair verification](docs/audits/2026-09-06-repair-verification.md), [Authenticated appearance audit](docs/audits/2026-09-07-chat-release.md), and the [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1). No new audio service, generation provider, or database migration is enabled by this update. The checklist records deployment completion separately from source verification.
 
 ## September 4, 2026 public release
@@ -41,7 +53,7 @@ Deployment and recovery boundaries are documented in [Release and backup notes](
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes
 - Direct and group messaging with realtime delivery, invitations, owner/admin/member roles, private media sharing, moderation controls, and archive-to-chat artwork cards
-- Personal chat appearance with readable opaque bubbles, shared-artwork backgrounds, dimming, and hide/reset controls scoped to this device and conversation
+- Personal chat appearance with opaque bubbles, shared-artwork or locally prepared photo backgrounds, dimming, hide/reset, and Done controls scoped to this device and conversation
 - A Bulk Drop Studio for publishing up to 50 images or videos in one batch
 - An administrative workspace for managing creator profiles, collections, artwork, and media
 - Supabase-backed content with a resilient local fallback when the database is unavailable
@@ -63,7 +75,7 @@ Visitors can:
 - Browse public World Threads and inspect the maker and world credit behind every step
 - Browse public creator galleries and personalized recommendations
 
-Creators can manage their profile, upload an avatar, organize collections, edit artwork details, publish media in bulk, and build private direct or group conversations. They can also turn saved references into ordered World Threads, keep drafts private, publish them, and allow credited forks without losing source lineage. Forge Lab lets signed-in creators measure palette, tonal behavior, compositional weight, and texture from their own artwork in the browser, then export an editable visual recipe without spending credits or calling an AI provider. Group owners and admins can manage invitations, member roles, avatars, notification settings, reports, membership, and group deletion. Conversation members can share archive artwork or privately stored images and videos, then save shared artwork to their personal collection.
+Creators can manage their profile, upload an avatar, organize collections, edit artwork details, publish media in bulk, and build private direct or group conversations. They can also turn saved references into ordered World Threads, keep drafts private, publish them, and allow credited forks without losing source lineage. Forge Lab lets signed-in creators measure palette, tonal behavior, compositional weight, and texture from their own artwork in the browser, then export an editable visual recipe without spending credits or calling an AI provider. Group owners and admins can manage invitations, member roles, avatars, notification settings, reports, and membership. Whole-group deletion is held behind the cleanup safety gate in this review candidate. Conversation members can share archive artwork or privately stored images and videos, then save shared artwork to their personal collection.
 
 ## Forge generation status
 

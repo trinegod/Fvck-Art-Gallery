@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
-import { fetchMessagePage, mergeMessageHistory, persistConversationRead } from "../lib/message-history";
+import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, MESSAGE_FIELDS, CONTROLLED_MESSAGE_FIELDS } from "../lib/message-history";
 import { createAccountScope } from "../lib/activity-session";
 import type { MessageRow } from "../app/messages/messages-types";
 
@@ -93,4 +93,70 @@ test("a failed read update is surfaced so the UI does not claim that persistence
     global: {fetch: async () => new Response(JSON.stringify({message: "Permission denied", code: "42501"}), {status: 403})},
   });
   await assert.rejects(persistConversationRead(database, "viewer", id(9999), row(10).created_at), error => (error as {message: string}).message === "Permission denied");
+});
+
+test("stale history cannot overwrite a realtime edit or resurrect a removed message", () => {
+  const original = row(10);
+  const edited = {...original, body: "Revised", edited_at: "2026-09-07T00:00:00Z"};
+  const removed = {...original, body: "Message removed", removed_at: "2026-09-07T00:01:00Z"};
+  assert.equal(mergeMessageHistory([edited], [original])[0].body, "Revised");
+  assert.equal(mergeMessageHistory([removed], [edited])[0].body, "Message removed");
+  assert.equal(mergeMessageHistory([edited], [removed])[0].removed_at, removed.removed_at);
+});
+
+test("an older edit within the same millisecond cannot replace a newer realtime revision", () => {
+  const original = row(10);
+  const newest = {...original, body: "Newest revision", edited_at: "2026-09-07T12:00:00.123900+00:00"};
+  const stale = {...original, body: "Earlier revision", edited_at: "2026-09-07T12:00:00.123100+00:00"};
+  assert.equal(mergeMessageHistory([newest], [stale])[0].body, "Newest revision");
+});
+
+test("history orders actual instants across offsets and uses message IDs only for exact timestamp ties", () => {
+  const earliest = {...row(3), created_at: "2026-09-07T12:00:00.123100Z"};
+  const latest = {...row(1), created_at: "2026-09-07T05:00:00.123900-07:00"};
+  const tied = {...row(2), created_at: "2026-09-07T12:00:00.1239Z"};
+  assert.deepEqual(mergeMessageHistory([tied], [latest, earliest]).map(message => message.id), [id(3), id(1), id(2)]);
+});
+
+test("cleared history is filtered at the database boundary and optional fields stay gated", async () => {
+  const queries: URL[] = [];
+  const database = createClient("https://fixture.invalid", "fixture", {
+    auth: {persistSession: false, autoRefreshToken: false},
+    global: {fetch: async input => {
+      queries.push(new URL(String(input)));
+      return new Response("[]", {headers: {"Content-Type": "application/json"}});
+    }},
+  });
+  await fetchMessagePage(database, id(9999));
+  assert.equal(queries[0].searchParams.get("select"), MESSAGE_FIELDS.replaceAll(" ", ""));
+  const cutoff = "2026-09-07T00:00:00.123456+00:00";
+  await fetchMessagePage(database, id(9999), null, {controlsEnabled: true, clearedBefore: cutoff});
+  assert.equal(queries[1].searchParams.get("select"), CONTROLLED_MESSAGE_FIELDS.replaceAll(" ", ""));
+  assert.equal(queries[1].searchParams.get("created_at"), `gt.${cutoff}`);
+  await assert.rejects(fetchMessagePage(database, id(9999), null, {clearedBefore: "invalid-filter"}), /Invalid message timestamp/);
+  const impossibleDate = "2026-02-30T12:00:00.123456Z";
+  await assert.rejects(fetchMessagePage(database, id(9999), null, {clearedBefore: impossibleDate}), /Invalid message timestamp/);
+  await assert.rejects(fetchMessagePage(database, id(9999), {id: id(10), created_at: impossibleDate}), /Invalid message timestamp/);
+  await assert.rejects(persistConversationRead(database, "viewer", id(9999), impossibleDate), /Invalid message timestamp/);
+  assert.equal(queries.length, 2, "Invalid cutoff, cursor, and read timestamps never reach the database");
+});
+
+test("only a missing optional membership column falls back to the legacy schema", async () => {
+  for (const code of ["42703", "PGRST204", "42501"]) {
+    let requests = 0;
+    const database = createClient("https://fixture.invalid", "fixture", {
+      auth: {persistSession: false, autoRefreshToken: false},
+      global: {fetch: async input => {
+        const url = new URL(String(input));
+        assert.equal(url.searchParams.get("profile_id"), "eq.viewer");
+        requests += 1;
+        if (requests === 1) return new Response(JSON.stringify({code,message:"fixture error"}), {status:400,headers:{"Content-Type":"application/json"}});
+        assert.ok(!url.searchParams.get("select")?.includes("cleared_before"));
+        return new Response("[]", {headers:{"Content-Type":"application/json"}});
+      }},
+    });
+    const result = await fetchViewerMemberships(database, "viewer");
+    assert.equal(requests, code === "42501" ? 1 : 2);
+    assert.equal(result.error?.code ?? null, code === "42501" ? code : null);
+  }
 });

@@ -23,9 +23,10 @@ export type MembershipRow = {
   joined_at: string;
   last_read_at: string | null;
   muted_until: string | null;
+  cleared_before?: string | null;
 };
 
-export type MessageType = "text" | "artwork" | "image" | "video";
+export type MessageType = "text" | "artwork" | "image" | "video" | "voice";
 
 export type MessageRow = {
   id: string;
@@ -37,6 +38,10 @@ export type MessageRow = {
   attachment_path: string | null;
   attachment_mime: string | null;
   attachment_name: string | null;
+  // Optional so the existing history query works before the voice migration.
+  voice_duration_ms?: number | null;
+  edited_at?: string | null;
+  removed_at?: string | null;
   created_at: string;
   attachmentUrl?: string | null;
 };
@@ -50,6 +55,7 @@ export type InboxConversation = ConversationRow & {
   preview: string;
   previewAt: string;
   unreadCount: number;
+  clearedBefore?: string | null;
 };
 
 export type PendingGroupInvite = {

@@ -58,6 +58,7 @@ test("the production store persists normalized preferences and reloads them", ()
   assert.deepEqual(parseChatAppearance(raw), {
     palette: "orchid",
     artworkId: "artwork-123",
+    customBackground: null,
     hidden: false,
     dim: 43,
   });
@@ -99,6 +100,7 @@ test("denied storage reads and writes retain this session's normalized preferenc
   assert.deepEqual(parseChatAppearance(store.getSnapshot(key)), {
     palette: "ember",
     artworkId: null,
+    customBackground: null,
     hidden: false,
     dim: 35,
   });
@@ -156,6 +158,7 @@ test("external storage events notify subscribers and expose the new primitive sn
   assert.deepEqual(parseChatAppearance(store.getSnapshot(key)), {
     palette: "ember",
     artworkId: null,
+    customBackground: null,
     hidden: true,
     dim: 70,
   });

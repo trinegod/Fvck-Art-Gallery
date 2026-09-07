@@ -19,6 +19,8 @@ import {
   ImagePlus,
   LoaderCircle,
   MessageCircle,
+  Mic,
+  MoreHorizontal,
   Plus,
   Search,
   Send,
@@ -38,10 +40,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope, observeAccount } from "@/lib/activity-session";
-import { fetchMessagePage, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
+import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
+import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
+import { compareMessageTimestamps } from "@/lib/message-timestamp";
 import { syncMessageViewport } from "@/lib/message-viewport";
 import { persistMessageAttachment } from "@/lib/message-attachment";
 import { CHAT_PALETTES } from "@/lib/chat-appearance";
+import { VOICE_NOTE_BUCKET } from "@/lib/voice-note-upload";
+import { deliverVoiceNote } from "@/lib/voice-note-delivery";
+import WorldLoadingScreen from "../components/world-loading-screen";
+import VoiceNoteComposer, { type VoiceNotePayload } from "./voice-note-composer";
+import VoiceNotePlayer from "./voice-note-player";
+import MessageActionsDialog from "./message-actions-dialog";
 import DesktopAppNavigation from "../components/desktop-app-navigation";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
@@ -101,10 +111,12 @@ function conversationName(conversation: InboxConversation) {
 
 function messagePreview(message?: MessageRow) {
   if (!message) return "Start the conversation";
+  if (message.removed_at) return "Message removed";
   if (message.body) return message.body;
   if (message.message_type === "artwork") return "Shared an artwork";
   if (message.message_type === "image") return "Shared an image";
   if (message.message_type === "video") return "Shared a video";
+  if (message.message_type === "voice") return "Voice note";
   return "New message";
 }
 
@@ -129,7 +141,7 @@ export default function MessagesView({
       ? initialConversationId
       : null
   );
-  const [messages, setMessages] = useState<MessageRow[]>([]);
+  const [messageHistory, setMessages] = useState<MessageRow[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
   const [sharedArtworks, setSharedArtworks] = useState<Map<string, SharedArtwork>>(
     new Map()
@@ -140,6 +152,19 @@ export default function MessagesView({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [voiceDialogKey, setVoiceDialogKey] = useState<string | null>(null);
+  const [voiceSending, setVoiceSending] = useState(false);
+  const voiceSendLock = useRef<symbol | null>(null);
+  const [voiceCapability, setVoiceCapability] = useState<{
+    key: string; enabled: boolean; reason?: string;
+  } | null>(null);
+  const [messageControls, setMessageControls] = useState<{
+    key: string; enabled: boolean; clearedBefore: string | null; reason?: string;
+  } | null>(null);
+  const [conversationOptionsKey, setConversationOptionsKey] = useState<string | null>(null);
+  const [clearArmed, setClearArmed] = useState(false);
+  const [clearingConversation, setClearingConversation] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(
     supabase ? null : "Supabase environment variables are missing."
@@ -169,6 +194,13 @@ export default function MessagesView({
   const historyAnchor = useRef<{height: number; top: number} | null>(null);
   const lastScrolledMessage = useRef<string | null>(null);
 
+  // A history refresh (for example a clear cutoff) is not a new conversation.
+  // Invalidate mutations only when the viewer/destination actually changes.
+  useLayoutEffect(() => {
+    conversationVersion.current += 1;
+    return () => { conversationVersion.current += 1; };
+  }, [viewerId, activeConversationId]);
+
   const profileById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile])),
     [profiles]
@@ -177,6 +209,18 @@ export default function MessagesView({
   const activeConversation = inbox.find(
     (conversation) => conversation.id === activeConversationId
   );
+  const currentVoiceKey = viewerId && activeConversationId
+    ? `${viewerId}:${activeConversationId}` : null;
+  const controlsEnabled = messageControls?.key === currentVoiceKey && messageControls.enabled;
+  const membershipCutoff = activeConversation?.clearedBefore ?? null;
+  const controlsCutoff = messageControls?.key === currentVoiceKey ? messageControls.clearedBefore : null;
+  const activeClearedBefore = controlsCutoff && (!membershipCutoff || compareMessageTimestamps(controlsCutoff, membershipCutoff) > 0)
+    ? controlsCutoff : membershipCutoff;
+  // A delayed send/edit response may carry an older row after a clear. Apply
+  // the latest server watermark at the display boundary as well as in queries.
+  const messages = activeClearedBefore
+    ? messageHistory.filter(message => compareMessageTimestamps(message.created_at, activeClearedBefore) > 0)
+    : messageHistory;
   const { appearance, temporary, updateAppearance } = useChatAppearance(viewerId, activeConversationId);
   const themeArtworks = Array.from(sharedArtworks.values()).filter(artwork =>
     artwork.media_type === "image" && messages.some(message =>
@@ -185,7 +229,43 @@ export default function MessagesView({
   );
   const backgroundArtwork = !appearance.hidden
     ? themeArtworks.find(artwork => artwork.id === appearance.artworkId) : undefined;
+  const backgroundSource = appearance.hidden ? undefined : appearance.customBackground ?? backgroundArtwork?.src;
   const palette = CHAT_PALETTES[appearance.palette];
+  const voiceEnabled = voiceCapability?.key === currentVoiceKey && voiceCapability?.enabled === true;
+  const voiceDisabledReason = voiceCapability?.key === currentVoiceKey
+    ? voiceCapability.reason
+    : "Checking private voice-note delivery. Recording and preview stay on this device.";
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || !currentVoiceKey) return;
+    const controller = new AbortController();
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const key = currentVoiceKey;
+    async function checkVoiceDelivery() {
+      try {
+        const { data } = await client!.auth.getSession();
+        if (controller.signal.aborted || !isAccountCurrent()) return;
+        if (data.session?.user.id !== viewerId || !data.session.access_token) {
+          throw new Error("Sign in again to check voice-note delivery.");
+        }
+        const response = await fetch(`/api/messages/voice?conversationId=${activeConversationId}`, {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: "no-store", signal: controller.signal,
+        });
+        const result = await response.json();
+        if (controller.signal.aborted || !isAccountCurrent()) return;
+        setVoiceCapability({key, enabled: response.ok && result.enabled === true,
+          reason: result.reason ?? result.error ?? "Private voice-note delivery is not available yet."});
+      } catch (capabilityError) {
+        if (controller.signal.aborted || !isAccountCurrent()) return;
+        setVoiceCapability({key, enabled: false, reason: capabilityError instanceof Error
+          ? capabilityError.message : "Could not check voice-note delivery. You can still record and preview locally."});
+      }
+    }
+    void checkVoiceDelivery();
+    return () => controller.abort();
+  }, [viewerId, activeConversationId, currentVoiceKey]);
 
   const filteredInbox = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -233,27 +313,22 @@ export default function MessagesView({
 
   const hydrateMessages = useCallback(async (rows: MessageRow[]) => {
     const client = supabase;
-    const paths = Array.from(
-      new Set(
-        rows
-          .map((message) => message.attachment_path)
-          .filter((path): path is string => Boolean(path))
-      )
-    );
-
-    if (!client || !paths.length) return rows;
-
-    const { data } = await client.storage
-      .from("conversation-media")
-      .createSignedUrls(paths, 3600);
-    const signedByPath = new Map(
-      (data ?? []).map((item) => [item.path, item.signedUrl])
-    );
+    if (!client) return rows;
+    const bucketFor = (message: MessageRow) => message.message_type === "voice"
+      ? VOICE_NOTE_BUCKET : "conversation-media";
+    const signedByPath = new Map<string, string | null | undefined>();
+    await Promise.all(["conversation-media", VOICE_NOTE_BUCKET].map(async bucket => {
+      const paths = [...new Set(rows.filter(message => bucketFor(message) === bucket)
+        .map(message => message.attachment_path).filter((path): path is string => Boolean(path)))];
+      if (!paths.length) return;
+      const { data } = await client.storage.from(bucket).createSignedUrls(paths, 3600);
+      for (const item of data ?? []) signedByPath.set(`${bucket}:${item.path}`, item.signedUrl);
+    }));
 
     return rows.map((message) => ({
       ...message,
       attachmentUrl: message.attachment_path
-        ? signedByPath.get(message.attachment_path) ?? null
+        ? signedByPath.get(`${bucketFor(message)}:${message.attachment_path}`) ?? null
         : null,
     }));
   }, []);
@@ -335,13 +410,7 @@ export default function MessagesView({
     setLoadState(current => current === "ready" ? "ready" : "loading");
     setError(null);
 
-    const membershipResult = await client
-      .from("conversation_members")
-      .select(
-        "conversation_id, profile_id, role, joined_at, last_read_at, muted_until"
-      )
-      .eq("profile_id", userId)
-      .order("joined_at", { ascending: false });
+    const membershipResult = await fetchViewerMemberships(client, userId);
     if (!isCurrent()) return;
 
     if (membershipResult.error) {
@@ -433,11 +502,13 @@ export default function MessagesView({
         const conversationMembers = memberships.filter(
           (membership) => membership.conversation_id === conversation.id
         );
+        const viewerMembership = viewerMembershipByConversation.get(conversation.id);
+        const clearedBefore = viewerMembership?.cleared_before ?? null;
         const conversationMessages = recentMessages.filter(
-          (message) => message.conversation_id === conversation.id
+          message => message.conversation_id === conversation.id &&
+            (!clearedBefore || compareMessageTimestamps(message.created_at, clearedBefore) > 0)
         );
         const latestMessage = conversationMessages[0];
-        const viewerMembership = viewerMembershipByConversation.get(conversation.id);
         const lastReadAt = viewerMembership?.last_read_at
           ? new Date(viewerMembership.last_read_at).getTime()
           : 0;
@@ -454,7 +525,8 @@ export default function MessagesView({
             ? profilesMap.get(otherMember.profile_id) ?? null
             : null,
           avatarUrl: null,
-          preview: messagePreview(latestMessage),
+          clearedBefore,
+          preview: !latestMessage && clearedBefore ? "Chat cleared for you" : messagePreview(latestMessage),
           previewAt: latestMessage?.created_at ?? conversation.updated_at,
           unreadCount: conversationMessages.filter(
             (message) =>
@@ -525,6 +597,15 @@ export default function MessagesView({
         setLoadingOlder(false);
         setSending(false);
         setUploadingMedia(false);
+        setVoiceDialogKey(null);
+        setVoiceSending(false);
+        setVoiceCapability(null);
+        setMessageControls(null);
+        setConversationOptionsKey(null);
+        setClearArmed(false);
+        setClearingConversation(false);
+        setClearError(null);
+        voiceSendLock.current = null;
         setCreatingGroup(false);
         setStartingDirectId(null);
         setBusyInviteId(null);
@@ -555,7 +636,7 @@ export default function MessagesView({
       .channel(`nodeine-inbox-${viewerId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
+        { event: "*", schema: "public", table: "messages" },
         () => loadInbox(viewerId)
       )
       .on(
@@ -646,13 +727,22 @@ export default function MessagesView({
     const currentViewerId = viewerId;
     const currentConversationId = activeConversationId;
     let cancelled = false;
-    const version = ++conversationVersion.current;
+    const version = conversationVersion.current;
     const isAccountCurrent = accountScope.current.capture(currentViewerId);
     const isCurrent = () => !cancelled && isAccountCurrent() && conversationVersion.current === version;
     let nextCursor: MessageCursor | null = null;
     let pagePending = false;
     let initialPageReady = false;
     let received: MessageRow[] = [];
+    let clearedBefore = activeClearedBefore;
+    const controlsRequest = getMessageControls(database, currentConversationId).then(controls => {
+      if (!isCurrent()) return controls;
+      if (controls.clearedBefore && (!clearedBefore || compareMessageTimestamps(controls.clearedBefore, clearedBefore) > 0)) {
+        clearedBefore = controls.clearedBefore;
+      }
+      setMessageControls({key: `${currentViewerId}:${currentConversationId}`, ...controls});
+      return controls;
+    }).catch(() => ({enabled: false, clearedBefore, reason: "Message controls could not be checked. Reopen this conversation to retry."}));
     historyAnchor.current = null;
     lastScrolledMessage.current = null;
 
@@ -673,7 +763,9 @@ export default function MessagesView({
       if (before) setLoadingOlder(true);
       else setConversationLoading(true);
       try {
-        const page = await fetchMessagePage(database, currentConversationId, before);
+        const controls = await controlsRequest;
+        if (!isCurrent()) return;
+        const page = await fetchMessagePage(database, currentConversationId, before, {controlsEnabled: controls.enabled, clearedBefore});
         if (!isCurrent()) return;
         const messageRows = await hydrateMessages(page.rows);
         if (!isCurrent()) return;
@@ -724,20 +816,25 @@ export default function MessagesView({
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "messages",
           filter: `conversation_id=eq.${currentConversationId}`,
         },
         async (payload) => {
           if (!isCurrent()) return;
+          // Hard deletion is not used by message controls; tombstones arrive as UPDATE.
+          if (payload.eventType === "DELETE") return;
+          await controlsRequest;
+          if (!isCurrent()) return;
+          if (clearedBefore && compareMessageTimestamps((payload.new as MessageRow).created_at, clearedBefore) <= 0) return;
           const [incoming] = await hydrateMessages([payload.new as MessageRow]);
           if (!incoming || !isCurrent()) return;
           await loadSharedArtworkState([incoming], currentViewerId, isCurrent);
           if (!isCurrent()) return;
           received = mergeMessageHistory(received, [incoming]);
           setMessages(current => mergeMessageHistory(current, [incoming]));
-          if (initialPageReady) await markRetrievedRead(incoming.created_at);
+          if (initialPageReady && payload.eventType === "INSERT") await markRetrievedRead(incoming.created_at);
         }
       )
       .subscribe();
@@ -753,6 +850,7 @@ export default function MessagesView({
     loadInbox,
     loadSharedArtworkState,
     viewerId,
+    activeClearedBefore,
   ]);
 
   useLayoutEffect(() => {
@@ -772,6 +870,13 @@ export default function MessagesView({
   const resetConversationComposer = useCallback(() => {
     setSending(false);
     setUploadingMedia(false);
+    setVoiceDialogKey(null);
+    setVoiceSending(false);
+    voiceSendLock.current = null;
+    setConversationOptionsKey(null);
+    setClearArmed(false);
+    setClearingConversation(false);
+    setClearError(null);
     setSavingArtworkId(null);
     setDraft("");
     setDragActive(false);
@@ -833,7 +938,7 @@ export default function MessagesView({
     const client = supabase;
     const body = draft.trim();
 
-    if (!client || !viewerId || !activeConversationId || !body || sending) return;
+    if (!client || !viewerId || !activeConversationId || !body || sending || uploadingMedia || voiceSending) return;
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
 
@@ -994,9 +1099,101 @@ export default function MessagesView({
     );
   }
 
+  async function changeOwnMessage(message: MessageRow, body?: string) {
+    const client = supabase;
+    if (!client || !viewerId || !controlsEnabled || message.sender_id !== viewerId || message.conversation_id !== activeConversationId) {
+      throw new Error("Message controls are not available for this message.");
+    }
+    const isCurrent = captureConversation();
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) throw new Error("The conversation changed. Please reopen the message.");
+    const result = body !== undefined
+      ? {message: await editOwnMessage(client, message, body), removedAttachment: null}
+      : await removeOwnMessage(client, message);
+    if (!isAccountCurrent()) return;
+    if (isCurrent()) {
+      setMessages(current => mergeMessageHistory(current, [{...result.message, attachmentUrl: body !== undefined ? message.attachmentUrl : null}]));
+    }
+    if (result.removedAttachment) {
+      // The server has confirmed the tombstone. Never remove media on an
+      // ambiguous mutation response, or under a newly switched account.
+      try {
+        const {error: cleanupError} = await client.storage.from(result.removedAttachment.bucket).remove([result.removedAttachment.path]);
+        if (cleanupError && isCurrent()) toast.warning("Message removed; its stored file still needs cleanup.");
+      } catch {
+        if (isCurrent()) toast.warning("Message removed; its stored file still needs cleanup.");
+      }
+    }
+    if (isAccountCurrent()) void loadInbox(viewerId);
+  }
+
+  async function clearConversationForMe() {
+    if (!supabase || !viewerId || !activeConversationId || !controlsEnabled || clearingConversation) return;
+    const isCurrent = captureConversation();
+    if (!isCurrent()) return;
+    setClearingConversation(true);
+    setClearError(null);
+    try {
+      const {clearedBefore} = await clearMyConversation(supabase, activeConversationId);
+      if (!isCurrent()) return;
+      // A realtime message may already have arrived after the server cutoff.
+      setMessages(current => current.filter(message => compareMessageTimestamps(message.created_at, clearedBefore) > 0));
+      setOlderCursor(null);
+      setInbox(current => current.map(conversation => conversation.id === activeConversationId
+        ? {...conversation, clearedBefore, preview: "Chat cleared for you", unreadCount: 0} : conversation));
+      setConversationOptionsKey(null);
+      setClearArmed(false);
+      toast.success("Chat cleared for you. Other members keep their copies.");
+      void loadInbox(viewerId);
+    } catch (clearFailure) {
+      if (isCurrent()) setClearError(clearFailure instanceof Error ? clearFailure.message : "Could not confirm the change. Reopen the conversation before trying again.");
+    } finally {
+      if (isCurrent()) setClearingConversation(false);
+    }
+  }
+
+  async function sendVoiceNote(note: VoiceNotePayload) {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || !voiceEnabled) {
+      throw new Error("Private voice-note delivery is not active for this conversation.");
+    }
+    if (voiceSendLock.current) throw new Error("A voice note is already sending.");
+    const isCurrent = captureConversation();
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) throw new Error("The conversation changed. Please try again.");
+    const operation = Symbol("voice-send");
+    voiceSendLock.current = operation;
+    setVoiceSending(true);
+    try {
+      const { data } = await client.auth.getSession();
+      if (!isCurrent() || data.session?.user.id !== viewerId || !data.session.access_token) {
+        throw new Error("Your session changed. Please open the conversation again.");
+      }
+      const persisted = await deliverVoiceNote({
+        accessToken: data.session.access_token,
+        conversationId: activeConversationId,
+        senderId: viewerId,
+        file: note.file,
+        durationMs: note.durationMs,
+      });
+      if (!isAccountCurrent()) return;
+      if (isCurrent()) {
+        const [message] = await hydrateMessages([persisted]);
+        if (isCurrent()) {
+          setMessages(current => mergeMessageHistory(current, [message]));
+          toast.success("Voice note sent");
+        }
+      }
+      if (isAccountCurrent()) void loadInbox(viewerId);
+    } finally {
+      if (voiceSendLock.current === operation) voiceSendLock.current = null;
+      if (isCurrent()) setVoiceSending(false);
+    }
+  }
+
   async function sendAttachment(file: File) {
     const client = supabase;
-    if (!client || !viewerId || !activeConversationId || uploadingMedia) return;
+    if (!client || !viewerId || !activeConversationId || uploadingMedia || voiceSending) return;
     const isAccountCurrent = accountScope.current.capture(viewerId);
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
@@ -1258,12 +1455,7 @@ export default function MessagesView({
       </header>
 
       {!authReady || loadState === "loading" ? (
-        <div className="grid min-h-[70svh] place-items-center px-5 text-center">
-          <div>
-            <LoaderCircle className="mx-auto size-8 animate-spin text-cyan-300" />
-            <p className="mt-4 text-sm text-zinc-500">Opening your inbox...</p>
-          </div>
-        </div>
+        <WorldLoadingScreen variant="inline" label="Opening your inbox…" className="min-h-[70svh]" />
       ) : loadState === "signed-out" ? (
         <div className="grid min-h-[70svh] place-items-center px-5 text-center">
           <div className="max-w-md">
@@ -1541,33 +1733,11 @@ export default function MessagesView({
                     </p>
                   </div>
                   <ChatAppearanceDialog key={`${viewerId}:${activeConversationId}`} appearance={appearance} temporary={temporary} artworks={themeArtworks} onChange={updateAppearance} />
-                  {messages.some((message) => message.artwork_id) && (
-                    <button
-                      type="button"
-                      onClick={saveAllSharedArtwork}
-                      disabled={savingArtworkId === "all"}
-                      className="nodeine-action grid size-10 shrink-0 place-items-center rounded-full text-zinc-500 hover:bg-white/5 hover:text-cyan-200"
-                      aria-label="Save all shared artwork"
-                      title="Save all shared artwork"
-                    >
-                      {savingArtworkId === "all" ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <BookmarkPlus className="size-4" />
-                      )}
-                    </button>
-                  )}
-                  {activeConversation.kind === "group" && viewerId && (
-                    <button
-                      type="button"
-                      onClick={() => setGroupSettingsOpen(true)}
-                      className="nodeine-action grid size-10 shrink-0 place-items-center rounded-full text-zinc-500 hover:bg-white/5 hover:text-white"
-                      aria-label="Open group settings"
-                      title="Group settings"
-                    >
-                      <Settings className="size-4" />
-                    </button>
-                  )}
+                  <button type="button" aria-label="Conversation options" title="Conversation options"
+                    onClick={() => {setConversationOptionsKey(currentVoiceKey); setClearArmed(false); setClearError(null);}}
+                    className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full text-zinc-300 hover:bg-white/5 hover:text-cyan-200">
+                    <MoreHorizontal className="size-4" />
+                  </button>
                   {activeConversation.kind === "direct" && activeConversation.otherProfile && (
                     <Link
                       href={`/creator/${activeConversation.otherProfile.username}`}
@@ -1580,8 +1750,8 @@ export default function MessagesView({
 
                 <div
                   ref={messagesScrollerRef}
-                  style={backgroundArtwork ? {
-                    backgroundImage: `linear-gradient(rgb(9 11 15 / ${appearance.dim / 100}), rgb(9 11 15 / ${appearance.dim / 100})), url(${JSON.stringify(backgroundArtwork.src)})`,
+                  style={backgroundSource ? {
+                    backgroundImage: `linear-gradient(rgb(9 11 15 / ${appearance.dim / 100}), rgb(9 11 15 / ${appearance.dim / 100})), url(${JSON.stringify(backgroundSource)})`,
                     backgroundSize: "cover", backgroundPosition: "center 25%",
                   } : undefined}
                   className={`relative min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 ${
@@ -1606,9 +1776,7 @@ export default function MessagesView({
                     </div>
                   )}
                   {conversationLoading ? (
-                    <div className="grid min-h-full place-items-center">
-                      <LoaderCircle className="size-7 animate-spin text-cyan-300" />
-                    </div>
+                    <WorldLoadingScreen variant="inline" label="Opening your conversation…" className="min-h-full" />
                   ) : messages.length ? (
                     <div className="mx-auto flex max-w-3xl flex-col gap-3">
                       {olderCursor && (
@@ -1647,7 +1815,9 @@ export default function MessagesView({
                                   {sender?.display_name ?? "NODEINE creator"}
                                 </p>
                               )}
-                              {message.message_type === "artwork" && artwork ? (
+                              {message.removed_at ? (
+                                <p className="rounded-2xl bg-[#252d3a] px-4 py-3 text-left text-sm italic text-zinc-300">Message removed</p>
+                              ) : message.message_type === "artwork" && artwork ? (
                                 <div className="space-y-2">
                                   <ChatArtworkCard
                                     artwork={artwork}
@@ -1669,6 +1839,8 @@ export default function MessagesView({
                                     </div>
                                   )}
                                 </div>
+                              ) : message.message_type === "voice" && message.attachmentUrl ? (
+                                <VoiceNotePlayer key={message.attachmentUrl} src={message.attachmentUrl} mimeType={message.attachment_mime} />
                               ) : mediaMessage && message.attachmentUrl ? (
                                 <div
                                   className={`overflow-hidden rounded-2xl border bg-zinc-950 ${
@@ -1715,9 +1887,12 @@ export default function MessagesView({
                                   </p>
                                 </div>
                               )}
-                              <time className="mt-1 inline-block rounded-md bg-[#202632] px-2 py-1 text-[10px] text-[#c7cfde]">
-                                {formatMessageTime(message.created_at)}
-                              </time>
+                              <div className={`mt-1 flex items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+                                <time className="inline-block rounded-md bg-[#202632] px-2 py-1 text-[10px] text-[#c7cfde]">
+                                  {formatMessageTime(message.created_at)}{message.edited_at && !message.removed_at ? " · edited" : ""}
+                                </time>
+                                {mine && !message.removed_at && <MessageActionsDialog key={`${currentVoiceKey}:${message.id}`} message={message} enabled={Boolean(controlsEnabled)} onEdit={body => changeOwnMessage(message, body)} onRemove={() => changeOwnMessage(message)} />}
+                              </div>
                             </div>
                           </article>
                         );
@@ -1729,11 +1904,10 @@ export default function MessagesView({
                       <div className="max-w-sm rounded-2xl bg-zinc-950 p-4">
                         <MessageCircle className="mx-auto size-9 text-cyan-300" />
                         <h3 className="mt-4 text-xl font-light text-white">
-                          Say something real
+                          {activeClearedBefore ? "A fresh page for you" : "Say something real"}
                         </h3>
                         <p className="mt-2 text-sm leading-6 text-zinc-400">
-                          This is the beginning of this conversation. Keep it
-                          creative, respectful, and human.
+                          {activeClearedBefore ? "Earlier messages are cleared from your view. New messages will appear here; other members keep their conversation." : "This is the beginning of this conversation. Keep it creative, respectful, and human."}
                         </p>
                       </div>
                     </div>
@@ -1759,7 +1933,7 @@ export default function MessagesView({
                     <button
                       type="button"
                       onClick={() => attachmentInputRef.current?.click()}
-                      disabled={uploadingMedia || sending}
+                      disabled={uploadingMedia || sending || voiceSending}
                       className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/10 text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
                       aria-label="Share image or video"
                       title="Share image or video"
@@ -1773,13 +1947,23 @@ export default function MessagesView({
                     <button
                       type="button"
                       onClick={() => setArtworkShareOpen(true)}
-                      disabled={uploadingMedia || sending}
+                      disabled={uploadingMedia || sending || voiceSending}
                       className="nodeine-action inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 px-3 text-xs text-zinc-500 hover:border-cyan-300/40 hover:text-cyan-200 disabled:opacity-60"
                       aria-label="Choose artwork from your worlds"
                       title="Choose artwork from your worlds"
                     >
                       <BookmarkPlus className="size-4" />
-                      Worlds
+                      <span className="hidden sm:inline">Worlds</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVoiceDialogKey(currentVoiceKey)}
+                      disabled={uploadingMedia || sending || voiceSending}
+                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-60"
+                      aria-label="Open voice notes"
+                      title="Voice notes"
+                    >
+                      <Mic className="size-4" />
                     </button>
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Message</span>
@@ -1808,7 +1992,7 @@ export default function MessagesView({
                     <Button
                       type="submit"
                       size="icon-lg"
-                      disabled={sending || uploadingMedia || !draft.trim()}
+                      disabled={sending || uploadingMedia || voiceSending || !draft.trim()}
                       className="shrink-0 rounded-full"
                       aria-label="Send message"
                     >
@@ -1845,6 +2029,57 @@ export default function MessagesView({
           </section>
         </section>
       )}
+
+      <Dialog open={Boolean(currentVoiceKey && conversationOptionsKey === currentVoiceKey)} onOpenChange={open => {
+        if (!open) {setConversationOptionsKey(null); setClearArmed(false);}
+      }}>
+        <DialogContent className="max-h-[85svh] overflow-y-auto border-white/10 bg-zinc-950 text-zinc-100 sm:max-w-md [&_[data-slot=dialog-close]]:size-11">
+          <DialogHeader className="pr-10">
+            <DialogTitle>Conversation options</DialogTitle>
+            <DialogDescription>Keep your archive and conversation organized.</DialogDescription>
+          </DialogHeader>
+          {messages.some(message => message.artwork_id) && <Button type="button" variant="outline" className="min-h-11 justify-start" disabled={savingArtworkId === "all"} onClick={() => void saveAllSharedArtwork()}><BookmarkPlus className="size-4" />Save all shared artwork</Button>}
+          {activeConversation?.kind === "group" && <Button type="button" variant="outline" className="min-h-11 justify-start" onClick={() => {setConversationOptionsKey(null); setGroupSettingsOpen(true);}}><Settings className="size-4" />Group settings</Button>}
+          <div className="space-y-3 border-t border-white/10 pt-4">
+            <h3 className="text-sm font-medium">Clear chat for me</h3>
+            <p className="text-xs leading-5 text-zinc-400">Clears earlier messages from your view on this account. Other members keep their copies, the group is not deleted, and new messages can still arrive. This does not erase stored files.</p>
+            {!controlsEnabled && <p className="text-xs leading-5 text-amber-100" role="status">Editing, removing messages, and clearing chats are built but have not been activated yet.</p>}
+            {clearArmed ? <>
+              <p className="text-sm text-rose-200">Clear the conversation from your view? There is no restore button.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button type="button" variant="outline" className="min-h-11" disabled={clearingConversation} onClick={() => setClearArmed(false)}>Cancel</Button>
+                <Button type="button" className="min-h-11 bg-rose-200 text-zinc-950 hover:bg-rose-100" disabled={clearingConversation || !controlsEnabled} onClick={() => void clearConversationForMe()}>{clearingConversation ? "Clearing…" : "Confirm clear"}</Button>
+              </div>
+            </> : <Button type="button" variant="outline" className="min-h-11" disabled={!controlsEnabled} onClick={() => setClearArmed(true)}>Clear chat for me</Button>}
+            {clearError && <p role="alert" className="text-xs text-rose-200">{clearError}</p>}
+          </div>
+          <Button type="button" className="min-h-11" onClick={() => {setConversationOptionsKey(null); setClearArmed(false);}}>Done</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(currentVoiceKey && voiceDialogKey === currentVoiceKey)} onOpenChange={open => {
+        if (!open) setVoiceDialogKey(null);
+      }}>
+        <DialogContent className="max-h-[85svh] overflow-y-auto border-white/10 bg-zinc-950 text-white sm:max-w-md [&_[data-slot=dialog-close]]:size-11">
+          <DialogHeader className="pr-10">
+            <DialogTitle>Say it in your own voice</DialogTitle>
+            <DialogDescription>Record, listen back, then choose whether to send. Closing this panel discards any unsent recording.</DialogDescription>
+          </DialogHeader>
+          {currentVoiceKey && voiceDialogKey === currentVoiceKey && (
+            <>
+              {!voiceEnabled && <p className="rounded-xl border border-amber-200/15 bg-amber-200/5 p-3 text-xs leading-5 text-amber-100" role="status">{voiceDisabledReason} You can record and preview here; nothing uploads until you choose Send.</p>}
+              <VoiceNoteComposer
+                key={currentVoiceKey}
+                conversationKey={currentVoiceKey}
+                sendEnabled={voiceEnabled}
+                disabledReason={voiceDisabledReason}
+                disabled={sending || uploadingMedia}
+                onSend={sendVoiceNote}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={newMessageOpen}

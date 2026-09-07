@@ -97,7 +97,6 @@ export default function GroupSettingsDialog({
   const [reportTarget, setReportTarget] = useState("");
   const [reportDetails, setReportDetails] = useState("");
   const [reporting, setReporting] = useState(false);
-  const [deleteArmed, setDeleteArmed] = useState(false);
 
   const profileById = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile])),
@@ -192,7 +191,6 @@ export default function GroupSettingsDialog({
       setReportReason("spam");
       setReportTarget("");
       setReportDetails("");
-      setDeleteArmed(false);
       loadGroupData();
     });
 
@@ -439,60 +437,6 @@ export default function GroupSettingsDialog({
     onOpenChange(false);
     onLeft();
     toast.success("You left the group");
-  }
-
-  async function deleteGroup() {
-    const client = supabase;
-    if (!client || !conversation || viewerRole !== "owner" || busyKey) return;
-    if (!deleteArmed) {
-      setDeleteArmed(true);
-      return;
-    }
-
-    setBusyKey("delete");
-    const mediaPaths: string[] = [];
-    for (const folder of ["attachments", "avatars"]) {
-      const { data, error: listError } = await client.storage
-        .from("conversation-media")
-        .list(`${conversation.id}/${folder}`, { limit: 1000 });
-      if (listError) {
-        toast.error("Group media couldn't be prepared for deletion", {
-          description: listError.message,
-        });
-        setBusyKey(null);
-        return;
-      }
-      for (const item of data ?? []) {
-        mediaPaths.push(`${conversation.id}/${folder}/${item.name}`);
-      }
-    }
-
-    if (mediaPaths.length) {
-      const { error: mediaError } = await client.storage
-        .from("conversation-media")
-        .remove(mediaPaths);
-      if (mediaError) {
-        toast.error("Group media couldn't be deleted", {
-          description: mediaError.message,
-        });
-        setBusyKey(null);
-        return;
-      }
-    }
-
-    const { error } = await client.rpc("delete_group", {
-      target_conversation_id: conversation.id,
-    });
-    setBusyKey(null);
-
-    if (error) {
-      toast.error("Group wasn't deleted", { description: error.message });
-      return;
-    }
-
-    onOpenChange(false);
-    onLeft();
-    toast.success("Group deleted");
   }
 
   if (!conversation) return null;
@@ -809,26 +753,14 @@ export default function GroupSettingsDialog({
                   <>
                     <button
                       type="button"
-                      onClick={deleteGroup}
-                      disabled={Boolean(busyKey)}
-                      className="nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-rose-300/20 px-3 text-xs text-rose-300 hover:border-rose-300/50 hover:bg-rose-300/8"
+                      disabled
+                      aria-describedby="group-delete-gate"
+                      className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border border-rose-300/20 px-3 text-xs text-rose-300 opacity-50"
                     >
-                      {busyKey === "delete" ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                      {deleteArmed ? "Confirm delete group" : "Delete group"}
+                      <Trash2 className="size-4" />
+                      Delete group
                     </button>
-                    {deleteArmed && !busyKey && (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteArmed(false)}
-                        className="nodeine-action inline-flex min-h-10 items-center rounded-lg px-3 text-xs text-zinc-500 hover:bg-white/5 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <p id="group-delete-gate" className="w-full text-xs leading-5 text-amber-100">Whole-group deletion is paused while private-file cleanup is upgraded. You can still leave the group; clearing your own view is a separate conversation option.</p>
                   </>
                 )}
               </div>

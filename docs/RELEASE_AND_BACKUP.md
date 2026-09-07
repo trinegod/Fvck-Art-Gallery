@@ -1,5 +1,9 @@
 # Release and backup notes
 
+## Pending chat expansion
+
+The September 7 chat expansion is a review candidate on `codex/slim-navigation-audit-repairs`, not a new public deployment. The public appearance/navigation release remains unchanged until approval. No production voice bucket, message-controls SQL, live-room provider, or model provider has been activated by this work. Review `VOICE_NOTES_ROLLOUT.md`, `MESSAGE_CONTROLS_ROLLOUT.md`, and `audits/2026-09-07-chat-expansion.md` before applying migrations or updating either public host. A source checkpoint or GitHub issue update is not a deployment or a live database backup.
+
 ## Public delivery
 
 - GitHub repository: [trinegod/Fvck-Art-Gallery](https://github.com/trinegod/Fvck-Art-Gallery).

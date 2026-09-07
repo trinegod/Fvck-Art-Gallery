@@ -10,7 +10,7 @@ test("missing, corrupt, and wrongly shaped browser preferences recover to defaul
 
 test("untrusted values cannot select prototype properties, inject a URL, or remove the dimming floor", () => {
   assert.deepEqual(parseChatAppearance(JSON.stringify({ palette: "__proto__", artworkId: "https://example.com/art.png", hidden: "true", dim: -100 })), {
-    palette: "glacier", artworkId: null, hidden: false, dim: 35,
+    palette: "glacier", artworkId: null, customBackground: null, hidden: false, dim: 35,
   });
   assert.equal(parseChatAppearance('{"dim":1000}').dim, 85);
   assert.equal(parseChatAppearance('{"dim":"40"}').dim, 60);
@@ -18,7 +18,7 @@ test("untrusted values cannot select prototype properties, inject a URL, or remo
 
 test("all curated palettes and artwork references round-trip without content or URLs", () => {
   for (const palette of Object.keys(CHAT_PALETTES)) {
-    const value = { palette, artworkId: "artwork-123", hidden: true, dim: 45 };
+    const value = { palette, artworkId: "artwork-123", customBackground: null, hidden: true, dim: 45 };
     assert.deepEqual(parseChatAppearance(JSON.stringify(value)), value);
   }
 });

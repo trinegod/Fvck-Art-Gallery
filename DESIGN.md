@@ -50,14 +50,21 @@ The earlier visual refinement also considered [Linear's March 2026 refresh](http
 
 Test phone widths 320px and 390px, tablet width, desktop breakpoint, keyboard traversal, direct routes, history navigation, Studio escape path, and bottom-content clearance. Keep automated route-mapping tests with the shared destination model. See `docs/MOBILE_NAVIGATION.md` and `docs/audits/2026-09-06-repair-verification.md` for delivery evidence and limitations.
 
-## Chat appearance — initial local slice
+## Chat appearance and controls — September 7 review candidate
 
 The owner approved the artwork-first chat direction and confirmed the name **NODEINE**. The real inbox's appearance dialog keeps customization contextual, outside the primary navigation. These settings affect the current viewer and conversation on this device, not another participant. A shared room theme is not yet implemented.
 
 - Outgoing bubble presets: Glacier `#8de6ed` / ink `#0b2025`; Orchid `#d7c1f4` / `#271831`; Ember `#f2c28a` / `#2b190d`.
 - Incoming text: `#f2f3f8` on opaque `#252d3a`. Sender names and timestamps: `#c7cfde` on opaque `#202632`. Media cards retain opaque graphite surfaces. Artwork must never determine text contrast.
-- Choose background images from artwork already shared and available in the active conversation; keep no-artwork, personal hide, dimming (35–85%), and reset controls visible. No arbitrary URL input or uncredited decorative asset library.
+- Choose artwork already shared in the active conversation or a device photo. Prepare JPEG/PNG/WebP locally as a bounded JPEG preview; do not upload it or send it as a chat message. Keep personal hide, dimming (35–85%), remove, and reset controls visible. No arbitrary URL input or uncredited decorative asset library.
 - Palette selection uses labels and a checkmark in addition to color. Controls are at least 44px; no new animation. The dialog scrolls within a short viewport.
-- Store only palette, artwork ID, visibility, and dimming under an account-and-conversation key. If storage is blocked, preserve temporary choices and explain they will not persist. Never store messages or signed URLs in appearance preferences.
+- Store palette, artwork ID or a bounded locally re-encoded JPEG, visibility, and dimming under an account-and-conversation key. If storage is blocked, preserve temporary choices and explain they will not persist. Never store messages, external image URLs, signed URLs, or audio recordings in appearance preferences.
+- The primary **Done** action is visible in the sticky footer; reset remains secondary. Disable Done/source-changing controls during preparation, and cancel unfinished preparation on closing the dialog. Choices apply immediately; Done closes the panel, not a shared-theme publish action.
+- The header retains appearance and one labeled conversation-options button; save-all artwork, group settings, and personal clearing live there. Keep edit/remove actions beside the current viewer's messages, not in the global navigation. Destructive actions require explicit confirmation and explain whose copy is affected.
+- Voice recording starts only after a microphone action, then offers Stop, Preview, Discard, and gated Send. Avoid autoplay. State uncertainty honestly after a lost delivery response, and keep permission-denied, unsupported-browser, expired-playback, and pending-activation states understandable.
 
-Authenticated runtime evidence and rollout boundaries are recorded in `docs/audits/2026-09-07-chat-release.md`. Voice notes and live-room controls remain simulations on the separate `codex/chat-visual-study` archive branch, outside the release source.
+## Loading identity
+
+The original **World Aperture** combines a framed world, geometric portal, and one quiet orbiting point. Keep the familiar map/lens cue small and separate from the optional NODEINE wordmark. Use it only while a route or data region is actually pending; retain informative skeletons and loaded navigation. No forced startup duration, fake progress, imported combat effects, or full-screen overlay on finished content. The 7.2-second orbit becomes static under reduced motion. See `docs/design/loading-screen-concept.md`.
+
+The earlier public appearance release is recorded in `docs/audits/2026-09-07-chat-release.md`; the expanded local review is recorded in `docs/audits/2026-09-07-chat-expansion.md`. Real voice-note components are now in source, with private sending and message controls gated by separate database/runtime approval. Live audio rooms remain a simulation on the separate `codex/chat-visual-study` branch.

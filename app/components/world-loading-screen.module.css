@@ -1,0 +1,116 @@
+.centered {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: clip;
+  padding: 2rem 1.25rem;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at 50% 46%, rgb(103 232 249 / 7%), transparent 19rem),
+    radial-gradient(ellipse at 50% 115%, rgb(255 255 255 / 3%), transparent 32rem),
+    var(--background);
+}
+
+.inline {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  padding: 2rem 1.25rem;
+}
+
+.status {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.symbol {
+  overflow: visible;
+  filter: drop-shadow(0 0 0.85rem rgb(103 232 249 / 15%));
+}
+
+.wordmark {
+  margin: 1.125rem 0 0;
+  color: #f4f4f5;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  line-height: 1;
+  text-indent: 0.32em;
+}
+
+.label {
+  max-width: 20rem;
+  margin: 1.125rem 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.wordmark + .label {
+  margin-top: 0.875rem;
+}
+
+.inline .label {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.symbol :global(.worldLoadingFrame) {
+  fill: rgb(255 255 255 / 2%);
+  stroke: rgb(244 244 245 / 31%);
+  stroke-width: 0.9;
+}
+
+.symbol :global(.worldLoadingWorld) {
+  stroke: rgb(165 243 252 / 75%);
+  stroke-width: 0.78;
+}
+
+.symbol :global(.worldLoadingGrid) {
+  stroke: rgb(207 250 254 / 37%);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.58;
+}
+
+.symbol :global(.worldLoadingOrbit) {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.symbol :global(.worldLoadingOrbitPath) {
+  stroke: rgb(103 232 249 / 58%);
+  stroke-width: 0.72;
+}
+
+.symbol :global(.worldLoadingSignal) {
+  fill: #a5f3fc;
+  filter: drop-shadow(0 0 0.18rem rgb(103 232 249 / 85%));
+}
+
+.symbol :global(.worldLoadingAperture) {
+  fill: rgb(207 250 254 / 91%);
+}
+
+.symbol :global(.worldLoadingApertureCut) {
+  fill: #111318;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .symbol :global(.worldLoadingOrbit) {
+    animation: world-loading-orbit 7.2s linear infinite;
+  }
+}
+
+@keyframes world-loading-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .symbol {
+    filter: none;
+  }
+}
