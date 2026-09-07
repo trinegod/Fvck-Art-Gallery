@@ -52,9 +52,9 @@ test("production view couples dock removal, header visibility and safe-area-only
   assert.match(source, /focusedConversation \? "hidden lg:block"/);
   assert.match(source, /focusedConversation \? "pb-\[env\(safe-area-inset-bottom\)\]"/);
   assert.match(source, /variant="viewport" label="Opening your inbox…"/);
-  assert.match(source, /variant="inline" label="Opening your conversation…"/);
+  assert.match(source, /variant="panel" label="Opening your conversation…"/);
   assert.match(source, /aria-label="Back to inbox"/);
-  assert.match(source, /grid-cols-1 overflow-hidden lg:grid-cols-\[390px_minmax\(0,1fr\)\]/);
+  assert.match(source, /grid-cols-1 overflow-hidden lg:grid-cols-\[clamp\(280px,26vw,360px\)_minmax\(0,1fr\)\]/);
 });
 
 test("compact controls keep larger-text reflow and override popup motion states", () => {

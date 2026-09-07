@@ -371,7 +371,7 @@ export default function VoiceNoteComposer({
             {phase === "error" ? "Try recording again" : "Record voice note"}
           </Button>
           <p className="text-xs leading-5 text-zinc-500">
-            Up to 1 minute or 5 MB. You review audio before it is sent.
+            Up to 1 minute or 4 MiB. You review audio before it is sent.
           </p>
         </div>
       )}

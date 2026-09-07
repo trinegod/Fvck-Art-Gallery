@@ -1,5 +1,15 @@
 # Release and backup notes
 
+## Approved production rollout — September 7, 2026
+
+The owner approved promoting the chat expansion and follow-up refinements to both maintained public hosts, not just a review preview. The release includes full-height mobile conversations, a 54px icon-only dock, full-width desktop chat, centered inbox/conversation loading, group-settings hardening and reading-position preservation. 186 automated tests, TypeScript, lint (zero errors/five existing warnings), an optimized build and a bounded independent standards/spec audit passed. See [the current audit](audits/2026-09-07-chat-space-and-voice-release.md).
+
+Private voice delivery has now been activated in the existing Supabase project following 42 rollback-only database assertions; fresh metadata verification confirms the private 4 MiB bucket, authenticated-only capability and validation trigger. A signed-in local chat no longer shows the pending-activation warning. No real recording was captured automatically. Physical-phone send/playback and full HTTP/Storage/concurrent-rate checks remain explicit follow-ups. Message-controls SQL is still separate and unapplied.
+
+The [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) records the exact source commit, completed production URLs and backup manifest after verification. A source document cannot establish a future deployment or iCloud server sync. The new release snapshot must include source, normal Git history, handoff prompts and checksums; it excludes secrets and live database/private Storage data. Supabase's backup listing currently returns no listed backups and PITR is disabled, so no full live-chat-data backup is claimed.
+
+The earlier sections below are historical checkpoints superseded by this approved rollout and its verified checklist.
+
 ## Focused mobile chat follow-up — September 7, 2026
 
 The same review branch now includes the focused mobile conversation shell, compact attachment menu, viewport-centered World Aperture, and three cross-project handoff prompts. See the [measured audit](audits/2026-09-07-mobile-chat-space.md) for 156 passing tests, build results, independent audit repairs, and real-device limits. The [GitHub rollout checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) records the verified deployment URL and source SHA after publication; the new iCloud release manifest records its exact backup commit and checksums. Do not treat the older immutable preview below as containing this follow-up.

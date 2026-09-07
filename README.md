@@ -8,6 +8,17 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 ## September 7, 2026 — focused mobile chat and centered loading
 
+### Latest approved release
+
+- Mobile conversations use the full screen without the global brand row, bottom dock or wasted dock padding. Outside conversations, a 54px icon-only dock retains four 44px accessible destinations and unread indicators. Desktop chat uses the available width with a 280–360px inbox column.
+- Both **Opening your inbox…** and **Opening your conversation…** center the complete World Aperture/status group in the correct viewport or message panel. Enlarged text reflows without squeezing the message input.
+- Incoming group/direct messages preserve your position while reading older content; **Jump to latest** takes you back. Group creation is already available at **You → Inbox → + → Group chat**, and member settings now have safer session handling, 44px controls and recoverable loading errors.
+- **Private voice delivery is activated** in the existing Supabase project after 42 rollback-only database assertions and independent post-activation checks. Tap the microphone, **Record voice note → Stop → Preview → Send**. Recording is always explicit, limited to 60 seconds/4 MiB, and access-controlled—not end-to-end encrypted. Real-phone recording/playback, physical Storage and the full concurrent/network-failure matrix still need verification; see [Voice rollout](docs/VOICE_NOTES_ROLLOUT.md).
+- Own-message editing/removal and **Clear chat for me** still require their separate migration. Whole-group deletion, live audio rooms and in-app image generation are not activated by this release.
+- 186 automated tests pass, with clean TypeScript/build and no lint errors (five existing warnings). [Detailed evidence](docs/audits/2026-09-07-chat-space-and-voice-release.md), [group capabilities](docs/GROUP_CHAT.md), and [deployment/backup checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) separate observed behavior from remaining device checks.
+
+The following review descriptions are historical checkpoints, not the latest activation status.
+
 The review branch now gives an open mobile conversation more space: one contextual header, no global bottom dock, and no empty dock reserve. Back restores the normal inbox navigation; unresolved conversations retain an explicit escape. The desktop split view remains intact.
 
 - At 390×844, the measured message region grows from 518.5px to 717px (about 38%), and the text field from 160px to 210px. Larger-text wrapping and 44px action targets are preserved.
@@ -62,7 +73,7 @@ Deployment and recovery boundaries are documented in [Release and backup notes](
 - Creator profiles with public portfolio routes
 - Personalized discovery, follows, likes, comments, activity, and private saves
 - A connected Feed with For You, Discover, and Following modes, plus World Portals for Gallery, Threads, Film, and Signals
-- A compact mobile dock with four labeled section links, keyboard navigation, and activity indicators; secondary destinations live in Explore, Create, and You
+- A compact mobile dock with four accessibly named icon links, keyboard navigation, and activity indicators; secondary destinations live in Explore, Create, and You
 - World Threads for arranging 2–12 saved works into credited visual lineages with typed relationships, notes, drafts, public publishing, shareable Lineage Maps, and provenance-preserving forks
 - Signal Trails on artwork pages for deterministic, explainable discovery across shared worlds, moods, and visual tags
 - A creator-only Forge Lab with browser-local Visual DNA analysis and provider-neutral Prompt Foundry recipes

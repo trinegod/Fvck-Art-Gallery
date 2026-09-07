@@ -20,7 +20,7 @@ The symbol reads at 24px, is most comfortable at 32px inline and 64px as a route
 
 - `label?: string` — short present-tense description of actual pending work; default: `Opening the archive…`.
 - `className?: string`
-- `variant?: "centered" | "viewport" | "inline"` — `centered` is a standalone route fallback with a 64px mark; `viewport` centers the 32px mark/status group in the current viewport while retaining a loaded shell; `inline` centers a 32px mark/status group within one unresolved panel.
+- `variant?: "centered" | "viewport" | "panel" | "inline"` — `centered` is a standalone route fallback with a 64px mark; `viewport` centers the 32px mark/status group in the current viewport while retaining a loaded shell; `panel` fills a positioned unresolved pane and centers its 32px mark/status group; `inline` keeps the original content-region treatment with a 12rem minimum height.
 - `showWordmark?: boolean` — current name treatment; default `false` to keep embedded states compact.
 
 The screen owns a single `role="status"` with polite, atomic updates. The SVG is decorative there, so assistive technology reads the work-specific label only once. It has no controls, modal treatment, timer, fake progress percentage, or completion claim.
@@ -45,7 +45,17 @@ When the inbox itself is pending below an already loaded header/navigation, use 
 
 This mode uses a normal-flow `div`, not a nested `main`. Only its complete status group is positioned at the viewport midpoint and translated by half its own dimensions. There is no full-screen fixed backdrop, z-index escalation, pointer interception, body scroll lock, timer, or lifecycle hook. The parent mounts it only during actual pending work and removes it as soon as the inbox is resolved. Do not use this mode inside a transformed containing block, or for a panel whose neighboring content is already ready.
 
-For a conversation-only fetch, preserve loaded content and place the inline treatment only in the unresolved panel:
+For a conversation-only fetch, preserve the loaded header, inbox, and composer. Let the message-history pane establish the containing block and use the `panel` treatment only while that pane is unresolved:
+
+```tsx
+<div className="relative min-h-0 flex-1 overflow-y-auto">
+  <WorldLoadingScreen variant="panel" label="Opening your conversation…" />
+</div>
+```
+
+The panel fills that containing block with absolute positioning and symmetric padding, not a viewport position or a competing minimum height. The complete mark/status group is centered in the available message area, including on desktop where the inbox takes part of the width. `align-content: safe center` preserves centering when the group fits; if unusually short space or enlarged text makes it too tall, the status starts within the scrollable panel instead of clipping above its scroll origin. It has no backdrop, timing logic, or controls and is never mounted over ready message history.
+
+Use `inline` only for an ordinary unresolved content region that should retain its own minimum height:
 
 ```tsx
 <WorldLoadingScreen variant="inline" label="Loading new work…" />
@@ -68,3 +78,20 @@ For implementation behavior, Next 16's local `loading.tsx` documentation confirm
 The initial inbox used an inline loader with a `70svh` minimum height below its header, which centers within that partial region rather than the viewport. The standalone fallback also used `100svh`, not the current dynamic viewport. The corrected API separates those geometries without altering the original World Aperture SVG, work-specific label, or reduced-motion behavior. The `/messages` route fallback now uses the same World Aperture instead of a separate spinning border.
 
 Focused tests render the production component and route fallback with the real SVG, and parse the production CSS. They check viewport versus panel semantics, the midpoint/translation geometry, pointer transparency, route sizing, one polite atomic status, decorative mark, and the motion-preference gate. These tests do not substitute for actual browser layout measurements, safe-area/short-viewport checks, keyboard navigation, or physical-phone behavior; the coordinated chat browser audit records those results separately.
+
+### Conversation-panel follow-up
+
+The owner's follow-up also requested centering “Opening your conversation…”. The coordinated local browser fixture reproduced the old `inline` plus `min-h-full` call: the CSS module's 12rem minimum took precedence over the utility minimum, so at 390×844 the group was 246.5px above the center of a 717px message pane. A dedicated `panel` variant removes that cross-stylesheet height override rather than adding another competing utility.
+
+The focused suite also checks the real conversation call site, its positioned message-history parent, absence of `min-h-full`, unchanged ordinary inline behavior, and the short-pane enlarged-text fallback. The coordinated browser audit measured the actual component and CSS in a temporary development-only synthetic fixture:
+
+| Browser viewport | Message-pane size | Group-center offset from pane center |
+| --- | --- | --- |
+| 320×568 | 320×441 | 0px horizontally, 0px vertically |
+| 390×844 | 390×717 | 0px horizontally, 0px vertically |
+| 844×390 | 844×263 | 0px horizontally, 0px vertically |
+| 1280×900 | 890×668 | 0px horizontally, 0px vertically |
+
+All four ordinary panes had equal client and scroll heights. At 320×568 with the root font enlarged to 32px, the 134px-tall status group remained exactly centered in a 377px pane without overflow. With that same enlarged text and an intentionally constrained 72px pane, safe alignment placed the status 32px below the pane's top; the loader exposed 198px of scrollable height with no horizontal overflow, keeping the entire group reachable instead of clipping its top. The desktop pane began at x=390px, y=161px, confirming that centering follows the available conversation area rather than the whole viewport.
+
+The temporary fixture was removed after these measurements, and the browser viewport override was reset. Synthetic geometry checks do not establish a real-account messaging or physical-phone keyboard workflow.

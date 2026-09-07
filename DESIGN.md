@@ -1,6 +1,6 @@
 # NODEINE interface contract
 
-Status: existing archive identity preserved; compact section navigation is in the earlier public release. The September 7 chat expansion is available in a separate review preview; production promotion and backend activation remain separate gates.
+Status: existing archive identity preserved. The owner approved the September 7 expanded conversations, icon-only dock, and private-voice rollout for production. Verified deployment and activation evidence is recorded separately in the release checklist; source presence alone does not prove delivery.
 
 For new or revised UI flows, apply the owner's [UX review playbook](docs/design/ux-review-playbook.md) alongside this visual contract. It translates the supplied 20 recommendations into task, accessibility, feedback, recovery, and verification checks without importing another product's style.
 
@@ -13,13 +13,13 @@ Let people discover authored visual Worlds, understand relationships, and create
 - Surface: `--background`, `--card`, and `--popover`; foreground: `--foreground` and `--muted-foreground`.
 - Selection and focus: `--primary` / `--ring`; activity uses the existing rose indicator plus an accessible count.
 - Typography: `--font-sans` for reading, `--font-mono` for supporting metadata. No new fonts, external assets, or dependencies for navigation.
-- Spacing: 4px rhythm; mobile dock 12px viewport gutter, 6px internal padding, 44px minimum controls, 56px destination row.
+- Spacing: 4px rhythm; mobile dock 12px viewport gutter, 4px internal padding, 44px destination targets, 54px total height at default text size. One shared clearance token includes the bottom safe area and 8px breathing room.
 - Layers: mobile dock z40, existing dialogs z50 and above. No navigation overlay or body scroll lock.
 - Dock finish: shallow graphite gradient, translucent highlight along the upper edge, and a quiet selected-section pill. Explore uses ice cyan, Create pale lavender, and You neutral silver; Feed and keyboard focus retain cyan. Selection is also identified by shape/underline, never color alone. No looping glow or entrance animation.
 
 ## Mobile information architecture
 
-One row contains four real links: Feed, Explore, Create, You. Section pages organize secondary destinations:
+One icon-only row contains four real links: Feed, Explore, Create, You. Their names remain available to screen readers and through title tooltips; active shape, keyboard focus and unread indicators remain visible. This owner-approved change reduces both the dock and its reserved space. Section pages organize secondary destinations:
 
 | Section | Destinations |
 | --- | --- |
@@ -50,6 +50,8 @@ The September 4 version drew on [Carbon's tab guidance](https://carbondesignsyst
 
 The earlier visual refinement also considered [Linear's March 2026 refresh](https://linear.app/now/behind-the-latest-design-refresh) and [Geist's tabs](https://vercel.com/geist/tabs). The quieter separators, concise labels, and visible focus remain, expressed as ordinary page links in NODEINE's own artwork-first identity. The new section pages use editorial typography, restrained dividers, and existing credited artwork rather than new decorative assets.
 
+For the latest conversation pass, official [Instagram messaging guidance](https://about.fb.com/news/2024/03/instagram-dm-updates/) provides a familiar reference for contextual themes and message actions. This is a feature-pattern comparison, not a live visual inspection of Instagram. NODEINE keeps its own artwork-first styling, opaque readable bubbles, explicit scope labels, and permission boundaries; no external UI assets were copied.
+
 ## Verification gate
 
 Test phone widths 320px and 390px, tablet width, desktop breakpoint, keyboard traversal, direct routes, history navigation, Studio escape path, and bottom-content clearance. Keep automated route-mapping tests with the shared destination model. See `docs/MOBILE_NAVIGATION.md` and `docs/audits/2026-09-06-repair-verification.md` for delivery evidence and limitations.
@@ -66,12 +68,14 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 - The primary **Done** action is visible in the sticky footer; reset remains secondary. Disable Done/source-changing controls during preparation, and cancel unfinished preparation on closing the dialog. Choices apply immediately; Done closes the panel, not a shared-theme publish action.
 - The header retains appearance and one labeled conversation-options button; save-all artwork, group settings, and personal clearing live there. Keep edit/remove actions beside the current viewer's messages, not in the global navigation. Destructive actions require explicit confirmation and explain whose copy is affected.
 - The compact header can wrap for larger text. One **Add attachment** menu contains **Photo or video** and **Artwork from your worlds**, while the microphone remains explicit. Keep the mobile textarea at 16px, Back/Send at least 44px, and restore attachment-trigger focus after the artwork picker closes. Do not change send/upload behavior as part of layout work.
+- Direct and group conversations share the full-height mobile shell. Desktop uses the available width with a 280–360px inbox rail instead of an outer 1280px cap; individual bubbles retain readable width limits. At large text sizes, the message field gets its own row before controls instead of shrinking or overflowing. Group creation has one scrollable dialog and a reachable sticky Create action.
+- Preserve the reading position when someone else posts while the viewer reads older messages. Show a counted **Jump to latest** action; follow the newest messages only when already near the end or after the viewer sends. Scrolling must remain inside history, not move the document.
 - Voice recording starts only after a microphone action, then offers Stop, Preview, Discard, and gated Send. Avoid autoplay. State uncertainty honestly after a lost delivery response, and keep permission-denied, unsupported-browser, expired-playback, and pending-activation states understandable.
 
 ## Loading identity
 
 The original **World Aperture** combines a framed world, geometric portal, and one quiet orbiting point. Keep the familiar map/lens cue small and separate from the optional NODEINE wordmark. Use it only while a route or data region is actually pending; retain informative skeletons and loaded navigation. No forced startup duration, fake progress, imported combat effects, or full-screen overlay on finished content. The 7.2-second orbit becomes static under reduced motion. See `docs/design/loading-screen-concept.md`.
 
-Center the complete mark/status group in the current viewport when the inbox itself is pending; use the contained inline variant only for conversation-panel loading. The initial inbox must not use an arbitrary partial-viewport height. A viewport-aligned status has no blocking backdrop and does not intercept navigation.
+Center the complete mark/status group in the current viewport when the inbox itself is pending; use the dedicated **panel** variant for conversation loading. It fills the actual message region and centers both axes without a competing minimum height. When enlarged text cannot fit a very short panel, safe centering and scrolling preserve access. The initial inbox must not use an arbitrary partial-viewport height. A viewport-aligned status has no blocking backdrop and does not intercept navigation.
 
-The earlier public appearance release is recorded in `docs/audits/2026-09-07-chat-release.md`; the expanded local review is recorded in `docs/audits/2026-09-07-chat-expansion.md`. Real voice-note components are now in source, with private sending and message controls gated by separate database/runtime approval. Live audio rooms remain a simulation on the separate `codex/chat-visual-study` branch.
+The earlier public appearance release is recorded in `docs/audits/2026-09-07-chat-release.md`; the expanded local review is recorded in `docs/audits/2026-09-07-chat-expansion.md`. Follow `docs/VOICE_NOTES_ROLLOUT.md` for actual private-voice activation evidence. Message-edit/removal controls have a separate database gate. Live audio rooms remain a simulation on the separate `codex/chat-visual-study` branch.

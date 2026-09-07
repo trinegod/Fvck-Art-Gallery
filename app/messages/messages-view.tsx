@@ -44,7 +44,7 @@ import { createAccountScope, observeAccount } from "@/lib/activity-session";
 import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
-import { syncMessageViewport } from "@/lib/message-viewport";
+import { isMessageViewportNearBottom, scrollMessageViewportToEnd, syncMessageViewport } from "@/lib/message-viewport";
 import { getMessagesShellMode } from "@/lib/messages-shell";
 import { persistMessageAttachment } from "@/lib/message-attachment";
 import { CHAT_PALETTES } from "@/lib/chat-appearance";
@@ -185,7 +185,6 @@ export default function MessagesView({
   const [artworkShareOpen, setArtworkShareOpen] = useState(false);
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
   const startedProfileRef = useRef<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const accountScope = useRef(createAccountScope());
   const conversationVersion = useRef(0);
@@ -194,7 +193,10 @@ export default function MessagesView({
   const loadOlderRef = useRef<(() => Promise<void>) | null>(null);
   const messagesScrollerRef = useRef<HTMLDivElement | null>(null);
   const historyAnchor = useRef<{height: number; top: number} | null>(null);
-  const lastScrolledMessage = useRef<string | null>(null);
+  const lastHandledMessage = useRef<string | null>(null);
+  const followingMessages = useRef(true);
+  const unseenMessageCount = useRef(0);
+  const [newMessageCount, setNewMessageCount] = useState(0);
 
   // A history refresh (for example a clear cutoff) is not a new conversation.
   // Invalidate mutations only when the viewer/destination actually changes.
@@ -754,7 +756,9 @@ export default function MessagesView({
       return controls;
     }).catch(() => ({enabled: false, clearedBefore, reason: "Message controls could not be checked. Reopen this conversation to retry."}));
     historyAnchor.current = null;
-    lastScrolledMessage.current = null;
+    lastHandledMessage.current = null;
+    followingMessages.current = true;
+    unseenMessageCount.current = 0;
 
     async function markRetrievedRead(through: string | null) {
       try {
@@ -818,6 +822,7 @@ export default function MessagesView({
       setSavedArtworkIds(new Set());
       setOlderCursor(null);
       setLoadingOlder(false);
+      setNewMessageCount(0);
       void loadPage(null);
     });
 
@@ -866,16 +871,42 @@ export default function MessagesView({
   useLayoutEffect(() => {
     const result = syncMessageViewport({
       loading: conversationLoading,
-      target: messagesEndRef.current,
       scroller: messagesScrollerRef.current,
       anchor: historyAnchor.current,
-      newestId: messages.at(-1)?.id ?? null,
-      previousId: lastScrolledMessage.current,
+      messages,
+      previousId: lastHandledMessage.current,
+      viewerId,
+      following: followingMessages.current,
+      unseenCount: unseenMessageCount.current,
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     });
-    lastScrolledMessage.current = result.previousId;
+    lastHandledMessage.current = result.previousId;
     historyAnchor.current = result.anchor;
-  }, [messages, conversationLoading]);
+    if (unseenMessageCount.current !== result.unseenCount) {
+      unseenMessageCount.current = result.unseenCount;
+      setNewMessageCount(result.unseenCount);
+    }
+  }, [messages, conversationLoading, viewerId]);
+
+  function trackMessageScroll() {
+    const scroller = messagesScrollerRef.current;
+    if (!scroller) return;
+    followingMessages.current = isMessageViewportNearBottom(scroller);
+    if (followingMessages.current && unseenMessageCount.current) {
+      unseenMessageCount.current = 0;
+      setNewMessageCount(0);
+    }
+  }
+
+  function showNewestMessages() {
+    const scroller = messagesScrollerRef.current;
+    if (!scroller) return;
+    followingMessages.current = true;
+    unseenMessageCount.current = 0;
+    setNewMessageCount(0);
+    scrollMessageViewportToEnd(scroller, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    scroller.focus({preventScroll: true});
+  }
 
   const resetConversationComposer = useCallback(() => {
     setSending(false);
@@ -893,6 +924,9 @@ export default function MessagesView({
     setArtworkShareOpen(false);
     setGroupSettingsOpen(false);
     setError(null);
+    followingMessages.current = true;
+    unseenMessageCount.current = 0;
+    setNewMessageCount(0);
   }, []);
 
   useEffect(() => {
@@ -1499,9 +1533,9 @@ export default function MessagesView({
           </div>
         </div>
       ) : (
-        <section className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[390px_minmax(0,1fr)]">
+        <section className="grid min-h-0 w-full flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[clamp(280px,26vw,360px)_minmax(0,1fr)]">
           <aside
-            className={`min-h-0 border-white/10 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:border-r lg:pb-0 ${
+            className={`min-h-0 border-white/10 pb-[var(--nodeine-mobile-nav-clearance)] lg:border-r lg:pb-0 ${
               activeConversationId ? "hidden lg:flex" : "flex"
             } flex-col`}
           >
@@ -1709,7 +1743,7 @@ export default function MessagesView({
             style={{ "--chat-bubble": palette.background, "--chat-ink": palette.foreground } as CSSProperties}
             className={`min-h-0 min-w-0 ${
               activeConversationId ? "flex" : "hidden lg:flex"
-            } flex-col ${focusedConversation ? "pb-[env(safe-area-inset-bottom)]" : "pb-[calc(5.75rem+env(safe-area-inset-bottom))]"} lg:pb-0`}
+            } flex-col ${focusedConversation ? "pb-[env(safe-area-inset-bottom)]" : "pb-[var(--nodeine-mobile-nav-clearance)]"} lg:pb-0`}
           >
             {activeConversation ? (
               <>
@@ -1764,6 +1798,10 @@ export default function MessagesView({
                 <div
                   data-chat-part="history"
                   ref={messagesScrollerRef}
+                  onScroll={trackMessageScroll}
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="Conversation messages"
                   style={backgroundSource ? {
                     backgroundImage: `linear-gradient(rgb(9 11 15 / ${appearance.dim / 100}), rgb(9 11 15 / ${appearance.dim / 100})), url(${JSON.stringify(backgroundSource)})`,
                     backgroundSize: "cover", backgroundPosition: "center 25%",
@@ -1790,9 +1828,9 @@ export default function MessagesView({
                     </div>
                   )}
                   {conversationLoading ? (
-                    <WorldLoadingScreen variant="inline" label="Opening your conversation…" className="min-h-full" />
+                    <WorldLoadingScreen variant="panel" label="Opening your conversation…" />
                   ) : messages.length ? (
-                    <div className="mx-auto flex max-w-3xl flex-col gap-3">
+                    <div className="flex min-w-0 flex-col gap-3">
                       {olderCursor && (
                         <Button type="button" variant="outline" className="min-h-11 self-center border-white/15 text-zinc-300" disabled={loadingOlder} onClick={() => void loadOlderRef.current?.()}>
                           {loadingOlder ? <><LoaderCircle className="size-4 animate-spin" /> Loading older messages…</> : "Load older messages"}
@@ -1820,7 +1858,7 @@ export default function MessagesView({
                               />
                             )}
                             <div
-                              className={`max-w-[82%] sm:max-w-[72%] ${
+                              className={`min-w-0 max-w-[min(82%,42rem)] sm:max-w-[min(72%,42rem)] ${
                                 mine ? "text-right" : "text-left"
                               }`}
                             >
@@ -1911,7 +1949,6 @@ export default function MessagesView({
                           </article>
                         );
                       })}
-                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="grid min-h-full place-items-center text-center">
@@ -1926,14 +1963,22 @@ export default function MessagesView({
                       </div>
                     </div>
                   )}
+                  {!conversationLoading && newMessageCount > 0 && (
+                    <div className="pointer-events-none sticky bottom-0 z-10 mt-3 flex justify-center" role="status" aria-live="polite" aria-atomic="true">
+                      <button type="button" onClick={showNewestMessages}
+                        className="nodeine-action pointer-events-auto min-h-11 max-w-full rounded-full border border-cyan-300/40 bg-zinc-950 px-4 py-2 text-sm font-medium text-cyan-200 shadow-lg focus-visible:outline-2 focus-visible:outline-cyan-300">
+                        {newMessageCount} new {newMessageCount === 1 ? "message" : "messages"} · Jump to latest
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <form
                   data-chat-part="composer"
                   onSubmit={sendMessage}
-                  className="shrink-0 border-t border-white/10 bg-zinc-950/95 px-3 py-2 backdrop-blur-xl sm:px-6 lg:py-3"
+                  className="nodeine-chat-composer shrink-0 border-t border-white/10 bg-zinc-950/95 px-3 py-2 backdrop-blur-xl sm:px-6 lg:py-3"
                 >
-                  <div className="mx-auto flex max-w-3xl items-end gap-2">
+                  <div className="nodeine-chat-composer-row">
                     <input
                       ref={attachmentInputRef}
                       type="file"
@@ -1948,7 +1993,7 @@ export default function MessagesView({
                     <DropdownMenu key={currentVoiceKey}>
                       <DropdownMenuTrigger
                         disabled={uploadingMedia || sending || voiceSending}
-                        render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
+                        render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
                       >
                         {uploadingMedia ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-5" />}
                       </DropdownMenuTrigger>
@@ -1965,13 +2010,13 @@ export default function MessagesView({
                       type="button"
                       onClick={() => setVoiceDialogKey(currentVoiceKey)}
                       disabled={uploadingMedia || sending || voiceSending}
-                      className="nodeine-action grid size-11 shrink-0 place-items-center rounded-full border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-60"
+                      className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-60"
                       aria-label="Open voice notes"
                       title="Voice notes"
                     >
                       <Mic className="size-4" />
                     </button>
-                    <label className="flex min-w-0 flex-1">
+                    <label className="nodeine-chat-composer-input flex min-w-0">
                       <span className="sr-only">Message</span>
                       <textarea
                         value={draft}
@@ -1999,7 +2044,7 @@ export default function MessagesView({
                       type="submit"
                       size="icon-lg"
                       disabled={sending || uploadingMedia || voiceSending || !draft.trim()}
-                      className="size-11 shrink-0 rounded-full"
+                      className="size-[44px] shrink-0 justify-self-end rounded-full"
                       aria-label="Send message"
                     >
                       {sending ? (
@@ -2010,7 +2055,7 @@ export default function MessagesView({
                     </Button>
                   </div>
                   {error && (
-                    <p className="mx-auto mt-2 max-w-3xl text-xs text-rose-300" role="alert">
+                    <p className="mt-2 text-xs text-rose-300" role="alert">
                       {error}
                     </p>
                   )}
@@ -2104,8 +2149,8 @@ export default function MessagesView({
           }
         }}
       >
-        <DialogContent className="max-h-[88svh] overflow-hidden border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-lg">
-          <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
+        <DialogContent className="max-h-[88dvh] overflow-y-auto border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-lg [&_[data-slot=dialog-close]]:size-11">
+          <DialogHeader className="border-b border-white/10 px-5 py-5 pr-14 sm:px-6 sm:pr-14">
             <DialogTitle className="text-xl text-white">New message</DialogTitle>
             <DialogDescription className="leading-6 text-zinc-500">
               Message one creator directly or bring three or more people into a
@@ -2113,7 +2158,7 @@ export default function MessagesView({
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={createGroup} className="flex min-h-0 flex-col">
+          <form onSubmit={createGroup} className="flex flex-col">
             <div className="space-y-4 px-5 py-4 sm:px-6">
               <div className="grid grid-cols-2 rounded-xl border border-white/10 bg-black/40 p-1">
                 <button
@@ -2123,7 +2168,7 @@ export default function MessagesView({
                     setSelectedMemberIds([]);
                   }}
                   aria-pressed={newMessageMode === "direct"}
-                  className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
+                  className={`nodeine-action inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
                     newMessageMode === "direct"
                       ? "bg-cyan-300 font-medium text-zinc-950"
                       : "text-zinc-500 hover:text-white"
@@ -2136,7 +2181,7 @@ export default function MessagesView({
                   type="button"
                   onClick={() => setNewMessageMode("group")}
                   aria-pressed={newMessageMode === "group"}
-                  className={`nodeine-action inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
+                  className={`nodeine-action inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm ${
                     newMessageMode === "group"
                       ? "bg-cyan-300 font-medium text-zinc-950"
                       : "text-zinc-500 hover:text-white"
@@ -2179,7 +2224,7 @@ export default function MessagesView({
               </label>
             </div>
 
-            <div className="min-h-0 max-h-[42svh] overflow-y-auto border-y border-white/10">
+            <div className="border-y border-white/10">
               {groupProfiles.length ? (
                 groupProfiles.map((profile) => {
                   const selected = selectedMemberIds.includes(profile.id);
@@ -2245,7 +2290,7 @@ export default function MessagesView({
                 choose.
               </p>
             ) : (
-              <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+              <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-zinc-950 px-5 py-4 sm:px-6">
                 <p className="text-xs leading-5 text-zinc-600">
                   {selectedMemberIds.length + 1 === 1
                     ? "1 person total"
@@ -2258,6 +2303,7 @@ export default function MessagesView({
                 </p>
                 <Button
                   type="submit"
+                  className="min-h-11"
                   disabled={
                     creatingGroup ||
                     !groupTitle.trim() ||

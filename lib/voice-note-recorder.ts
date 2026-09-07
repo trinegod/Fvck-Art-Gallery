@@ -4,9 +4,9 @@ import {
   voiceNoteExtensionForMime,
   type VoiceNoteFormat,
 } from "./voice-note-format";
+import { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_DURATION_MS } from "./voice-note-upload";
 
-export const MAX_VOICE_NOTE_DURATION_MS = 60_000;
-export const MAX_VOICE_NOTE_BYTES = 5 * 1024 * 1024;
+export { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_DURATION_MS };
 export const MICROPHONE_REQUEST_TIMEOUT_MS = 15_000;
 
 export type VoiceNote = {
@@ -363,7 +363,7 @@ export class VoiceNoteRecorder {
       this.emit({
         type: "failed",
         failure: mediaError(
-          "Voice notes must be 5 MB or smaller. Try a shorter recording.",
+          "Voice notes must be 4 MiB or smaller. Try a shorter recording.",
           "too-large"
         ),
       });
@@ -386,7 +386,7 @@ export class VoiceNoteRecorder {
       this.emit({
         type: "failed",
         failure: mediaError(
-          "Voice notes must be 5 MB or smaller. Try a shorter recording.",
+          "Voice notes must be 4 MiB or smaller. Try a shorter recording.",
           "too-large"
         ),
       });

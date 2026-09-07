@@ -68,7 +68,7 @@ function validateRequest(request: VoiceNoteDeliveryRequest) {
     throw new VoiceNoteDeliveryError("Voice notes can be at most 60 seconds.", "rejected");
   }
   if (!request.file || request.file.size <= 0 || request.file.size > MAX_VOICE_NOTE_BYTES) {
-    throw new VoiceNoteDeliveryError("Voice notes must be 5 MiB or smaller.", "rejected");
+    throw new VoiceNoteDeliveryError("Voice notes must be 4 MiB or smaller.", "rejected");
   }
 }
 

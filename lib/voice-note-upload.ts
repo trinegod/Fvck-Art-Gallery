@@ -1,5 +1,6 @@
 export const VOICE_NOTE_BUCKET = "conversation-voice-notes";
-export const MAX_VOICE_NOTE_BYTES = 5 * 1024 * 1024;
+// Keep the complete multipart request below Vercel's 4.5 MB function limit.
+export const MAX_VOICE_NOTE_BYTES = 4 * 1024 * 1024;
 export const MAX_MULTIPART_BODY_BYTES = MAX_VOICE_NOTE_BYTES + 64 * 1024;
 export const MAX_VOICE_NOTE_DURATION_MS = 60_000;
 
@@ -42,7 +43,7 @@ function hasMp4Signature(bytes: Uint8Array): boolean {
  */
 export async function inspectVoiceNoteFile(file: File): Promise<VoiceNoteContainer> {
   if (file.size <= 0) throw new Error("Voice note file is empty.");
-  if (file.size > MAX_VOICE_NOTE_BYTES) throw new Error("Voice notes must be 5 MiB or smaller.");
+  if (file.size > MAX_VOICE_NOTE_BYTES) throw new Error("Voice notes must be 4 MiB or smaller.");
 
   const mime = mimeWithoutParameters(file.type);
   const bytes = new Uint8Array(await file.slice(0, 4096).arrayBuffer());

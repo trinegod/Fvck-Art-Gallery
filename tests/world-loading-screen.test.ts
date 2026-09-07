@@ -92,15 +92,34 @@ test("standalone route fallbacks center within the current dynamic viewport", ()
   assert.notEqual(centered.get("position"), "fixed");
 });
 
-test("conversation panel loaders remain contained and do not use viewport coordinates", () => {
+test("conversation loaders fill their positioned pane without a competing minimum height", () => {
   const html = renderToStaticMarkup(createElement(WorldLoadingScreen, {
-    variant: "inline",
+    variant: "panel",
     label: "Opening your conversation…",
-    className: "min-h-full",
   }));
-  assert.match(html, /^<div[^>]*data-world-loading="inline"/);
-  assert.match(html, /class="inline min-h-full"/);
+  assert.match(html, /^<div[^>]*data-world-loading="panel"/);
   assert.doesNotMatch(html, /class="viewport/);
+  assert.equal(declarations(".panel").get("position"), "absolute");
+  assert.equal(declarations(".panel").get("inset"), "0");
+  assert.equal(declarations(".panel").get("place-items"), "center");
+  assert.equal(declarations(".panel").get("min-height"), undefined);
+  assert.equal(declarations(".panel").get("padding"), "1rem 1.25rem");
+  assert.equal(declarations(".panel").get("top"), undefined);
+});
+
+test("short conversation panes keep enlarged status text reachable instead of clipping it above the scroll origin", () => {
+  const panel = declarations(".panel");
+  assert.equal(panel.get("box-sizing"), "border-box");
+  assert.equal(panel.get("align-content"), "safe center");
+  assert.equal(panel.get("overflow"), "auto");
+  assert.equal(declarations(".panel .status").get("min-width"), "0");
+  assert.equal(declarations(".panel .status").get("max-width"), "100%");
+  assert.equal(declarations(".panel .label").get("overflow-wrap"), "anywhere");
+});
+
+test("ordinary inline loading retains its existing content-region layout", () => {
+  const html = renderToStaticMarkup(createElement(WorldLoadingScreen, { variant: "inline" }));
+  assert.match(html, /^<div[^>]*data-world-loading="inline"/);
   assert.equal(declarations(".inline").get("place-items"), "center");
   assert.notEqual(declarations(".inline").get("position"), "fixed");
   assert.notEqual(declarations(".status").get("position"), "fixed");
@@ -138,7 +157,9 @@ test("the actual pending inbox selects viewport alignment while conversation loa
   assert.doesNotMatch(inbox.get("className") ?? "", /70[sd]?vh/);
   const conversation = loaders.get("Opening your conversation…");
   assert.ok(conversation, "Expected the contained conversation-pending loader");
-  assert.equal(conversation.get("variant"), "inline");
+  assert.equal(conversation.get("variant"), "panel");
+  assert.equal(conversation.get("className"), undefined);
+  assert.ok(/data-chat-part="history"[\s\S]*?className=\{`relative min-h-0/.test(readFileSync(path, "utf8")), "The conversation pane must establish the loader's containing block");
 });
 
 test("the original orbit animates only without a reduced-motion preference", () => {

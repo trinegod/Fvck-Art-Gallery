@@ -1,12 +1,39 @@
 # Compact section navigation
 
+## September 7 owner-approved icon-only update
+
+The owner requested more content space and explicitly approved removing visible dock labels. The mobile dock now keeps the same four ordinary links—Feed `/feed`, Explore `/explore`, Create `/create`, You `/you`—as icons in one compact row. Each name remains in `sr-only` text, with a native hover title; the title is supplementary, not a required touch gesture. The existing selected pill/underline, route-derived `aria-current`, cyan keyboard focus, and You unread dot/count remain. Desktop navigation keeps its visible labels. A resolved mobile conversation still has no global dock.
+
+Source-derived geometry targets at a 16px root size (browser measurements are a separate release check):
+
+| Measurement | Previous labeled dock | Icon-only dock |
+| --- | --- | --- |
+| Outer height, including border | 70px | 54px |
+| Link target height | 56px | 44px |
+| Internal padding, per side | 6px | 4px |
+| Content reserve, no bottom inset | 96px | 74px |
+| Content reserve, 34px bottom inset | 130px | 96px |
+
+The dock retains 12px viewport gutters, four equal columns, 4px gaps, and a bottom offset of `max(12px, safe-area-inset-bottom)`. At 320px and 390px widths the expected link widths are 68.5px and 86px respectively. This saves 16px of dock height and 22px of reserved scrolling space without reducing targets below 44px. The reserve scales with rem-based controls: at a 24px root size with no bottom inset, the expected dock is 80px high and the reserve is 110px.
+
+`--nodeine-mobile-nav-clearance` in `app/globals.css` is the shared reserve: `calc(3.75rem + 2px + max(.75rem, env(safe-area-inset-bottom)))`. It includes link height, dock padding and border, an 8px content gap at the default root size, and the actual bottom offset. Mobile `main:has(.nodeine-mobile-navigation)` padding and document scroll padding use this token. Existing page-level `7rem` utility fallbacks are superseded by that unlayered shared rule while the dock is present; desktop padding is untouched.
+
+The ready inbox owns its internal scrolling and overrides outer main padding with zero. Its inbox/unresolved-conversation pane reserves therefore must use this same token explicitly; the focused conversation branch keeps safe-area-only padding. These are the only separately owned dock-reserve callers found in the source audit. Do not reserve another dock-sized gap inside an active mobile conversation.
+
+Verification of this bounded navigation change:
+
+- Rendered production component checks cover all four real Next links/icons, screen-reader names with no visible label text, native titles, exact/deep-route selection, positive/zero unread counts, and the `hidden` prop. Only pathname and unread data providers are stubbed; these checks do not verify realtime delivery.
+- CSS contract checks cover 44px target classes, mobile-only shared clearance, safe-area offset, visible focus, and the non-color selected marker. Navigation and messages-shell tests: 16 passed. Targeted component/test ESLint, whole-project nonincremental TypeScript check, and `git diff --check`: passed.
+- Read-only self-review found no route, history, account-count, keyboard-role, desktop-label, or focused-chat behavior changes in this patch. No new dependency, fetch, dialog, animation, or persistence is introduced.
+- Browser release checks remain: actual 320px/390px/768px layout and last-content clearance, 24px root-text reflow, 1024px desktop switch, Tab/Shift+Tab/Enter and browser Back, focused-conversation absence/inbox restoration, and reduced motion. Physical touch, VoiceOver, native keyboard, nonzero live notifications, and device safe-area behavior are not established by static rendering tests. Record observed rollout results in the release audit; do not infer deployment from this implementation note.
+
 ## September 7 focused-chat review update
 
-An authenticated, resolved mobile conversation now hides the global brand row and bottom dock, removes the dock's 92px reserve, and retains the bottom safe area and an explicit Back to inbox action. The inbox and stale/unavailable/signed-out states retain global navigation. Desktop keeps its header and split pane. One labeled attachment menu widens the composer without removing photo/video or World artwork sharing. The existing World Aperture inbox loading status now centers in the viewport, not a partial-height panel.
+An authenticated, resolved mobile conversation now hides the global brand row and bottom dock, removes the dock reserve (92px in the earlier chat baseline), and retains the bottom safe area and an explicit Back to inbox action. The inbox and stale/unavailable/signed-out states retain global navigation. Desktop keeps its header and split pane. One labeled attachment menu widens the composer without removing photo/video or World artwork sharing. The existing World Aperture inbox loading status now centers in the viewport, not a partial-height panel.
 
 At 390×844, the measured message region grows from 518.5px to 717px (about 38%); this is geometry, not a usability or performance metric. See the [chat-space audit](audits/2026-09-07-mobile-chat-space.md) for widths, keyboard checks, audit fixes, and physical-phone limits. This is review-branch work, not production promotion or audio/database activation.
 
-## September 6, 2026 implementation
+## September 6, 2026 labeled implementation (historical)
 
 The new local version replaces the two-level dock described below with one 70px row of ordinary links: **Feed `/feed`**, **Explore `/explore`**, **Create `/create`**, **You `/you`**. The former row measured 122px at the same phone sizes; this saves 52px, approximately 43%. This is a geometry comparison, not a claimed usability metric.
 

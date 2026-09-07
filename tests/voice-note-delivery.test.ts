@@ -154,3 +154,23 @@ test("invalid local targets reject before a request is dispatched", async () => 
   );
   assert.equal(calls, 0);
 });
+
+test("a file one byte over 4 MiB is a confirmed local rejection without network delivery", async () => {
+  let calls = 0;
+  await assert.rejects(
+    deliverVoiceNote({
+      ...deliveryRequest(async () => {
+        calls += 1;
+        return response(200, { message: voiceMessage() });
+      }),
+      file: new File([new Uint8Array(4 * 1024 * 1024 + 1)], "voice-note.webm", { type: "audio/webm" }),
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof VoiceNoteDeliveryError);
+      assert.equal(error.outcome, "rejected");
+      assert.match(error.message, /4 MiB/);
+      return true;
+    },
+  );
+  assert.equal(calls, 0);
+});

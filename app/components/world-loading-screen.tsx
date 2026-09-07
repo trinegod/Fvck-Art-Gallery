@@ -5,8 +5,8 @@ type WorldLoadingScreenProps = {
   /** A concise, present-tense description of the real pending work. */
   label?: string;
   className?: string;
-  /** Standalone route, viewport-aligned status inside a retained shell, or contained panel. */
-  variant?: "centered" | "viewport" | "inline";
+  /** Standalone route, viewport status, a positioned panel fill, or an inline region. */
+  variant?: "centered" | "viewport" | "panel" | "inline";
   /** Optional current wordmark. The symbol itself remains usable if the name changes. */
   showWordmark?: boolean;
 };

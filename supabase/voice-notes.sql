@@ -1,8 +1,10 @@
 -- NODEINE voice notes. Run after messages.sql and group-chat-expansion.sql.
--- This migration is intentionally unapplied by the repository. It is idempotent
--- and must be run as one transaction in the Supabase SQL editor or migration tool.
+-- Run only through an authorized database rollout, not automatically on deploy.
+-- It is idempotent and must execute as one transaction.
 
 begin;
+set local lock_timeout = '2s';
+set local statement_timeout = '30s';
 
 alter table public.messages
   add column if not exists voice_duration_ms integer;
@@ -62,6 +64,7 @@ as $$
 $$;
 
 revoke all on function public.nodeine_voice_notes_available() from public;
+revoke all on function public.nodeine_voice_notes_available() from anon;
 grant execute on function public.nodeine_voice_notes_available() to authenticated;
 
 insert into storage.buckets (
@@ -75,7 +78,7 @@ values (
   'conversation-voice-notes',
   'conversation-voice-notes',
   false,
-  5242880,
+  4194304,
   array['audio/webm', 'audio/mp4']
 )
 on conflict (id) do update
@@ -173,10 +176,10 @@ begin
     or stored_owner_id is distinct from new.sender_id::text
     or stored_mime is distinct from new.attachment_mime
     or stored_size is null
-    or case
-      when stored_size ~ '^[0-9]+$' then stored_size::bigint not between 1 and 5242880
+    or (case
+      when stored_size ~ '^[0-9]+$' then stored_size::bigint not between 1 and 4194304
       else true
-    end then
+    end) then
     raise exception 'Voice note upload does not match this message.';
   end if;
 

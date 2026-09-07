@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   BellOff,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
+import { createAccountScope } from "@/lib/activity-session";
 import ConversationAvatar from "./conversation-avatar";
 import type {
   ConversationInviteRow,
@@ -74,7 +75,14 @@ function RoleIcon({ role }: { role: ConversationRole }) {
   return <User className="size-3.5 text-zinc-600" />;
 }
 
-export default function GroupSettingsDialog({
+export default function GroupSettingsDialog(props: GroupSettingsDialogProps) {
+  if (!props.conversation) return null;
+  // A different account/group or reopened dialog must never inherit private
+  // member lists, permissions, drafts, or pending controls from the old session.
+  return <GroupSettingsSession key={`${props.viewerId}:${props.conversation.id}:${props.open}`} {...props} />;
+}
+
+function GroupSettingsSession({
   open,
   onOpenChange,
   conversation,
@@ -83,6 +91,13 @@ export default function GroupSettingsDialog({
   onConversationChanged,
   onLeft,
 }: GroupSettingsDialogProps) {
+  const requestScope = useRef(createAccountScope());
+  useLayoutEffect(() => {
+    const scope = requestScope.current;
+    scope.setAccount(open ? viewerId : null);
+    return () => { scope.clear(); };
+  }, [open, viewerId]);
+
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
   const [invites, setInvites] = useState<ConversationInviteRow[]>([]);
   const [title, setTitle] = useState("");
@@ -90,7 +105,8 @@ export default function GroupSettingsDialog({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [inviteSearch, setInviteSearch] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState("spam");
@@ -142,38 +158,49 @@ export default function GroupSettingsDialog({
   async function loadGroupData() {
     const client = supabase;
     if (!client || !conversation) return;
+    const isCurrent = requestScope.current.latest("group-data", viewerId);
+    if (!isCurrent()) return;
     setLoading(true);
+    setLoadError(null);
 
-    const [memberResult, inviteResult] = await Promise.all([
-      client
-        .from("conversation_members")
-        .select(
-          "conversation_id, profile_id, role, joined_at, last_read_at, muted_until"
-        )
-        .eq("conversation_id", conversation.id)
-        .order("joined_at"),
-      client
-        .from("conversation_invites")
-        .select(
-          "id, conversation_id, invited_profile_id, invited_by, status, created_at, responded_at"
-        )
-        .eq("conversation_id", conversation.id)
-        .eq("status", "pending")
-        .order("created_at"),
-    ]);
+    try {
+      const [memberResult, inviteResult] = await Promise.all([
+        client
+          .from("conversation_members")
+          .select(
+            "conversation_id, profile_id, role, joined_at, last_read_at, muted_until"
+          )
+          .eq("conversation_id", conversation.id)
+          .order("joined_at"),
+        client
+          .from("conversation_invites")
+          .select(
+            "id, conversation_id, invited_profile_id, invited_by, status, created_at, responded_at"
+          )
+          .eq("conversation_id", conversation.id)
+          .eq("status", "pending")
+          .order("created_at"),
+      ]);
+      if (!isCurrent()) return;
 
-    setLoading(false);
+      setLoading(false);
 
-    const queryError = memberResult.error ?? inviteResult.error;
-    if (queryError) {
-      toast.error("Group settings couldn't be loaded", {
-        description: queryError.message,
-      });
-      return;
+      const queryError = memberResult.error ?? inviteResult.error;
+      if (queryError) {
+        setLoadError(queryError.message);
+        toast.error("Group settings couldn't be loaded", {
+          description: queryError.message,
+        });
+        return;
+      }
+
+      setMemberships((memberResult.data ?? []) as MembershipRow[]);
+      setInvites((inviteResult.data ?? []) as ConversationInviteRow[]);
+    } catch {
+      if (!isCurrent()) return;
+      setLoading(false);
+      setLoadError("Check your connection and try again.");
     }
-
-    setMemberships((memberResult.data ?? []) as MembershipRow[]);
-    setInvites((inviteResult.data ?? []) as ConversationInviteRow[]);
   }
 
   useEffect(() => {
@@ -215,6 +242,8 @@ export default function GroupSettingsDialog({
     const client = supabase;
     const cleanTitle = title.trim();
     if (!client || !conversation || !cleanTitle || savingDetails) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
 
     setSavingDetails(true);
     let uploadedPath: string | null = null;
@@ -239,6 +268,7 @@ export default function GroupSettingsDialog({
           contentType: avatarFile.type,
           upsert: false,
         });
+      if (!isCurrent()) return;
 
       if (uploadError) {
         toast.error("Group avatar wasn't uploaded", {
@@ -255,10 +285,12 @@ export default function GroupSettingsDialog({
       new_title: cleanTitle,
       new_avatar_path: nextAvatarPath,
     });
+    if (!isCurrent()) return;
 
     if (error) {
       if (uploadedPath) {
         await client.storage.from("conversation-media").remove([uploadedPath]);
+        if (!isCurrent()) return;
       }
       toast.error("Group details weren't saved", { description: error.message });
       setSavingDetails(false);
@@ -272,11 +304,13 @@ export default function GroupSettingsDialog({
       await client.storage
         .from("conversation-media")
         .remove([conversation.avatar_path]);
+      if (!isCurrent()) return;
     }
 
     setAvatarFile(null);
     setRemoveAvatar(false);
     await onConversationChanged();
+    if (!isCurrent()) return;
     toast.success("Group details updated");
     setSavingDetails(false);
   }
@@ -284,11 +318,14 @@ export default function GroupSettingsDialog({
   async function inviteProfile(profileId: string) {
     const client = supabase;
     if (!client || !conversation || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setBusyKey(`invite-${profileId}`);
     const { error } = await client.rpc("invite_to_group", {
       target_conversation_id: conversation.id,
       target_profile_id: profileId,
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -298,16 +335,20 @@ export default function GroupSettingsDialog({
 
     setInviteSearch("");
     await loadGroupData();
+    if (!isCurrent()) return;
     toast.success("Invitation sent");
   }
 
   async function cancelInvite(inviteId: string) {
     const client = supabase;
     if (!client || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setBusyKey(`cancel-${inviteId}`);
     const { error } = await client.rpc("cancel_group_invite", {
       target_invite_id: inviteId,
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -321,12 +362,15 @@ export default function GroupSettingsDialog({
   async function changeRole(profileId: string, role: "admin" | "member") {
     const client = supabase;
     if (!client || !conversation || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setBusyKey(`role-${profileId}`);
     const { error } = await client.rpc("set_group_member_role", {
       target_conversation_id: conversation.id,
       target_profile_id: profileId,
       new_role: role,
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -335,7 +379,9 @@ export default function GroupSettingsDialog({
     }
 
     await loadGroupData();
+    if (!isCurrent()) return;
     await onConversationChanged();
+    if (!isCurrent()) return;
     toast.success(role === "admin" ? "Admin added" : "Member role restored");
   }
 
@@ -343,6 +389,8 @@ export default function GroupSettingsDialog({
     const client = supabase;
     const profile = profileById.get(profileId);
     if (!client || !conversation || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     if (
       !window.confirm(
         `Remove ${profile?.display_name ?? "this member"} from the group?`
@@ -356,6 +404,7 @@ export default function GroupSettingsDialog({
       target_conversation_id: conversation.id,
       target_profile_id: profileId,
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -364,18 +413,23 @@ export default function GroupSettingsDialog({
     }
 
     await loadGroupData();
+    if (!isCurrent()) return;
     await onConversationChanged();
+    if (!isCurrent()) return;
     toast.success("Member removed");
   }
 
   async function toggleMute() {
     const client = supabase;
     if (!client || !conversation || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setBusyKey("mute");
     const { error } = await client.rpc("set_conversation_mute", {
       target_conversation_id: conversation.id,
       new_muted_until: muted ? null : "2999-12-31T23:59:59.000Z",
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -384,7 +438,9 @@ export default function GroupSettingsDialog({
     }
 
     await loadGroupData();
+    if (!isCurrent()) return;
     await onConversationChanged();
+    if (!isCurrent()) return;
     toast.success(muted ? "Notifications unmuted" : "Group notifications muted");
   }
 
@@ -392,6 +448,8 @@ export default function GroupSettingsDialog({
     event.preventDefault();
     const client = supabase;
     if (!client || !conversation || reporting) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     setReporting(true);
     const { error } = await client.rpc("report_conversation", {
       target_conversation_id: conversation.id,
@@ -400,6 +458,7 @@ export default function GroupSettingsDialog({
       report_reason: reportReason,
       report_details: reportDetails,
     });
+    if (!isCurrent()) return;
     setReporting(false);
 
     if (error) {
@@ -415,6 +474,8 @@ export default function GroupSettingsDialog({
   async function leaveGroup() {
     const client = supabase;
     if (!client || !conversation || busyKey) return;
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!isCurrent()) return;
     const ownerNote =
       viewerRole === "owner"
         ? " Ownership will transfer to the longest-standing admin or member."
@@ -427,6 +488,7 @@ export default function GroupSettingsDialog({
     const { error } = await client.rpc("leave_group", {
       target_conversation_id: conversation.id,
     });
+    if (!isCurrent()) return;
     setBusyKey(null);
 
     if (error) {
@@ -443,8 +505,8 @@ export default function GroupSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-2xl [&_[data-slot=dialog-close]]:size-11 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-cyan-300 motion-reduce:animate-none! motion-reduce:transition-none!">
+        <DialogHeader className="border-b border-white/10 px-5 py-5 pr-16 sm:px-6 sm:pr-16">
           <DialogTitle className="text-xl text-white">Group settings</DialogTitle>
           <DialogDescription className="leading-6 text-zinc-500">
             Manage the group, its members, invitations, notifications, and
@@ -453,8 +515,14 @@ export default function GroupSettingsDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="grid min-h-80 place-items-center">
-            <LoaderCircle className="size-7 animate-spin text-cyan-300" />
+          <div className="grid min-h-48 place-items-center" role="status" aria-live="polite">
+            <LoaderCircle className="size-7 animate-spin text-cyan-300 motion-reduce:animate-none" aria-hidden="true" />
+            <span className="sr-only">Loading group settings…</span>
+          </div>
+        ) : loadError ? (
+          <div className="space-y-4 px-5 py-6 sm:px-6">
+            <p role="alert" className="text-sm leading-6 text-amber-100">Group settings couldn&apos;t be loaded. {loadError}</p>
+            <Button type="button" className="min-h-11" onClick={() => void loadGroupData()}>Try again</Button>
           </div>
         ) : (
           <div className="divide-y divide-white/10">
@@ -465,8 +533,8 @@ export default function GroupSettingsDialog({
                   groupAvatarUrl={removeAvatar ? null : avatarUrl}
                   className="size-16"
                 />
-                <div>
-                  <p className="text-sm font-medium text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-medium text-white [overflow-wrap:anywhere]">
                     {conversation.title}
                   </p>
                   <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-600">
@@ -495,7 +563,7 @@ export default function GroupSettingsDialog({
                       Group avatar
                     </span>
                     <div className="flex flex-wrap gap-2">
-                      <label className="nodeine-action inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200">
+                      <label className="nodeine-action inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 focus-within:outline-2 focus-within:outline-cyan-300">
                         <Camera className="size-4" />
                         Choose image
                         <input
@@ -521,7 +589,7 @@ export default function GroupSettingsDialog({
                             setAvatarUrl(null);
                             setRemoveAvatar(true);
                           }}
-                          className="nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-400 hover:border-rose-300/40 hover:text-rose-200"
+                          className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-400 hover:border-rose-300/40 hover:text-rose-200"
                         >
                           <X className="size-4" />
                           Remove
@@ -532,6 +600,7 @@ export default function GroupSettingsDialog({
 
                   <Button
                     type="submit"
+                    className="h-auto min-h-11 max-w-full whitespace-normal py-2"
                     disabled={savingDetails || !title.trim()}
                   >
                     {savingDetails && (
@@ -568,7 +637,7 @@ export default function GroupSettingsDialog({
                   return (
                     <article
                       key={membership.profile_id}
-                      className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/25 p-3"
+                      className="flex flex-wrap items-center gap-3 rounded-xl border border-white/8 bg-black/25 p-3"
                     >
                       <ConversationAvatar profile={profile} className="size-10" />
                       <div className="min-w-0 flex-1">
@@ -582,41 +651,45 @@ export default function GroupSettingsDialog({
                         </p>
                       </div>
 
-                      {canChangeRoles &&
-                        !isViewer &&
-                        membership.role !== "owner" && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              changeRole(
-                                membership.profile_id,
-                                membership.role === "admin" ? "member" : "admin"
-                              )
-                            }
-                            disabled={Boolean(busyKey)}
-                            className="nodeine-action inline-flex min-h-9 items-center rounded-lg border border-white/10 px-2.5 text-[11px] text-zinc-400 hover:border-cyan-300/40 hover:text-cyan-200"
-                          >
-                            {membership.role === "admin"
-                              ? "Make member"
-                              : "Make admin"}
-                          </button>
-                        )}
+                      {(canRemove || (canChangeRoles && !isViewer && membership.role !== "owner")) && (
+                        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+                          {canChangeRoles &&
+                            !isViewer &&
+                            membership.role !== "owner" && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  changeRole(
+                                    membership.profile_id,
+                                    membership.role === "admin" ? "member" : "admin"
+                                  )
+                                }
+                                disabled={Boolean(busyKey)}
+                                className="nodeine-action inline-flex min-h-11 items-center rounded-lg border border-white/10 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200"
+                              >
+                                {membership.role === "admin"
+                                  ? "Make member"
+                                  : "Make admin"}
+                              </button>
+                            )}
 
-                      {canRemove && (
-                        <button
-                          type="button"
-                          onClick={() => removeMember(membership.profile_id)}
-                          disabled={Boolean(busyKey)}
-                          className="nodeine-action grid size-9 place-items-center rounded-lg text-zinc-600 hover:bg-rose-300/10 hover:text-rose-300"
-                          aria-label={`Remove ${profile?.display_name ?? "member"}`}
-                          title="Remove member"
-                        >
-                          {busyKey === `remove-${membership.profile_id}` ? (
-                            <LoaderCircle className="size-4 animate-spin" />
-                          ) : (
-                            <UserMinus className="size-4" />
+                          {canRemove && (
+                            <button
+                              type="button"
+                              onClick={() => removeMember(membership.profile_id)}
+                              disabled={Boolean(busyKey)}
+                              className="nodeine-action grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 hover:bg-rose-300/10 hover:text-rose-300"
+                              aria-label={`Remove ${profile?.display_name ?? "member"}`}
+                              title="Remove member"
+                            >
+                              {busyKey === `remove-${membership.profile_id}` ? (
+                                <LoaderCircle className="size-4 animate-spin" />
+                              ) : (
+                                <UserMinus className="size-4" />
+                              )}
+                            </button>
                           )}
-                        </button>
+                        </div>
                       )}
                     </article>
                   );
@@ -647,7 +720,7 @@ export default function GroupSettingsDialog({
                             type="button"
                             onClick={() => cancelInvite(invite.id)}
                             disabled={Boolean(busyKey)}
-                            className="nodeine-action grid size-9 place-items-center rounded-lg text-zinc-600 hover:bg-white/5 hover:text-white"
+                            className="nodeine-action grid size-11 shrink-0 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white"
                             aria-label="Cancel invitation"
                             title="Cancel invitation"
                           >
@@ -725,7 +798,7 @@ export default function GroupSettingsDialog({
                   type="button"
                   onClick={toggleMute}
                   disabled={Boolean(busyKey)}
-                  className="nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200"
+                  className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200"
                 >
                   {busyKey === "mute" ? (
                     <LoaderCircle className="size-4 animate-spin" />
@@ -740,7 +813,7 @@ export default function GroupSettingsDialog({
                   type="button"
                   onClick={leaveGroup}
                   disabled={Boolean(busyKey)}
-                  className="nodeine-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-400 hover:border-rose-300/40 hover:text-rose-200"
+                  className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-400 hover:border-rose-300/40 hover:text-rose-200"
                 >
                   {busyKey === "leave" ? (
                     <LoaderCircle className="size-4 animate-spin" />
@@ -760,7 +833,7 @@ export default function GroupSettingsDialog({
                       <Trash2 className="size-4" />
                       Delete group
                     </button>
-                    <p id="group-delete-gate" className="w-full text-xs leading-5 text-amber-100">Whole-group deletion is paused while private-file cleanup is upgraded. You can still leave the group; clearing your own view is a separate conversation option.</p>
+                    <p id="group-delete-gate" className="w-full text-xs leading-5 text-amber-100">Whole-group deletion is paused while private-file cleanup is upgraded. You can leave after another member joins; clearing your own view is a separate conversation option.</p>
                   </>
                 )}
               </div>
@@ -779,6 +852,7 @@ export default function GroupSettingsDialog({
 
               <form onSubmit={submitReport} className="mt-4 space-y-3">
                 <select
+                  aria-label="Report target"
                   value={reportTarget}
                   onChange={(event) => setReportTarget(event.target.value)}
                   className="h-11 w-full rounded-lg border border-white/12 bg-black/45 px-3 text-sm text-zinc-300 outline-none focus:border-cyan-300"
@@ -799,6 +873,7 @@ export default function GroupSettingsDialog({
                     })}
                 </select>
                 <select
+                  aria-label="Report reason"
                   value={reportReason}
                   onChange={(event) => setReportReason(event.target.value)}
                   className="h-11 w-full rounded-lg border border-white/12 bg-black/45 px-3 text-sm text-zinc-300 outline-none focus:border-cyan-300"
@@ -810,6 +885,7 @@ export default function GroupSettingsDialog({
                   ))}
                 </select>
                 <textarea
+                  aria-label="Report details (optional)"
                   value={reportDetails}
                   onChange={(event) => setReportDetails(event.target.value)}
                   maxLength={1000}
@@ -817,7 +893,7 @@ export default function GroupSettingsDialog({
                   placeholder="Optional details for the moderation team"
                   className="w-full resize-none rounded-lg border border-white/12 bg-black/45 px-3 py-2.5 text-sm leading-6 text-white outline-none placeholder:text-zinc-700 focus:border-cyan-300"
                 />
-                <Button type="submit" variant="outline" disabled={reporting}>
+                <Button type="submit" variant="outline" className="h-auto min-h-11 max-w-full whitespace-normal py-2" disabled={reporting}>
                   {reporting ? (
                     <LoaderCircle
                       data-icon="inline-start"

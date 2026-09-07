@@ -144,6 +144,22 @@ test("recording is not requested until an explicit start and stop produces a loc
   assert.equal(fixture.timers.size, 0);
 });
 
+test("the default recorder accepts 4 MiB but stops and releases the microphone on byte overflow", async () => {
+  const fixture = setup();
+  await fixture.recorder.start();
+  fixture.recorders[0].data(new Blob([new Uint8Array(4 * 1024 * 1024)], { type: "audio/webm" }));
+  assert.equal(fixture.events.at(-1)?.type, "recording");
+  fixture.recorders[0].data(new Blob([new Uint8Array(1)], { type: "audio/webm" }));
+
+  const failed = fixture.events.at(-1);
+  assert.equal(failed?.type, "failed");
+  if (failed?.type !== "failed") throw new Error("expected size-limit failure");
+  assert.equal(failed.failure.kind, "too-large");
+  assert.match(failed.failure.message, /4 MiB/);
+  assert.equal(fixture.tracks[0].stopped, 1);
+  assert.equal(fixture.timers.size, 0);
+});
+
 test("a pending permission request can be cancelled and a late stream is immediately released", async () => {
   const request = deferred<MediaStreamLike>();
   const track = new FakeTrack();

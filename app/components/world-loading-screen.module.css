@@ -38,6 +38,28 @@
   padding: 2rem 1.25rem;
 }
 
+/* The parent owns the available conversation space (position: relative).
+   Fill that pane without a fixed minimum or percentage-height override. */
+.panel {
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: safe center;
+  place-items: center;
+  overflow: auto;
+  padding: 1rem 1.25rem;
+}
+
+.panel .status {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.panel .label {
+  overflow-wrap: anywhere;
+}
+
 .status {
   display: grid;
   justify-items: center;
@@ -72,6 +94,7 @@
 }
 
 .inline .label,
+.panel .label,
 .viewport .label {
   margin-top: 0.75rem;
   font-size: 0.8125rem;
