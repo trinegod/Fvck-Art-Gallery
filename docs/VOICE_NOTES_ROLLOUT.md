@@ -1,8 +1,16 @@
 # Voice notes rollout
 
+## Sent waveforms and five-minute recordings — September 7 refinement
+
+The owner approved publishing the inline interaction and requested waveform playback, longer notes and a bounded desktop recorder. Recording/client/route validation now allow 1–300,000ms. The complete file stays capped at 4 MiB; the recorder requests 64 kbit/s audio (nominally 2.4 MB for five minutes), but a browser can exceed this hint, so the size limit remains independent. The UI says **Up to 5 minutes or 4 MiB**. Reaching the duration limit stops to review, never auto-sends.
+
+For the existing activated database, apply only [voice-notes-five-minute-limit.sql](../supabase/voice-notes-five-minute-limit.sql) after its [rollback-only rehearsal](../supabase/tests/voice-notes-five-minute-limit.rollback.sql) and preflight checks. It widens the two existing duration CHECK constraints without changing the bucket, policies, grants, validation trigger, rate limit or existing messages. The canonical first-install migration below also uses 300,000ms. Deployment alone does not migrate the database; application/database activation results are recorded in the [refinement audit](audits/2026-09-07-voice-waveform-refinement.md).
+
+Visible sent/preview bubbles lazily derive an RMS waveform from the actual authorized audio source in the browser. No AI or external analysis service receives the file. Analysis is size-bounded, serialized and downsampled; cancel/source changes discard late results. If the browser cannot analyze the file, ordinary playback/seeking remains available with a progress line. The visual waveform is not identity verification, transcription, or trusted server media validation.
+
 ## Inline interaction review — September 7 follow-up
 
-The owner rejected the released dialog-plus-Record interaction. The review candidate now starts recording on a single microphone action in the actual message composer, shows a real input-level trace and timer, and supports direct Send or optional Stop/listen-back. Sent and preview audio use the selected text-bubble palette with compact accessible playback/seek controls. The one-minute/4MiB server limits, private bucket, and authorization rules are unchanged; no new database migration is needed for this UI revision.
+Historical checkpoint before the five-minute refinement above: the owner rejected the released dialog-plus-Record interaction. The review candidate started recording on a single microphone action in the actual message composer, showed a real input-level trace and timer, and supported direct Send or optional Stop/listen-back. Sent and preview audio used the selected text-bubble palette with compact accessible playback/seek controls. That UI-only checkpoint retained one-minute/4MiB limits and required no migration; the current five-minute refinement does require the narrow migration above.
 
 The separate [inline-voice audit](audits/2026-09-07-inline-voice-review.md) records source, synthetic browser evidence, and remaining phone/network checks. A published review preview does not promote the public app.
 
@@ -38,7 +46,7 @@ The request body is read with an exact 4 MiB + 64 KiB cap before multipart parsi
 
 Vercel limits a Function request body to 4.5 MB and rejects oversized payloads with HTTP 413 before the route can handle them. The complete app body cap is 4,259,840 bytes, leaving 240,160 bytes below a conservative decimal 4,500,000-byte host limit. The 64 KiB multipart allowance is already included in the app body cap; it is not extra space above the host limit. This replaces the previous 5 MiB file allowance, which could not fit the deployed host's request limit. [Vercel Function request-body limits](https://vercel.com/docs/functions/limitations#request-body-size) (verified September 7, 2026).
 
-`durationMs` is a bounded recorder report (1–60,000ms), stored for UI display. It is **not** server-proven audio duration and must never be used for billing, moderation timing, quota measurement, or a completion claim.
+`durationMs` is a bounded recorder report (1–300,000ms after the five-minute migration), stored for UI display. It is **not** server-proven audio duration and must never be used for billing, moderation timing, quota measurement, or a completion claim.
 
 ## Migration safeguards
 

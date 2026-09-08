@@ -83,7 +83,7 @@ export function createVoiceNoteSession(
         update({ phase: "error", startedAt: null, levels: [], error: "Your browser could not prepare the voice note. Please record it again." });
         return;
       }
-      update({ phase: "preview", note, startedAt: null, levels: [], notice: event.reason === "max-duration" ? "1:00 limit reached. Send or discard this note." : null });
+      update({ phase: "preview", note, startedAt: null, levels: [], notice: event.reason === "max-duration" ? "5:00 limit reached. Send or discard this note." : null });
       if (pendingSend) void send(pendingSend);
     }
   };

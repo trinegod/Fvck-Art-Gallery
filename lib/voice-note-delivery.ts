@@ -65,7 +65,7 @@ function validateRequest(request: VoiceNoteDeliveryRequest) {
     throw new VoiceNoteDeliveryError("The conversation changed. Please reopen it before sending.", "rejected");
   }
   if (!Number.isSafeInteger(request.durationMs) || request.durationMs < 1 || request.durationMs > MAX_VOICE_NOTE_DURATION_MS) {
-    throw new VoiceNoteDeliveryError("Voice notes can be at most 60 seconds.", "rejected");
+    throw new VoiceNoteDeliveryError("Voice notes can be at most 5 minutes.", "rejected");
   }
   if (!request.file || request.file.size <= 0 || request.file.size > MAX_VOICE_NOTE_BYTES) {
     throw new VoiceNoteDeliveryError("Voice notes must be 4 MiB or smaller.", "rejected");

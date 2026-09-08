@@ -66,7 +66,7 @@ test("send while recording waits for final bytes and sends once; stop alone only
 test("maximum duration stops to preview, never automatically sends", () => {
   const f = fixture(); f.session.start(); f.recording(); f.complete("max-duration");
   assert.equal(f.session.getSnapshot().phase, "preview");
-  assert.match(f.session.getSnapshot().notice ?? "", /1:00/);
+  assert.match(f.session.getSnapshot().notice ?? "", /5:00/);
 });
 
 test("confirmed failure preserves local preview for retry; unknown outcome prevents duplicate send", async () => {

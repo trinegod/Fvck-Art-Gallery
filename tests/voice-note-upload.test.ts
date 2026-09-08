@@ -106,10 +106,10 @@ function loadVoiceRoute(outcome: RouteOutcome) {
   return { committedRows, objects, post: exported.POST! };
 }
 
-function voiceRequest(file: File) {
+function voiceRequest(file: File, durationMs = "1000") {
   const form = new FormData();
   form.set("conversationId", conversationId);
-  form.set("durationMs", "1000");
+  form.set("durationMs", durationMs);
   form.set("file", file);
   return new Request("https://fixture.invalid/api/messages/voice", {
     body: form,
@@ -143,7 +143,9 @@ test("recorder, upload, storage, and UI share the 4 MiB file cap below Vercel's 
   const messageCap = sql.match(/stored_size::bigint not between 1 and (\d+)/);
   assert.equal(Number(bucketCap?.[1]), MAX_VOICE_NOTE_BYTES);
   assert.equal(Number(messageCap?.[1]), MAX_VOICE_NOTE_BYTES);
-  assert.match(readFileSync("app/messages/voice-note-composer.tsx", "utf8"), /Up to 1 minute or 4 MiB\./);
+  // The duration label is derived from the shared cap; the composer SSR tests
+  // verify the rendered five-minute wording. Keep this storage-cap guard focused.
+  assert.match(readFileSync("app/messages/voice-note-composer.tsx", "utf8"), /or 4 MiB\./);
 });
 
 test("the voice trigger groups its CASE expression inside the PL/pgSQL IF condition", () => {
@@ -194,10 +196,27 @@ test("rejects oversized audio and bounds informational recorder duration", async
     inspectVoiceNoteFile(new File([new Uint8Array(MAX_VOICE_NOTE_BYTES + 1)], "clip.webm", { type: "audio/webm" })),
     /4 MiB/,
   );
-  assert.equal(parseVoiceDurationMs("60000"), 60000);
-  assert.throws(() => parseVoiceDurationMs("60001"), /60 seconds/);
-  assert.throws(() => parseVoiceDurationMs("0"), /60 seconds/);
+  assert.equal(parseVoiceDurationMs("1"), 1);
+  assert.equal(parseVoiceDurationMs("300000"), 300000);
+  assert.throws(() => parseVoiceDurationMs("300001"), /5 minutes/);
+  assert.throws(() => parseVoiceDurationMs("0"), /5 minutes/);
+  for (const duration of ["-1", "1.5", "3e5", "3000000", "300000 ", "NaN"]) {
+    assert.throws(() => parseVoiceDurationMs(duration));
+  }
 });
+
+for (const durationMs of ["1", "300000", "0", "300001"]) {
+  test(`the production voice route enforces the five-minute duration boundary at ${durationMs}ms`, async () => {
+    const route = loadVoiceRoute("ambiguous-committed");
+    const response = await route.post(voiceRequest(webmFile(), durationMs));
+    const valid = durationMs === "1" || durationMs === "300000";
+    assert.equal(response.status, valid ? 200 : 400);
+    assert.equal(route.objects.size, valid ? 1 : 0);
+    assert.equal(route.committedRows.length, valid ? 1 : 0);
+    if (valid) assert.equal(route.committedRows[0]?.voice_duration_ms, Number(durationMs));
+    else assert.match((await response.json() as { error: string }).error, /5 minutes/);
+  });
+}
 
 test("the route rejects a file one byte over 4 MiB before uploading or inserting", async () => {
   const route = loadVoiceRoute("ambiguous-committed");

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  browserVoiceNoteRecorderDependencies,
   createVoiceNoteRecorder,
   type MediaRecorderLike,
   type MediaStreamLike,
@@ -21,11 +22,11 @@ function deferred<T>() {
 
 class FakeTimers {
   private nextId = 0;
-  private callbacks = new Map<number, () => void>();
+  private callbacks = new Map<number, { callback: () => void; delay: number }>();
 
-  set = (callback: () => void) => {
+  set = (callback: () => void, delay = 0) => {
     const id = ++this.nextId;
-    this.callbacks.set(id, callback);
+    this.callbacks.set(id, { callback, delay });
     return id;
   };
 
@@ -36,11 +37,15 @@ class FakeTimers {
   fireAll() {
     const callbacks = [...this.callbacks.entries()];
     this.callbacks.clear();
-    callbacks.forEach(([, callback]) => callback());
+    callbacks.forEach(([, { callback }]) => callback());
   }
 
   get size() {
     return this.callbacks.size;
+  }
+
+  get delays() {
+    return [...this.callbacks.values()].map(({ delay }) => delay);
   }
 }
 
@@ -103,7 +108,7 @@ function setup({
     },
     isTypeSupported: (mimeType) => supported.includes(mimeType),
     now: () => currentTime,
-    setTimer: (callback) => timers.set(callback),
+    setTimer: (callback, delay) => timers.set(callback, delay),
     clearTimer: (timer) => timers.clear(timer),
     createBlob: (parts, options) => new Blob(parts, options),
     startLevelMonitor: startLevelMonitor ?? ((stream, callbacks) => {
@@ -127,6 +132,30 @@ function setup({
     },
   };
 }
+
+test("the production browser factory requests 64 kbps audio while preserving the selected MIME", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "MediaRecorder");
+  const calls: Array<{ stream: MediaStreamLike; options: MediaRecorderOptions }> = [];
+  class BrowserRecorder extends FakeRecorder {
+    constructor(stream: MediaStreamLike, options: MediaRecorderOptions) {
+      super(options.mimeType ?? "");
+      calls.push({ stream, options });
+    }
+  }
+  Object.defineProperty(globalThis, "MediaRecorder", { configurable: true, value: BrowserRecorder });
+  try {
+    const stream = { getTracks: () => [] };
+    for (const mimeType of ["audio/webm;codecs=opus", "audio/mp4"]) {
+      browserVoiceNoteRecorderDependencies().createRecorder(stream, mimeType);
+      assert.deepEqual(calls.at(-1), { stream, options: { mimeType, audioBitsPerSecond: 64_000 } });
+    }
+    assert.equal(64_000 * (300_000 / 1000) / 8, 2_400_000);
+    assert.ok(2_400_000 < 4 * 1024 * 1024, "nominal encoded audio leaves room below the hard cap");
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, "MediaRecorder", descriptor);
+    else Reflect.deleteProperty(globalThis, "MediaRecorder");
+  }
+});
 
 test("recording is not requested until an explicit start and stop produces a local WebM note", async () => {
   const fixture = setup();
@@ -439,19 +468,20 @@ test("denied permission and unsupported MediaRecorder both surface clear retryab
   assert.equal(unsupported.recorders.length, 0);
 });
 
-test("the duration ceiling finishes a preview and the byte ceiling discards oversized audio", async () => {
+test("the five-minute duration ceiling finishes a preview and the byte ceiling discards oversized audio", async () => {
   const duration = setup();
   await duration.recorder.start();
   duration.recorders[0].data(
     new Blob(["voice"], { type: "audio/webm;codecs=opus" })
   );
-  duration.setTime(60_050);
+  assert.deepEqual(duration.timers.delays, [300_000]);
+  duration.setTime(300_050);
   duration.timers.fireAll();
   const completed = duration.events.at(-1);
   assert.equal(completed?.type, "completed");
   if (completed?.type !== "completed") throw new Error("expected completed event");
   assert.equal(completed.reason, "max-duration");
-  assert.equal(completed.note.durationMs, 60_000);
+  assert.equal(completed.note.durationMs, 300_000);
 
   const size = setup();
   const smallLimitRecorder = createVoiceNoteRecorder(

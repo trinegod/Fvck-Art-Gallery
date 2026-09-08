@@ -2,7 +2,7 @@ export const VOICE_NOTE_BUCKET = "conversation-voice-notes";
 // Keep the complete multipart request below Vercel's 4.5 MB function limit.
 export const MAX_VOICE_NOTE_BYTES = 4 * 1024 * 1024;
 export const MAX_MULTIPART_BODY_BYTES = MAX_VOICE_NOTE_BYTES + 64 * 1024;
-export const MAX_VOICE_NOTE_DURATION_MS = 60_000;
+export const MAX_VOICE_NOTE_DURATION_MS = 300_000;
 
 export type VoiceNoteContainer = {
   mime: "audio/webm" | "audio/mp4";
@@ -59,13 +59,13 @@ export async function inspectVoiceNoteFile(file: File): Promise<VoiceNoteContain
 }
 
 export function parseVoiceDurationMs(value: FormDataEntryValue | null): number {
-  if (typeof value !== "string" || !/^\d{1,5}$/.test(value)) {
+  if (typeof value !== "string" || !/^\d{1,6}$/.test(value)) {
     throw new Error("Voice note duration is invalid.");
   }
 
   const durationMs = Number(value);
   if (!Number.isSafeInteger(durationMs) || durationMs < 1 || durationMs > MAX_VOICE_NOTE_DURATION_MS) {
-    throw new Error("Voice notes can be at most 60 seconds.");
+    throw new Error("Voice notes can be at most 5 minutes.");
   }
 
   return durationMs;

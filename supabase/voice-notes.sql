@@ -14,7 +14,7 @@ alter table public.messages
 
 alter table public.messages
   add constraint messages_voice_duration_ms_check
-  check (voice_duration_ms is null or voice_duration_ms between 1 and 60000);
+  check (voice_duration_ms is null or voice_duration_ms between 1 and 300000);
 
 alter table public.messages
   drop constraint if exists messages_payload_check;
@@ -46,7 +46,7 @@ alter table public.messages
       and attachment_mime is not null
       and attachment_mime in ('audio/webm', 'audio/mp4')
       and voice_duration_ms is not null
-      and voice_duration_ms between 1 and 60000)
+      and voice_duration_ms between 1 and 300000)
   );
 
 create index if not exists messages_voice_sender_created_idx

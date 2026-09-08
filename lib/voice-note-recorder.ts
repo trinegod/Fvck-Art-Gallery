@@ -13,6 +13,10 @@ import {
 
 export { MAX_VOICE_NOTE_BYTES, MAX_VOICE_NOTE_DURATION_MS };
 export const MICROPHONE_REQUEST_TIMEOUT_MS = 15_000;
+// Encoding hint, not a size guarantee: five minutes is nominally 2.4 MB before
+// container overhead. Browsers may exceed it, so the 4 MiB hard cap still applies.
+// https://www.w3.org/TR/mediastream-recording/#dom-mediarecorder-start
+export const VOICE_NOTE_AUDIO_BITS_PER_SECOND = 64_000;
 
 export type VoiceNote = {
   blob: Blob;
@@ -131,7 +135,10 @@ export function browserVoiceNoteRecorderDependencies(): VoiceNoteRecorderDepende
       }
       return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     },
-    createRecorder: (stream, mimeType) => new MediaRecorder(stream as MediaStream, { mimeType }),
+    createRecorder: (stream, mimeType) => new MediaRecorder(stream as MediaStream, {
+      mimeType,
+      audioBitsPerSecond: VOICE_NOTE_AUDIO_BITS_PER_SECOND,
+    }),
     isTypeSupported: (mimeType) =>
       typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mimeType),
     now: () => Date.now(),

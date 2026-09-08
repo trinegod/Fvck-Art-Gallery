@@ -132,9 +132,9 @@ function realRecorderFixture(requestStream?: () => Promise<MediaStreamLike>) {
     nativeRecorders,
     get stoppedTracks() { return stoppedTracks; },
     hitDurationLimit: () => {
-      const duration = [...timers.values()].find(timer => timer.delay === 60_000);
+      const duration = [...timers.values()].find(timer => timer.delay === 300_000);
       assert.ok(duration);
-      currentTime = 60_000;
+      currentTime = 300_000;
       duration.callback();
     },
     finalBytes: () => {

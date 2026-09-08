@@ -42,6 +42,8 @@ test("the real player renders themed custom controls without native audio contro
   assert.match(html, /var\(--chat-bubble, #8de6ed\)/);
   assert.match(html, /var\(--chat-ink, #0b2025\)/);
   assert.match(html, /preview-player/);
+  assert.match(html, /data-voice-visual="progress"/);
+  assert.match(html, /Playback progress\. Audio waveform not loaded\./);
   assert.match(html, /<audio[^>]*hidden=""/);
   assert.match(html, /<source[^>]*type="audio\/webm"/);
   const incoming = renderToStaticMarkup(createElement(Player, { src: "blob:test", label: "Voice preview" }));

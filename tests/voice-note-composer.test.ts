@@ -6,6 +6,8 @@ import test from "node:test";
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import postcss from "postcss";
+import { MAX_VOICE_NOTE_DURATION_MS } from "../lib/voice-note-upload";
 
 // Load the real client component and its local imports without a Next server.
 // Browser interaction and final media bytes are covered by their separate seams.
@@ -151,4 +153,68 @@ test("sent voice players receive real duration and direction with a voice-only p
   assert.equal(preferredWidth.condition.getText(), 'message.message_type === "voice"');
   assert.ok(ts.isStringLiteral(preferredWidth.whenFalse) && preferredWidth.whenFalse.text === "", "ordinary messages retain their natural width");
   assert.match(className.head.text, /max-w-\[min\(82%,42rem\)\]/, "the preferred voice width remains capped by the conversation");
+});
+
+test("the recording cluster is bounded and its real sample columns fill the available trace width", () => {
+  // Static regression for the browser-reproduced 1398px row with only 138px of
+  // signal in a 1138px trace. This checks the real CSS/JSX contract, not geometry;
+  // browser measurements separately verify narrow widths and enlarged text.
+  const source = parse(readFileSync(resolve(process.cwd(), "app/messages/voice-note-composer.tsx"), "utf8"));
+  const css = postcss.parse(readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8"));
+  const declarations = (selector: string) => {
+    const values = new Map<string, string>();
+    css.walkRules(selector, rule => { rule.walkDecls(declaration => { values.set(declaration.prop, declaration.value); }); });
+    return values;
+  };
+  const row = elements(source).find(element => literalAttribute(element, "className")?.split(/\s+/).includes("nodeine-voice-row"));
+  assert.ok(row);
+  const rowStyles = declarations(".nodeine-voice-row");
+  assert.equal(rowStyles.get("max-width"), "500px", "desktop recording must not stretch across the conversation");
+  assert.equal(rowStyles.get("width"), "100%", "small conversations keep their available width");
+  const trace = elements(row).find(element => attribute(element, "data-live-waveform"));
+  assert.ok(trace);
+  assert.ok(literalAttribute(trace, "className")?.split(/\s+/).includes("nodeine-live-waveform"));
+  const traceStyles = declarations(".nodeine-live-waveform");
+  assert.equal(traceStyles.get("display"), "grid");
+  assert.equal(traceStyles.get("grid-template-columns"), "repeat(28, minmax(0, 1fr))");
+  assert.equal(traceStyles.get("column-gap"), "min(2px, 2%)", "gaps must shrink with the trace instead of exceeding a narrow available width");
+  const sample = elements(trace).find(element => tag(element) === "span");
+  assert.ok(sample);
+  assert.doesNotMatch(literalAttribute(sample, "className") ?? "", /(?:^|\s)(?:min-)?w-\[/, "fixed sample widths recreate the cropped/mostly empty trace");
+});
+
+test("recording instructions follow the shared duration ceiling rather than hard-coded one-minute copy", () => {
+  const rendered = renderedComposer();
+  const mic = rendered.find(element => literalAttribute(element, "aria-label") === "Record voice note")!;
+  const minutes = MAX_VOICE_NOTE_DURATION_MS / 60_000;
+  const limitLabel = `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  assert.equal(literalAttribute(mic, "title"), `Record voice note (up to ${limitLabel} or 4 MiB)`);
+  const instructions = rendered.filter(element => ts.isJsxElement(element) && literalAttribute(element, "class") === "sr-only")
+    .flatMap(element => ts.isJsxElement(element) ? element.children.filter(ts.isJsxText).map(child => child.text) : []).join(" ");
+  assert.ok(instructions.includes(`Up to ${limitLabel} or 4 MiB.`), "screen-reader instructions report the same duration and file ceiling");
+  const source = readFileSync(resolve(process.cwd(), "app/messages/voice-note-composer.tsx"), "utf8");
+  assert.equal(/\b1 minute\b|\/ 1:00/.test(source), false, "timer, accessible text and tooltip must all follow the shared limit");
+});
+
+test("enlarged text gives the live waveform its own readable line without wrapping ordinary phone text", () => {
+  // Browser baseline: 320px viewport, 32px root text, 238px cluster left only
+  // 17.82px for all 28 bars. This static contract supplements that geometry loop.
+  const css = postcss.parse(readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8"));
+  let narrow: postcss.AtRule | undefined;
+  css.walkAtRules("container", rule => { if (rule.params.replace(/\s+/g, "") === "(width<12rem)") narrow = rule; });
+  assert.ok(narrow, "a text-relative narrow threshold must protect the live trace from the enlarged timer");
+  const narrowRule = narrow;
+  const values = (selector: string) => {
+    const declarations = new Map<string, string>();
+    narrowRule.walkRules(selector, rule => { rule.walkDecls(declaration => { declarations.set(declaration.prop, declaration.value); }); });
+    return declarations;
+  };
+  const content = values(".nodeine-voice-content:has([data-live-waveform])");
+  assert.equal(content.get("flex-wrap"), "wrap", "only the active recording content should wrap, not the preview player");
+  assert.equal(content.get("padding-block"), "8px");
+  const trace = values(".nodeine-live-waveform");
+  assert.equal(trace.get("flex-basis"), "100%", "the trace gets the complete recording content width");
+  assert.equal(trace.get("height"), "28px", "the existing 28px signal scale stays visible without excessive vertical space");
+  assert.ok(238 < 12 * 32, "the observed 200% text case enters this rule");
+  assert.ok(278 >= 12 * 16, "ordinary 320px-phone text retains its existing one-line content");
 });

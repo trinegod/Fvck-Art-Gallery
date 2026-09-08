@@ -24,6 +24,9 @@ type VoiceNoteComposerProps = {
 };
 const iconButton = "nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-45";
 const formatTime = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
+const maximumMinutes = MAX_VOICE_NOTE_DURATION_MS / 60_000;
+const durationLimitLabel = `${maximumMinutes} ${maximumMinutes === 1 ? "minute" : "minutes"}`;
+const durationLimitTime = formatTime(MAX_VOICE_NOTE_DURATION_MS);
 
 export default function VoiceNoteComposer({ conversationKey, sendEnabled, disabledReason, onSend, disabled = false, onActiveChange, attachment, children, className, recorderFactory = createVoiceNoteRecorder }: VoiceNoteComposerProps) {
   const [session] = useState(() => createVoiceNoteSession(recorderFactory()));
@@ -70,11 +73,11 @@ export default function VoiceNoteComposer({ conversationKey, sendEnabled, disabl
           {attachment}
           <button ref={micRef} type="button" onClick={() => { setElapsed(0); session.start(); }} disabled={disabled}
             className={cn(iconButton, "border border-cyan-300/20 text-cyan-200 hover:bg-cyan-300/10")}
-            aria-label="Record voice note" title="Record voice note (up to 1 minute or 4 MiB)">
+            aria-label="Record voice note" title={`Record voice note (up to ${durationLimitLabel} or 4 MiB)`}>
             <Mic className="size-4" aria-hidden="true" />
           </button>
           {children}
-          <span className="sr-only">Up to 1 minute or 4 MiB. Recording starts when you press the microphone; send only when you choose.</span>
+          <span className="sr-only">Up to {durationLimitLabel} or 4 MiB. Recording starts when you press the microphone; send only when you choose.</span>
         </div>
       ) : (
         <section aria-label="Voice note recorder" className="min-w-0" onFocusCapture={event => { lastVoiceFocus.current = event.target as HTMLElement; }} onKeyDown={event => {
@@ -92,9 +95,9 @@ export default function VoiceNoteComposer({ conversationKey, sendEnabled, disabl
               <div className="nodeine-voice-content flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-[#252d3a] px-3 text-zinc-100">
                 {phase === "recording" ? <>
                   <span className="size-2 shrink-0 rounded-full bg-rose-300" aria-hidden="true" />
-                  <span className="shrink-0 text-xs tabular-nums" aria-label={`Recorded ${formatTime(elapsed)} of 1 minute`}>{formatTime(elapsed)}<span className="text-zinc-400"> / 1:00</span></span>
-                  <div className="flex h-7 min-w-0 flex-1 items-center justify-end gap-[2px] overflow-hidden" aria-hidden="true" data-live-waveform>
-                    {levels.map((level, index) => <span key={index} className="w-[3px] min-w-[2px] rounded-full bg-cyan-200" style={{ height: `${Math.max(2, Math.sqrt(level) * 28)}px` }} />)}
+                  <span className="shrink-0 text-xs tabular-nums" aria-label={`Recorded ${formatTime(elapsed)} of ${durationLimitLabel}`}>{formatTime(elapsed)}<span className="text-zinc-400"> / {durationLimitTime}</span></span>
+                  <div className="nodeine-live-waveform h-7 min-w-0 flex-1 items-center" aria-hidden="true" data-live-waveform>
+                    {levels.map((level, index) => <span key={index} className="rounded-full bg-cyan-200" style={{ height: `${Math.max(2, Math.sqrt(level) * 28)}px` }} />)}
                   </div>
                 </> : <>
                   <LoaderCircle className="size-4 shrink-0 motion-safe:animate-spin" aria-hidden="true" />

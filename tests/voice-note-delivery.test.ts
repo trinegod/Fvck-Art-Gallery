@@ -100,6 +100,32 @@ test("only route-contract pre-persistence 4xx responses are confirmed rejections
   );
 });
 
+for (const durationMs of [1, 300000, 0, 300001]) {
+  test(`delivery enforces the five-minute boundary before dispatch at ${durationMs}ms`, async () => {
+    let calls = 0;
+    const operation = deliverVoiceNote({
+      ...deliveryRequest(async (_url, init) => {
+        calls += 1;
+        assert.equal((init?.body as FormData).get("durationMs"), String(durationMs));
+        return response(200, { message: voiceMessage({ voice_duration_ms: durationMs }) });
+      }),
+      durationMs,
+    });
+    if (durationMs === 1 || durationMs === 300000) {
+      assert.equal((await operation).voice_duration_ms, durationMs);
+      assert.equal(calls, 1);
+    } else {
+      await assert.rejects(operation, (error: unknown) => {
+        assert.ok(error instanceof VoiceNoteDeliveryError);
+        assert.equal(error.outcome, "rejected");
+        assert.match(error.message, /5 minutes/);
+        return true;
+      });
+      assert.equal(calls, 0);
+    }
+  });
+}
+
 test("transport, unreadable JSON, and every 5xx response preserve an unknown outcome", async () => {
   await expectOutcome(
     deliverVoiceNote(deliveryRequest(async () => { throw new TypeError("network down"); })),
