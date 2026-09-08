@@ -46,6 +46,9 @@ test("the real player renders themed custom controls without native audio contro
   assert.match(html, /Playback progress\. Audio waveform not loaded\./);
   assert.match(html, /<audio[^>]*hidden=""/);
   assert.match(html, /<source[^>]*type="audio\/webm"/);
+  assert.match(html, /top-1\/2 h-1 -translate-y-1\/2/);
+  assert.match(html, /data-voice-time="true"[^>]*items-center/);
+  assert.doesNotMatch(html, /absolute bottom-0 right-1/);
   const incoming = renderToStaticMarkup(createElement(Player, { src: "blob:test", label: "Voice preview" }));
   assert.match(incoming, /background-color:#252d3a;color:#f2f3f8/);
   assert.match(incoming, /aria-label="Play Voice preview"/);

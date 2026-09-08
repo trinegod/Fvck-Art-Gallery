@@ -11,6 +11,18 @@ export type VoiceNoteAudio = Pick<HTMLAudioElement,
   "duration" | "currentTime" | "paused" | "readyState" | "play" | "pause" | "load"
 > & Pick<EventTarget, "addEventListener" | "removeEventListener">;
 
+type PlaybackFrames = {
+  request: (callback: FrameRequestCallback) => number;
+  cancel: (id: number) => void;
+};
+type PlaybackVisibility = Pick<Document, "hidden" | "addEventListener" | "removeEventListener">;
+type PlaybackOptions = {
+  durationMs?: number | null;
+  onChange?: (state: VoiceNotePlaybackState) => void;
+  frames?: PlaybackFrames;
+  visibility?: PlaybackVisibility;
+};
+
 const AUDIO_LOAD_ERROR = "Audio could not load. Reload it; if its secure link expired, reopen this conversation to refresh it.";
 
 function durationSeconds(metadata: number, durationMs?: number | null) {
@@ -30,17 +42,41 @@ export function formatVoiceNoteTime(seconds: number) {
 /** One audio element's lifetime. It never starts playback during construction. */
 export function createVoiceNotePlayback(
   audio: VoiceNoteAudio,
-  options: { durationMs?: number | null; onChange?: (state: VoiceNotePlaybackState) => void } = {},
+  options: PlaybackOptions = {},
 ) {
   let state = initialVoiceNotePlayback(options.durationMs);
   let durationHint = options.durationMs;
   let disposed = false;
   let desiredPlaying = false;
   let playRequest = 0;
+  const frames = options.frames ?? (typeof requestAnimationFrame === "function" && typeof cancelAnimationFrame === "function" ? {
+    request: (callback: FrameRequestCallback) => requestAnimationFrame(callback),
+    cancel: (id: number) => cancelAnimationFrame(id),
+  } : undefined);
+  const visibility = options.visibility ?? (typeof document !== "undefined" ? document : undefined);
+  let frameId: number | null = null;
+  const stopFrames = () => {
+    if (frameId !== null) frames?.cancel(frameId);
+    frameId = null;
+  };
+  const shouldAnimate = () => !disposed && state.playing && !state.pending && !state.error && !audio.paused && !visibility?.hidden;
+  const scheduleFrame = () => {
+    if (!frames || !shouldAnimate()) { stopFrames(); return; }
+    if (frameId !== null) return;
+    frameId = frames.request(() => {
+      frameId = null;
+      if (!shouldAnimate()) return;
+      // Read the media clock, never extrapolate time or change playback speed.
+      syncTime();
+    });
+  };
   const update = (patch: Partial<VoiceNotePlaybackState>) => {
     if (disposed) return;
-    state = { ...state, ...patch };
-    options.onChange?.(state);
+    if (Object.entries(patch).some(([key, value]) => state[key as keyof VoiceNotePlaybackState] !== value)) {
+      state = { ...state, ...patch };
+      options.onChange?.(state);
+    }
+    scheduleFrame();
   };
   const readTime = () => {
     const duration = durationSeconds(audio.duration, durationHint);
@@ -66,11 +102,12 @@ export function createVoiceNotePlayback(
       if (!desiredPlaying) { audio.pause(); return; }
       update({ playing: true, pending: false, error: null });
     },
-    pause: () => { desiredPlaying = false; playRequest += 1; update({ playing: false, pending: false }); },
+    pause: () => { desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
     ended: () => { desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
   };
   // A failed child <source> emits a non-bubbling error; capture it at the audio element.
   for (const [name, listener] of Object.entries(listeners)) audio.addEventListener(name, listener, name === "error");
+  visibility?.addEventListener("visibilitychange", syncTime);
   syncTime();
 
   return {
@@ -127,10 +164,12 @@ export function createVoiceNotePlayback(
     setDurationHint(durationMs?: number | null) { durationHint = durationMs; syncTime(); },
     dispose() {
       disposed = true;
+      stopFrames();
       state = { ...state, playing: false, pending: false };
       desiredPlaying = false;
       playRequest += 1;
       for (const [name, listener] of Object.entries(listeners)) audio.removeEventListener(name, listener, name === "error");
+      visibility?.removeEventListener("visibilitychange", syncTime);
       audio.pause();
     },
   };

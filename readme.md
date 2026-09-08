@@ -11,9 +11,10 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 The owner approved the inline voice direction and requested this public refinement:
 
 - Sent and preview bubbles show a waveform measured from the actual recording, with real playback progress and the current Glacier/Orchid/Ember bubble colors. Analysis is local and lazy; if unavailable, the ordinary seek line still works.
+- Playback polish: Play, waveform and duration now share one visual centerline on mobile and desktop. The position marker samples actual media time on animation frames, avoiding sparse-event stepping without changing audio speed. Paused, buffering, hidden and disposed players stop frame work. The owner's optical-alignment preference is saved in the design contract and shared UX playbook.
 - Voice notes allow **up to 5 minutes or 4 MiB**. The recorder requests speech-oriented 64 kbit/s encoding; the byte cap remains independent because browsers may encode differently. The client, endpoint and narrow database migration share the new duration boundary.
 - The desktop recording cluster is centered and capped at 500px. Its live samples fill a fluid trace instead of occupying a small corner of a screen-wide bar. Narrow-screen and enlarged-text controls remain 44px or larger.
-- **Inbox → New group** opens the existing invitation flow. A requested third test account remains pending an owner-controlled email and normal signup confirmation; no public account activity is fabricated.
+- **Inbox → New group** opens the existing invitation flow. The owner authorized a clearly marked test account with a reserved fake address. Normal signup requires confirmation, and the dashboard currently needs owner sign-in before admin creation; no test account or public account activity has been fabricated.
 
 See the [refinement audit](docs/audits/2026-09-07-voice-waveform-refinement.md), [voice rollout](docs/VOICE_NOTES_ROLLOUT.md), and [GitHub release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) for observed tests, deployment/backup evidence and remaining physical-phone checks. Source implementation alone does not establish production activation.
 

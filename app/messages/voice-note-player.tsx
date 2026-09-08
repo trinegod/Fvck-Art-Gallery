@@ -130,7 +130,7 @@ function VoiceNotePlayerSession({
         </button>
         <div className="relative h-11 min-w-0 flex-1 rounded-md focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-current">
           {waveform ? (
-            <div className="pointer-events-none absolute inset-x-1 top-0 h-6" data-voice-visual="waveform" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-1 top-1/2 h-6 -translate-y-1/2" data-voice-visual="waveform" aria-hidden="true">
               <svg viewBox={`0 0 ${waveform.bars.length * 4} 24`} preserveAspectRatio="none" className="h-full w-full overflow-visible" fill="currentColor">
                 <path d={`M0 12H${waveform.bars.length * 4}`} stroke="currentColor" strokeWidth="0.5" opacity="0.35" />
                 {waveform.bars.map((amplitude, index) => {
@@ -141,7 +141,7 @@ function VoiceNotePlayerSession({
               <span className="absolute inset-y-0 w-px bg-current" style={{ left: `${progress}%` }} />
             </div>
           ) : (
-            <div className="pointer-events-none absolute inset-x-1 top-3 h-1 rounded-full" data-voice-visual="progress" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full" data-voice-visual="progress" aria-hidden="true">
               <span className="absolute inset-0 rounded-full bg-current opacity-25" />
               <span className="absolute inset-y-0 left-0 rounded-full bg-current" style={{ width: `${progress}%` }} />
               <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" style={{ left: `${progress}%` }} />
@@ -149,9 +149,6 @@ function VoiceNotePlayerSession({
           )}
           <span className="sr-only" id={waveformDescriptionId}>
             {waveform ? "Waveform measured from this audio recording." : waveformUnavailable ? "Playback progress. Waveform unavailable for this audio." : "Playback progress. Audio waveform not loaded."}
-          </span>
-          <span className="pointer-events-none absolute bottom-0 right-1 max-w-full truncate font-mono text-xs tabular-nums" aria-hidden="true">
-            {playback.currentTime > 0 ? current : duration}
           </span>
           <input
             type="range"
@@ -168,6 +165,9 @@ function VoiceNotePlayerSession({
             className="absolute inset-0 m-0 h-full w-full min-w-0 cursor-pointer opacity-0 disabled:cursor-default"
           />
         </div>
+        <span data-voice-time className="pointer-events-none flex min-h-11 min-w-[4ch] shrink-0 items-center justify-end pr-1 font-mono text-xs tabular-nums" aria-hidden="true">
+          {playback.currentTime > 0 ? current : duration}
+        </span>
       </div>
       {playback.error && (
         <div className="space-y-1 px-1 pb-1" role="alert">

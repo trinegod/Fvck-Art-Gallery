@@ -20,6 +20,83 @@ class AudioFixture extends EventTarget {
   metadata() { this.readyState = 1; this.dispatchEvent(new Event("loadedmetadata")); }
 }
 
+class FrameFixture {
+  next = 0;
+  callbacks = new Map<number, FrameRequestCallback>();
+  request = (callback: FrameRequestCallback) => { this.callbacks.set(++this.next, callback); return this.next; };
+  cancel = (id: number) => { this.callbacks.delete(id); };
+  tick() { const pending = [...this.callbacks.values()]; this.callbacks.clear(); for (const callback of pending) callback(0); }
+}
+
+test("the playback cursor follows actual audio between sparse timeupdate events", async () => {
+  const audio = new AudioFixture();
+  const frames = new FrameFixture();
+  const playback = createVoiceNotePlayback(audio, { frames });
+  audio.metadata();
+  await playback.toggle();
+  for (const seconds of [0.016, 0.032, 0.048]) {
+    audio.currentTime = seconds;
+    frames.tick(); // No timeupdate event: the visual must not wait for one.
+    assert.equal(playback.getState().currentTime, seconds);
+    assert.equal(frames.callbacks.size, 1);
+  }
+  const unchanged = playback.getState().currentTime;
+  frames.tick();
+  assert.equal(playback.getState().currentTime, unchanged, "never invent progress beyond actual audio");
+  await playback.toggle();
+  assert.equal(frames.callbacks.size, 0);
+  playback.dispose();
+});
+
+test("frame updates suspend for buffering and hidden tabs, and clean up on every stop path", async () => {
+  for (const stop of ["pause", "ended", "error", "reload", "dispose"] as const) {
+    const audio = new AudioFixture();
+    const frames = new FrameFixture();
+    const visibility = Object.assign(new EventTarget(), { hidden: false });
+    const playback = createVoiceNotePlayback(audio, { frames, visibility });
+    audio.metadata();
+    await playback.toggle();
+    assert.equal(frames.callbacks.size, 1);
+    audio.dispatchEvent(new Event("waiting"));
+    assert.equal(frames.callbacks.size, 0);
+    audio.dispatchEvent(new Event("playing"));
+    assert.equal(frames.callbacks.size, 1);
+    visibility.hidden = true;
+    visibility.dispatchEvent(new Event("visibilitychange"));
+    assert.equal(frames.callbacks.size, 0);
+    audio.currentTime = 6;
+    visibility.hidden = false;
+    visibility.dispatchEvent(new Event("visibilitychange"));
+    assert.equal(playback.getState().currentTime, 6);
+    assert.equal(frames.callbacks.size, 1);
+    if (stop === "reload" || stop === "dispose") playback[stop]();
+    else if (stop === "pause") audio.pause();
+    else { audio.paused = true; audio.dispatchEvent(new Event(stop)); }
+    assert.equal(frames.callbacks.size, 0, stop);
+    playback.dispose();
+    visibility.dispatchEvent(new Event("visibilitychange"));
+    assert.equal(frames.callbacks.size, 0);
+  }
+});
+
+test("frame sampling deduplicates frozen clocks and seeking updates immediately", async () => {
+  const audio = new AudioFixture();
+  const frames = new FrameFixture();
+  let changes = 0;
+  const playback = createVoiceNotePlayback(audio, { frames, onChange: () => changes++ });
+  audio.metadata();
+  await playback.toggle();
+  const initialChanges = changes;
+  for (let i = 0; i < 5; i++) frames.tick();
+  assert.equal(changes, initialChanges);
+  assert.equal(playback.seek(8.25), true);
+  assert.equal(playback.getState().currentTime, 8.25);
+  audio.currentTime = 8.266;
+  frames.tick();
+  assert.equal(playback.getState().currentTime, 8.266);
+  playback.dispose();
+});
+
 test("playback starts only on request and real media events drive pause, progress and ended state", async () => {
   const audio = new AudioFixture();
   const playback = createVoiceNotePlayback(audio);

@@ -2,6 +2,17 @@
 
 Owner request: show waveforms after sending, allow five-minute recordings, stop the desktop recorder stretching across the screen, provide one clearly identified group-test account, and publish the refinement to the existing public hosts.
 
+## Follow-up: centered controls and continuous playback position
+
+The owner approved the waveform addition and requested a shared visual centerline plus a smoothly moving position marker, not slower audio. Text messages and recording limits are unchanged.
+
+- Reproduction: the actual production player in a temporary, muted synthetic-WAV harness positioned the waveform center 10px above the Play icon and the duration center 14px below. At 1280px after the change all three centers are exactly 91px. At 320px with 200% root text all three are 189px; the seek area is 112.4px wide, the waveform 96.4px wide, Play stays 44px and document width stays 320px. A long unwrapped debug output initially caused fixture-only overflow and was wrapped before final measurements.
+- The regression command `node --import tsx --test tests/voice-note-playback.test.ts` first failed with displayed position 0 while actual media time was 0.016s. Ranked hypotheses were sparse media notifications, whole-bin progress coloring and browser time rounding. Sampling the actual media clock each animation frame fixes the first cause without interpolating or altering playback rate.
+- Browser sampling over 120 rendered frames changed position 21 times before and 118 times after. Playback remained 1x. These are synthetic-browser measurements, not a guaranteed device frame rate. Frozen clocks do not invent progress or trigger redundant state renders; seeking remains immediate. Pause, buffering, hidden-tab, ended, error, reload and dispose cancel frame work, with visible/resumed playback resynchronized to real audio.
+- The owner preference is durably recorded in `DESIGN.md` and the existing shared UX playbook. It favors measured optical alignment for compact controls and loading states without centering long reading text. No external memory service, new dependency or other project code was added.
+- Test-account status: a read-only normal Auth settings check confirms signup is enabled and email auto-confirm is false. A made-up mailbox cannot complete ordinary signup. The normal project dashboard redirected to sign-in; the owner was asked to sign in before admin creation with a reserved test address. No account, invitation or global auth setting was changed.
+- All 276 automated tests pass, along with nonincremental TypeScript and the local production Webpack build. ESLint has zero errors and five pre-existing warnings. The temporary audio harness was removed before that build; the final normal-text 320px check also measured all three centers at 91px with no horizontal overflow. Publication and backup results belong in the existing GitHub checklist; physical-phone playback and third-account group acceptance remain owner checks.
+
 ## Scope and evidence
 
 - The approved inline microphone/Stop/Send/Discard interaction remains. No introductory dialog, external audio provider, account-wide theme changes, or new navigation was added.
@@ -39,7 +50,7 @@ Three agents own the recording/backend limits, waveform player, and responsive l
 
 Deployment and backup completion are tracked in [GitHub issue #1](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) and the release backup manifest after publication. Real iOS/Android recording, interruptions, keyboard/safe-area behavior and recipient delivery remain hands-on checks. Browser full-file decoding cannot be preempted internally: bounded input, downsampled single-job decoding and post-decode bounds reduce exposure, but do not constitute a trusted media scanner or a hard predecode duration guarantee.
 
-The requested “Princess Sakura (Test)” account needs an owner-controlled email and any normal signup confirmation. No account, invitation, public activity, or access-control bypass is fabricated while that information is missing.
+The requested “Princess Sakura (Test)” account now has owner approval to use a reserved test address. It needs normal authorized admin creation because ordinary signup requires a working confirmation mailbox. Dashboard sign-in is pending; no account, invitation, public activity, or access-control bypass has been fabricated.
 
 ## References
 
