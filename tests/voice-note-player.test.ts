@@ -6,6 +6,7 @@ import test from "node:test";
 import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import postcss from "postcss";
 
 const requireFromTest = createRequire(import.meta.url);
 const cache = new Map<string, Record<string, unknown>>();
@@ -66,4 +67,43 @@ test("seeking is visibly grabbable and speed controls remain labeled in a five-m
   assert.match(css, /nodeine-voice-range::-moz-range-thumb/);
   assert.match(css, /touch-action: pan-y/);
   assert.match(css, /@container/);
+});
+
+test("the 16px seek handle stays centered on both visuals inside a 44px interaction target", () => {
+  const html = renderToStaticMarkup(createElement(Player, { src: "blob:seek-size", durationMs: 30_000 }));
+  assert.match(html, /class="nodeine-voice-seek [^"]*h-\[44px\]/);
+  assert.match(html, /<input[^>]*class="nodeine-voice-range [^"]*h-full w-full/);
+  assert.match(html, /inset-x-\[8px\][^"]*" data-voice-visual="progress"/);
+
+  // The browser owns native range geometry. Lock its two engine declarations
+  // and both production visual branches to the same optical endpoint contract.
+  const css = postcss.parse(readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8"));
+  const declarations = (selector: string) => {
+    const values = new Map<string, string>();
+    css.walkRules(selector, rule => { rule.walkDecls(declaration => { values.set(declaration.prop, declaration.value); }); });
+    return values;
+  };
+  for (const selector of [".nodeine-voice-range::-webkit-slider-thumb", ".nodeine-voice-range::-moz-range-thumb"]) {
+    const styles = declarations(selector);
+    assert.equal(styles.get("width"), "16px", selector);
+    assert.equal(styles.get("height"), "16px", selector);
+    assert.equal(styles.get("border"), "0", "borders must not enlarge the visible handle");
+  }
+  assert.equal(declarations(".nodeine-voice-range::-webkit-slider-thumb").get("margin-top"), "-7px");
+  const source = ts.createSourceFile("voice-note-player.tsx", readFileSync(resolve(process.cwd(), "app/messages/voice-note-player.tsx"), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const visualClasses: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxOpeningElement(node)) {
+      const attributes = node.attributes.properties.filter(ts.isJsxAttribute);
+      if (attributes.some(attribute => attribute.name.getText(source) === "data-voice-visual")) {
+        const classes = attributes.find(attribute => attribute.name.getText(source) === "className")?.initializer;
+        assert.ok(classes && ts.isStringLiteral(classes));
+        visualClasses.push(classes.text);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  assert.equal(visualClasses.length, 2, "check the measured waveform and unloaded progress fallback");
+  for (const classes of visualClasses) assert.ok(classes.split(/\s+/).includes("inset-x-[8px]"));
 });

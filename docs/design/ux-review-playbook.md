@@ -51,6 +51,18 @@ Completion means the primary task and applicable failure/exit paths have evidenc
 
 ## Reuse in the owner's other projects
 
+### Personal component-library preference
+
+Owner-approved September 7, 2026, from the first post in the supplied shadcn screenshot: prefer a small, personally maintained component library with deliberate defaults over rebuilding equivalent controls for each feature. The screenshot is the supplied reference, not verification of its CLI command or an instruction to run it.
+
+Before adding a control, inspect the active project's component library and tokens. Reuse the existing component when its semantics fit; improve its shared variant when the same behavior belongs across usages. Keep a feature-specific component local when its state, permissions, or meaning is genuinely different. Test affected consumers before changing a shared default.
+
+Share interaction foundations—accessible names, focus, target sizes, dialog behavior, pending/error states, optical alignment, and responsive reflow. Keep each project's typography, color, artwork treatment, density, and motion identity in that project's own design contract. A personal library is a consistent foundation, not a mandate for identical-looking sites.
+
+NODEINE already owns its `components/ui` primitives and `components.json` configuration. Extend those intentionally; do not rerun initialization over customized files. Extract a cross-project package or registry only after repeated real use proves the boundary, with versioning and consumer regression checks. Evaluate any external registry's source, license, compatibility, and maintenance before adopting it; nothing from the screenshot is installed by this guidance.
+
+The shared instruction pointer below makes this preference available to future UI work in the owner's current projects. This update changes documentation, not those other applications or an AI model's training.
+
 This playbook is stored in NODEINE and reached by this repository's `AGENTS.md`. At the owner's explicit request, a small pointer was also added to `/Users/stevenadkins/.codex/AGENTS.md`, scoped to UI work across the owner's projects. This is durable instruction context, not a change to an AI model's memory or training. Global guidance is loaded at session/run startup, with project-specific instructions taking precedence; existing sessions may need restarting. [Official instruction-discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md). No other application repository was edited as part of this research.
 
 Apply the portable process in 108 Yokai, Trinefield, and Biao tasks while keeping each project's own visual contract, primary audience, and content hierarchy. Particularly useful transfers are readable layered art and reduced-motion portals for Yokai; direct project/contact paths for Trinefield; and actual Chinese text wrapping, type hierarchy, and task clarity for Biao. These are shared standards and proposed applications, not changes already made to those sites.

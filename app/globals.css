@@ -252,9 +252,9 @@
 .nodeine-voice-range::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  margin-top: -9px;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
   border: 0;
   border-radius: 50%;
   background: currentColor;
@@ -263,8 +263,8 @@
 .nodeine-voice-range::-moz-range-track { height: 2px; background: transparent; }
 .nodeine-voice-range::-moz-range-progress { background: transparent; }
 .nodeine-voice-range::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border: 0;
   border-radius: 50%;
   background: currentColor;

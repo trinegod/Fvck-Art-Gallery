@@ -23,6 +23,54 @@ class AudioFixture extends EventTarget {
   metadata() { this.readyState = 1; this.dispatchEvent(new Event("loadedmetadata")); }
 }
 
+test("the first Play call starts a cold note synchronously without waiting for metadata", async () => {
+  const audio = new AudioFixture();
+  audio.duration = NaN;
+  let resolvePlay!: () => void;
+  audio.playResult = () => {
+    audio.paused = false;
+    return new Promise<void>((resolve) => { resolvePlay = resolve; });
+  };
+  const playback = createVoiceNotePlayback(audio, { durationMs: 12_000 });
+  const firstTap = playback.toggle();
+  assert.equal(audio.playCalls, 1, "play must run in the original gesture, before its promise settles");
+  assert.equal(audio.paused, false);
+  assert.equal(playback.getState().pending, true);
+  audio.metadata();
+  audio.dispatchEvent(new Event("playing"));
+  resolvePlay();
+  await firstTap;
+  assert.equal(audio.playCalls, 1, "metadata must not require a second Play action");
+  assert.equal(playback.getState().playing, true);
+  playback.dispose();
+});
+
+test("one Play request restarts an ended note even if the previous ended event arrives late", async () => {
+  const audio = new AudioFixture();
+  audio.readyState = 1;
+  audio.currentTime = audio.duration;
+  let resolvePlay!: () => void;
+  audio.playResult = () => {
+    // Native play changes paused immediately; its events and promise settle later.
+    audio.paused = false;
+    return new Promise<void>((resolve) => { resolvePlay = resolve; });
+  };
+  const playback = createVoiceNotePlayback(audio);
+  const firstTap = playback.toggle();
+  assert.equal(audio.currentTime, 0);
+  assert.equal(audio.playCalls, 1);
+  // A queued event from the completed run must not cancel the new explicit run.
+  audio.dispatchEvent(new Event("ended"));
+  audio.dispatchEvent(new Event("playing"));
+  resolvePlay();
+  await firstTap;
+  assert.equal(audio.paused, false, "the first Play action must not be cancelled by stale ended state");
+  assert.equal(playback.getState().playing, true);
+  assert.equal(playback.getState().pending, false);
+  assert.equal(audio.playCalls, 1);
+  playback.dispose();
+});
+
 test("supported speeds change the real audio without seeking or starting a paused note", async () => {
   const audio = new AudioFixture();
   audio.duration = 300;

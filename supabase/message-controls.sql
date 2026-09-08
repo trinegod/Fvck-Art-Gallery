@@ -14,8 +14,9 @@ alter table public.conversation_members
 
 -- Existing application writes use INSERT for messages and a column-scoped
 -- last_read_at update for memberships. Keep the new control metadata RPC-only.
-revoke update, delete on table public.messages from authenticated;
-revoke update (cleared_before) on table public.conversation_members from authenticated;
+-- Table UPDATE grants override a column revoke; deployed Supabase defaults may
+-- also grant TRUNCATE/REFERENCES/TRIGGER. Normalize both table and column ACLs.
+revoke all on table public.messages, public.conversation_members from public, anon, authenticated;
 
 create index if not exists conversation_members_profile_cleared_idx
   on public.conversation_members (profile_id, conversation_id, cleared_before);
@@ -37,8 +38,27 @@ create table if not exists public.message_removal_cleanup (
 );
 
 alter table public.message_removal_cleanup enable row level security;
-revoke all on table public.message_removal_cleanup from public;
-revoke all on table public.message_removal_cleanup from authenticated;
+revoke all on table public.message_removal_cleanup from public, anon, authenticated;
+
+do $message_control_column_grants$
+declare
+  relation_name text;
+  column_names text;
+begin
+  foreach relation_name in array array['messages', 'conversation_members', 'message_removal_cleanup'] loop
+    select string_agg(quote_ident(attribute.attname), ', ' order by attribute.attnum)
+      into column_names
+    from pg_catalog.pg_attribute as attribute
+    where attribute.attrelid = format('public.%I', relation_name)::regclass
+      and attribute.attnum > 0 and not attribute.attisdropped;
+    execute format('revoke all (%s) on table public.%I from public, anon, authenticated', column_names, relation_name);
+  end loop;
+end;
+$message_control_column_grants$;
+
+grant select, insert on table public.messages to authenticated;
+grant select on table public.conversation_members to authenticated;
+grant update (last_read_at) on table public.conversation_members to authenticated;
 
 -- Direct message INSERT remains available to members, so prevent a caller from
 -- claiming edit/delete metadata while creating an otherwise valid message.
@@ -124,7 +144,10 @@ begin
 
   update public.messages as message
   set body = clean_body,
-      edited_at = statement_timestamp()
+      -- Statements can wait on this row out of timestamp order. Advance the
+      -- stored version so clients never discard a later accepted edit as stale.
+      edited_at = greatest(statement_timestamp(),
+        message.edited_at + interval '1 microsecond', message.created_at)
   where message.id = target_message_id
     and message.sender_id = viewer_id
     and message.message_type = 'text'
@@ -140,6 +163,14 @@ begin
   if not found then
     raise exception 'That message cannot be edited.';
   end if;
+
+  -- Existing Activity entries must not retain replaced text or disclose the new
+  -- body to recipients who have since left. Preserve their IDs/read state.
+  update public.notifications
+  set preview = 'Message edited'
+  where message_id = updated_message.id
+    and kind = 'message'
+    and preview is distinct from 'Message edited';
 
   return to_jsonb(updated_message);
 end;
@@ -185,6 +216,13 @@ begin
   end if;
 
   if existing_message.removed_at is not null then
+    -- Repair legacy/stale notification previews on an authorized retry too.
+    update public.notifications
+    set preview = 'Message removed'
+    where message_id = existing_message.id
+      and kind = 'message'
+      and preview is distinct from 'Message removed';
+
     select jsonb_build_object('bucket', cleanup.bucket_id, 'path', cleanup.object_path)
       into trusted_removed_attachment
     from public.message_removal_cleanup as cleanup
@@ -232,7 +270,8 @@ begin
       attachment_name = null,
       voice_duration_ms = null,
       edited_at = null,
-      removed_at = statement_timestamp()
+      removed_at = greatest(statement_timestamp(),
+        existing_message.edited_at + interval '1 microsecond', existing_message.created_at)
   where message.id = existing_message.id
   returning message.* into updated_message;
 
@@ -251,6 +290,12 @@ begin
       removed_attachment ->> 'path'
     ) on conflict (message_id) do nothing;
   end if;
+
+  update public.notifications
+  set preview = 'Message removed'
+  where message_id = updated_message.id
+    and kind = 'message'
+    and preview is distinct from 'Message removed';
 
   return jsonb_build_object(
     'message', to_jsonb(updated_message),
@@ -276,9 +321,12 @@ begin
   end if;
 
   update public.conversation_members as member
-  set cleared_before = cutoff
+  -- An earlier-started request may acquire the lock after a newer clear.
+  -- Return the stored watermark, never regress it to this statement's start.
+  set cleared_before = greatest(member.cleared_before, cutoff)
   where member.conversation_id = target_conversation_id
-    and member.profile_id = viewer_id;
+    and member.profile_id = viewer_id
+  returning member.cleared_before into cutoff;
 
   if not found then
     raise exception 'You are not a member of this conversation.';
@@ -288,10 +336,10 @@ begin
 end;
 $$;
 
-revoke all on function public.nodeine_message_controls(uuid) from public;
-revoke all on function public.edit_own_message(uuid, text) from public;
-revoke all on function public.remove_own_message(uuid) from public;
-revoke all on function public.clear_my_conversation(uuid) from public;
+revoke all on function public.nodeine_message_controls(uuid) from public, anon;
+revoke all on function public.edit_own_message(uuid, text) from public, anon;
+revoke all on function public.remove_own_message(uuid) from public, anon;
+revoke all on function public.clear_my_conversation(uuid) from public, anon;
 
 grant execute on function public.nodeine_message_controls(uuid) to authenticated;
 grant execute on function public.edit_own_message(uuid, text) to authenticated;

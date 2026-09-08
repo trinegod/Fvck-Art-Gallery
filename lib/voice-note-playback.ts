@@ -113,7 +113,14 @@ export function createVoiceNotePlayback(
       update({ playing: true, pending: false, error: null });
     },
     pause: () => { if (!audio.paused) return; desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
-    ended: () => { desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
+    ended: () => {
+      // A previous run's queued terminal event can arrive after a new Play.
+      // Trust the live media state, just as the pause listener does above.
+      if (!audio.paused) return;
+      desiredPlaying = false;
+      playRequest += 1;
+      update({ ...readTime(), playing: false, pending: false });
+    },
   };
   // A failed child <source> emits a non-bubbling error; capture it at the audio element.
   for (const [name, listener] of Object.entries(listeners)) audio.addEventListener(name, listener, name === "error");

@@ -8,13 +8,15 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 ## September 7, 2026 — voice seeking and conversation controls
 
+- Latest refinement: a smaller **16px seek handle** retains its 44px-high interaction area. A reproduced replay race is fixed; repeated browser first-tap checks passed, although the owner's intermittent physical-device report still needs retesting. See the [playback and activation audit](docs/audits/2026-09-07-playback-and-message-activation.md).
 - Drag the visible waveform handle to a timestamp with a mouse or touch; keyboard seeking is supported too. Seeking a paused note does not start it. A playing note resumes from the chosen position after release.
 - Tap the speed label to cycle **1× → 1.5× → 2×** on mobile or desktop. The real audio changes speed; the progress display stays tied to its media clock. The default remains 1×.
 - Narrow bubbles and 200% text reflow controls while retaining 44px targets and the aligned, opaque chat palette.
 - The latest outgoing message shows **Sent / Seen**; groups show **Seen by N / Seen by all**. New read acknowledgements require foreground, focused, visible message content—not merely loading a background tab. Seen does not prove somebody listened to a voice note.
 - **Conversation options → Mute notifications** works for direct and group chats and can be undone there. Muting is personal: messages/unread counts still appear, but future notifications are suppressed for your account. Exact verification and public rollout are tracked in the [chat-controls audit](docs/audits/2026-09-07-seeking-seen-mute.md) and [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
-- The requested Princess Sakura (Test) account and its founder test message remain pending authorized Supabase administrator sign-in. No account or message is claimed until created and verified.
-- Own-message editing/removal and personal chat clearing are implemented, but their separate database activation is still pending the same administrator sign-in and runtime checks. Their buttons remain gated; see [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
+- **Princess Sakura (Test)** now exists as a clearly labeled test account and has sent the founder the requested test message. Group creation/invitation/acceptance remains a separate live test; no group activity is simulated as complete.
+- Own-message editing/removal and personal clearing passed a **92-assertion rollback-only database rehearsal**. Production activation remains blocked on specific approval for the migration's permission tightening; no permission changes were applied. Their buttons remain gated; see [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
+- The [shared UX playbook](docs/design/ux-review-playbook.md#personal-component-library-preference) now records the owner's maintained personal-component-library direction. NODEINE already has project-owned UI primitives; a distributed cross-project registry/package is not yet built or installed.
 
 ## Previous checkpoint — sent waveforms and five-minute voice notes
 

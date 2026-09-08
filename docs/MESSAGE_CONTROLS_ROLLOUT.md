@@ -1,6 +1,6 @@
 # Message controls rollout
 
-Status: implementation and mock-based verification only. `supabase/message-controls.sql` has not been applied to production or a disposable database. The client fails closed when its capability RPC is unavailable. Public activation requires approval and the checks below.
+Status, September 7 follow-up: implementation plus a 92-assertion rollback-only rehearsal against the authorized backend passed. The exact migration was rolled back with no surviving fixture records or schema additions. Production activation was stopped by safety review because table/column permission tightening needs specific owner approval. `supabase/message-controls.sql` is **not activated**; the client remains capability-gated. See the [activation audit](audits/2026-09-07-playback-and-message-activation.md) for evidence and remaining tests.
 
 ## User contract
 
@@ -20,7 +20,9 @@ The insert trigger rejects forged edit/removal metadata and overwrites message c
 
 Removal clears the row's attachment/body fields and keeps a tombstone. Only a validated sender-owned object in the dedicated voice bucket can produce a cleanup descriptor. A private RLS/no-client-grants receipt makes removal retries return the same verified descriptor after a lost response. Storage cleanup begins only after a confirmed tombstone; failed cleanup does not undo it. Legacy image/video cleanup is deliberately not inferred from user-supplied old attachment paths. Those objects need a separately verified retention/cleanup process. Receipts are not a background cleanup worker, so failed cleanup may still require operator action.
 
-## Required runtime tests (not completed)
+## Runtime coverage and remaining checks
+
+The checked-in [rollback rehearsal](../supabase/tests/message-controls.rollback.sql) defaults to NOT_REVIEWED and must not be run without reviewing live trigger side effects and schema. Its exact embedded migration is guarded by a source test. Its successful run required all 92 assertions and the final rollback postcondition. Role/claim simulation tests SQL authorization, not JWT signatures or expiry, actual concurrent connections, physical Storage deletion, or browser realtime delivery. The list below remains the broader rollout checklist; individual SQL cases have evidence in the audit and are not a claim that every item is complete.
 
 - Member, nonmember, former member, anonymous, expired-session, forged-sender and forged-conversation requests for each RPC.
 - Direct UPDATE/DELETE denied; fake insert timestamps/edited/removed metadata rejected or normalized as designed; NULL, blank, oversize, nontext and removed-message edits rejected.

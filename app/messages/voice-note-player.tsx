@@ -137,7 +137,7 @@ function VoiceNotePlayerSession({
         </button>
         <div className="nodeine-voice-seek relative h-[44px] min-w-0 rounded-md focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-current">
           {waveform ? (
-            <div className="pointer-events-none absolute inset-x-[10px] top-1/2 h-[24px] -translate-y-1/2" data-voice-visual="waveform" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-[8px] top-1/2 h-[24px] -translate-y-1/2" data-voice-visual="waveform" aria-hidden="true">
               <svg viewBox={`0 0 ${waveform.bars.length * 4} 24`} preserveAspectRatio="none" className="h-full w-full overflow-visible" fill="currentColor">
                 <path d={`M0 12H${waveform.bars.length * 4}`} stroke="currentColor" strokeWidth="0.5" opacity="0.35" />
                 {waveform.bars.map((amplitude, index) => {
@@ -147,7 +147,7 @@ function VoiceNotePlayerSession({
               </svg>
             </div>
           ) : (
-            <div className="pointer-events-none absolute inset-x-[10px] top-1/2 h-1 -translate-y-1/2 rounded-full" data-voice-visual="progress" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-[8px] top-1/2 h-1 -translate-y-1/2 rounded-full" data-voice-visual="progress" aria-hidden="true">
               <span className="absolute inset-0 rounded-full bg-current opacity-25" />
               <span className="absolute inset-y-0 left-0 rounded-full bg-current" style={{ width: `${progress}%` }} />
             </div>
