@@ -143,7 +143,12 @@ test("sent voice players receive real duration and direction with a voice-only p
   assert.equal(expressionAttribute(player, "src")?.getText(), "message.attachmentUrl");
   assert.equal(expressionAttribute(player, "durationMs")?.getText(), "message.voice_duration_ms");
   assert.equal(expressionAttribute(player, "outgoing")?.getText(), "mine");
-  const wrapper = ancestors(player).find(element => tag(element) === "div");
+  const wrapper = ancestors(player).find(element => {
+    if (tag(element) !== "div") return false;
+    const classes = expressionAttribute(element, "className");
+    return classes && ts.isTemplateExpression(classes) && descendants(classes, ts.isConditionalExpression).some(node =>
+      ts.isStringLiteral(node.whenTrue) && node.whenTrue.text === "w-72");
+  });
   assert.ok(wrapper);
   const className = expressionAttribute(wrapper, "className");
   assert.ok(className && ts.isTemplateExpression(className));

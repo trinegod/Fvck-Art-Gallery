@@ -4,12 +4,18 @@ export type VoiceNotePlaybackState = {
   ready: boolean;
   currentTime: number;
   duration: number;
+  playbackRate: number;
+  scrubbing: boolean;
+  rateError: string | null;
   error: string | null;
 };
 
 export type VoiceNoteAudio = Pick<HTMLAudioElement,
   "duration" | "currentTime" | "paused" | "readyState" | "play" | "pause" | "load"
-> & Pick<EventTarget, "addEventListener" | "removeEventListener">;
+> & Partial<Pick<HTMLAudioElement, "playbackRate" | "defaultPlaybackRate" | "preservesPitch">>
+  & Pick<EventTarget, "addEventListener" | "removeEventListener">;
+
+export const VOICE_NOTE_PLAYBACK_RATES = [1, 1.5, 2] as const;
 
 type PlaybackFrames = {
   request: (callback: FrameRequestCallback) => number;
@@ -31,7 +37,7 @@ function durationSeconds(metadata: number, durationMs?: number | null) {
 }
 
 export function initialVoiceNotePlayback(durationMs?: number | null): VoiceNotePlaybackState {
-  return { playing: false, pending: false, ready: false, currentTime: 0, duration: durationSeconds(0, durationMs), error: null };
+  return { playing: false, pending: false, ready: false, currentTime: 0, duration: durationSeconds(0, durationMs), playbackRate: 1, scrubbing: false, rateError: null, error: null };
 }
 
 export function formatVoiceNoteTime(seconds: number) {
@@ -49,6 +55,7 @@ export function createVoiceNotePlayback(
   let disposed = false;
   let desiredPlaying = false;
   let playRequest = 0;
+  let scrub: { time: number; resume: boolean } | null = null;
   const frames = options.frames ?? (typeof requestAnimationFrame === "function" && typeof cancelAnimationFrame === "function" ? {
     request: (callback: FrameRequestCallback) => requestAnimationFrame(callback),
     cancel: (id: number) => cancelAnimationFrame(id),
@@ -84,36 +91,51 @@ export function createVoiceNotePlayback(
     return { duration, currentTime: duration > 0 ? Math.min(current, duration) : current };
   };
   const syncTime = () => update({ ...readTime(), ready: audio.readyState > 0 });
+  const readRate = () => typeof audio.playbackRate === "number" && Number.isFinite(audio.playbackRate) && audio.playbackRate > 0 ? audio.playbackRate : 1;
   const listeners: Record<string, EventListener> = {
     loadedmetadata: syncTime,
     durationchange: syncTime,
     timeupdate: syncTime,
     seeking: syncTime,
     seeked: syncTime,
+    ratechange: () => update({ playbackRate: readRate() }),
     canplay: () => { syncTime(); update({ error: null }); },
     waiting: () => { if (desiredPlaying) update({ pending: true }); },
     error: () => {
+      scrub = null;
       desiredPlaying = false;
       playRequest += 1;
       audio.pause();
-      update({ playing: false, pending: false, ready: false, error: AUDIO_LOAD_ERROR });
+      update({ playing: false, pending: false, ready: false, scrubbing: false, error: AUDIO_LOAD_ERROR });
     },
     playing: () => {
       if (!desiredPlaying) { audio.pause(); return; }
       update({ playing: true, pending: false, error: null });
     },
-    pause: () => { desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
+    pause: () => { if (!audio.paused) return; desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
     ended: () => { desiredPlaying = false; playRequest += 1; update({ ...readTime(), playing: false, pending: false }); },
   };
   // A failed child <source> emits a non-bubbling error; capture it at the audio element.
   for (const [name, listener] of Object.entries(listeners)) audio.addEventListener(name, listener, name === "error");
-  visibility?.addEventListener("visibilitychange", syncTime);
+  const syncVisibility = () => {
+    // A gesture interrupted by app switching must not leave controls disabled
+    // or resume audio later without another explicit Play action.
+    if (visibility?.hidden && scrub) {
+      scrub = null;
+      desiredPlaying = false;
+      playRequest += 1;
+      audio.pause();
+      update({ scrubbing: false, playing: false, pending: false });
+    }
+    syncTime();
+  };
+  visibility?.addEventListener("visibilitychange", syncVisibility);
   syncTime();
 
-  return {
+  const controller = {
     getState: () => state,
     async toggle() {
-      if (disposed) return;
+      if (disposed || scrub) return;
       if (state.pending || !audio.paused) {
         desiredPlaying = false;
         playRequest += 1;
@@ -153,26 +175,62 @@ export function createVoiceNotePlayback(
         return false;
       }
     },
-    reload() {
-      if (disposed) return;
+    beginScrub() {
+      if (disposed || scrub || !state.ready || state.error || state.duration <= 0) return false;
+      scrub = { time: readTime().currentTime, resume: desiredPlaying || !audio.paused };
       desiredPlaying = false;
       playRequest += 1;
       audio.pause();
-      update(initialVoiceNotePlayback(durationHint));
+      update({ ...readTime(), playing: false, pending: false, scrubbing: true });
+      return true;
+    },
+    async endScrub(cancelled = false) {
+      if (disposed || !scrub) return;
+      const previous = scrub;
+      scrub = null;
+      if (cancelled) controller.seek(previous.time);
+      update({ scrubbing: false });
+      if (previous.resume && !state.error && state.currentTime < state.duration) await controller.toggle();
+    },
+    setRate(rate: number) {
+      if (disposed || !VOICE_NOTE_PLAYBACK_RATES.some((allowed) => rate === allowed)) return false;
+      const previousDefault = audio.defaultPlaybackRate;
+      try {
+        audio.playbackRate = rate;
+        if (audio.playbackRate !== rate) throw new Error("Unsupported speed");
+        audio.defaultPlaybackRate = rate;
+        if ("preservesPitch" in audio) { try { audio.preservesPitch = true; } catch { /* Browser keeps its pitch policy. */ } }
+        update({ playbackRate: readRate(), rateError: null });
+        return true;
+      } catch {
+        try { audio.defaultPlaybackRate = previousDefault; } catch { /* Keep actual browser state. */ }
+        update({ playbackRate: readRate(), rateError: "This browser could not change playback speed. Audio still plays at the displayed speed." });
+        return false;
+      }
+    },
+    reload() {
+      if (disposed) return;
+      scrub = null;
+      desiredPlaying = false;
+      playRequest += 1;
+      audio.pause();
+      update({ ...initialVoiceNotePlayback(durationHint), playbackRate: readRate() });
       try { audio.load(); } catch { update({ error: AUDIO_LOAD_ERROR }); }
     },
     setDurationHint(durationMs?: number | null) { durationHint = durationMs; syncTime(); },
     dispose() {
       disposed = true;
+      scrub = null;
       stopFrames();
-      state = { ...state, playing: false, pending: false };
+      state = { ...state, playing: false, pending: false, scrubbing: false };
       desiredPlaying = false;
       playRequest += 1;
       for (const [name, listener] of Object.entries(listeners)) audio.removeEventListener(name, listener, name === "error");
-      visibility?.removeEventListener("visibilitychange", syncTime);
+      visibility?.removeEventListener("visibilitychange", syncVisibility);
       audio.pause();
     },
   };
+  return controller;
 }
 
 /** Restore sources after an effect replay; detach them when their scope ends. */

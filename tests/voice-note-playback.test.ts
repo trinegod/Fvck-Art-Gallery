@@ -7,6 +7,9 @@ class AudioFixture extends EventTarget {
   currentTime = 0;
   paused = true;
   readyState = 0;
+  playbackRate = 1;
+  defaultPlaybackRate = 1;
+  preservesPitch = true;
   playCalls = 0;
   pauseCalls = 0;
   loadCalls = 0;
@@ -20,6 +23,77 @@ class AudioFixture extends EventTarget {
   metadata() { this.readyState = 1; this.dispatchEvent(new Event("loadedmetadata")); }
 }
 
+test("supported speeds change the real audio without seeking or starting a paused note", async () => {
+  const audio = new AudioFixture();
+  audio.duration = 300;
+  const playback = createVoiceNotePlayback(audio);
+  audio.metadata();
+  playback.seek(125);
+  for (const speed of [1.5, 2, 1]) {
+    assert.equal(playback.setRate(speed), true);
+    assert.equal(audio.playbackRate, speed);
+    assert.equal(playback.getState().playbackRate, speed);
+    assert.equal(audio.currentTime, 125);
+    assert.equal(audio.paused, true);
+  }
+  assert.equal(audio.playCalls, 0);
+  for (const speed of [0, -1, 1.25, 4, Infinity, NaN]) assert.equal(playback.setRate(speed), false);
+  await playback.toggle();
+  playback.setRate(2);
+  assert.equal(playback.getState().playing, true);
+  assert.equal(audio.playCalls, 1);
+  playback.reload();
+  assert.equal(playback.getState().playbackRate, 2);
+  assert.equal(audio.defaultPlaybackRate, 2);
+  playback.dispose();
+  assert.equal(playback.setRate(1), false);
+});
+
+test("thumb scrubbing pauses a playing note, follows the selected timestamp and resumes on release", async () => {
+  const audio = new AudioFixture();
+  audio.duration = 300;
+  const playback = createVoiceNotePlayback(audio);
+  audio.metadata();
+  await playback.toggle();
+  playback.setRate(1.5);
+  assert.equal(playback.beginScrub(), true);
+  assert.equal(audio.paused, true);
+  assert.equal(playback.getState().scrubbing, true);
+  playback.seek(241.5);
+  assert.equal(playback.getState().currentTime, 241.5);
+  await playback.endScrub();
+  assert.equal(playback.getState().scrubbing, false);
+  assert.equal(audio.paused, false);
+  assert.equal(audio.playbackRate, 1.5);
+  await playback.toggle();
+  assert.equal(playback.beginScrub(), true);
+  playback.seek(42);
+  await playback.endScrub();
+  assert.equal(audio.paused, true, "scrubbing a paused note must not start audio");
+  assert.equal(audio.currentTime, 42);
+  playback.dispose();
+});
+
+test("cancelled and disposed drags never restart or leave a stale seek behind", async () => {
+  const audio = new AudioFixture();
+  const playback = createVoiceNotePlayback(audio);
+  assert.equal(playback.beginScrub(), false);
+  audio.metadata();
+  playback.seek(3);
+  await playback.toggle();
+  playback.beginScrub();
+  playback.seek(9);
+  await playback.endScrub(true);
+  assert.equal(audio.currentTime, 3);
+  assert.equal(audio.paused, false);
+  playback.beginScrub();
+  playback.dispose();
+  const plays = audio.playCalls;
+  await playback.endScrub();
+  assert.equal(audio.playCalls, plays);
+  assert.equal(audio.paused, true);
+});
+
 class FrameFixture {
   next = 0;
   callbacks = new Map<number, FrameRequestCallback>();
@@ -27,6 +101,44 @@ class FrameFixture {
   cancel = (id: number) => { this.callbacks.delete(id); };
   tick() { const pending = [...this.callbacks.values()]; this.callbacks.clear(); for (const callback of pending) callback(0); }
 }
+
+test("app switching during a scrub releases the gesture without late automatic playback", async () => {
+  const audio = new AudioFixture();
+  const visibility = Object.assign(new EventTarget(), { hidden: false });
+  const playback = createVoiceNotePlayback(audio, { visibility });
+  audio.metadata();
+  await playback.toggle();
+  playback.beginScrub();
+  playback.seek(7);
+  visibility.hidden = true;
+  visibility.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(playback.getState().scrubbing, false);
+  assert.equal(audio.currentTime, 7);
+  visibility.hidden = false;
+  visibility.dispatchEvent(new Event("visibilitychange"));
+  await playback.endScrub();
+  assert.equal(audio.paused, true);
+  assert.equal(audio.playCalls, 1);
+  playback.dispose();
+});
+
+test("unsupported native speed changes stay nonfatal and report the actual rate", async () => {
+  for (const rejected of ["throw", "ignore"]) {
+    const audio = new AudioFixture();
+    Object.defineProperty(audio, "playbackRate", {get: () => 1, set: () => {
+      if (rejected === "throw") throw new DOMException("Unavailable", "NotSupportedError");
+    }});
+    const playback = createVoiceNotePlayback(audio);
+    audio.metadata();
+    assert.equal(playback.setRate(2), false);
+    assert.equal(playback.getState().playbackRate, 1);
+    assert.match(playback.getState().rateError!, /could not change/);
+    assert.equal(playback.getState().error, null);
+    await playback.toggle();
+    assert.equal(audio.paused, false);
+    playback.dispose();
+  }
+});
 
 test("the playback cursor follows actual audio between sparse timeupdate events", async () => {
   const audio = new AudioFixture();

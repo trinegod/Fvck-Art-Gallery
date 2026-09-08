@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { connectVoiceNotePlayback, formatVoiceNoteTime, initialVoiceNotePlayback } from "@/lib/voice-note-playback";
+import { connectVoiceNotePlayback, formatVoiceNoteTime, initialVoiceNotePlayback, VOICE_NOTE_PLAYBACK_RATES } from "@/lib/voice-note-playback";
 import { canAutoLoadVoiceNoteWaveform, loadVoiceNoteWaveform, voiceNotePlaybackDurationHint, type VoiceNoteWaveform } from "@/lib/voice-note-waveform";
 
 type VoiceNotePlayerProps = {
@@ -33,6 +33,7 @@ function VoiceNotePlayerSession({
   const requestWaveformRef = useRef<(() => void) | null>(null);
   const explicitlyPlayed = useRef(false);
   const initialDurationHint = useRef(durationMs);
+  const scrubPointer = useRef<number | null>(null);
   const [playback, setPlayback] = useState(() => initialVoiceNotePlayback(durationMs));
   const [waveform, setWaveform] = useState<VoiceNoteWaveform | null>(null);
   const [waveformUnavailable, setWaveformUnavailable] = useState(false);
@@ -97,6 +98,11 @@ function VoiceNotePlayerSession({
   const progress = playback.duration > 0 ? Math.min(100, playback.currentTime / playback.duration * 100) : 0;
   const canSeek = playback.ready && playback.duration > 0 && !playback.error;
   const playLabel = playback.pending ? `Cancel playback of ${label}` : `${playback.playing ? "Pause" : "Play"} ${label}`;
+  const nextRate = VOICE_NOTE_PLAYBACK_RATES[(VOICE_NOTE_PLAYBACK_RATES.findIndex((rate) => rate === playback.playbackRate) + 1) % VOICE_NOTE_PLAYBACK_RATES.length];
+  const finishScrub = (cancelled = false) => {
+    scrubPointer.current = null;
+    void playerRef.current?.endScrub(cancelled);
+  };
 
   return (
     <div
@@ -108,16 +114,17 @@ function VoiceNotePlayerSession({
         backgroundColor: outgoing ? "var(--chat-bubble, #8de6ed)" : "#252d3a",
         color: outgoing ? "var(--chat-ink, #0b2025)" : "#f2f3f8",
       }}
-      className={cn("w-full min-w-0 max-w-sm rounded-2xl border border-current/10 px-2 py-1 text-left", outgoing ? "rounded-br-md" : "rounded-bl-md", className)}
+      className={cn("nodeine-voice-player w-full min-w-0 max-w-sm rounded-2xl border border-current/10 px-2 py-1 text-left", outgoing ? "rounded-br-md" : "rounded-bl-md", className)}
     >
       <audio ref={audioRef} preload="metadata" hidden>
         <source src={src} type={mimeType ?? undefined} />
       </audio>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="nodeine-voice-controls">
         <button
           type="button"
           aria-label={playLabel}
           aria-busy={playback.pending || undefined}
+          disabled={playback.scrubbing}
           title={playLabel}
           onClick={() => {
             explicitlyPlayed.current = true;
@@ -128,9 +135,9 @@ function VoiceNotePlayerSession({
         >
           {playback.pending ? <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : playback.playing ? <Pause className="size-5" fill="currentColor" aria-hidden="true" /> : <Play className="size-5" fill="currentColor" aria-hidden="true" />}
         </button>
-        <div className="relative h-11 min-w-0 flex-1 rounded-md focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-current">
+        <div className="nodeine-voice-seek relative h-[44px] min-w-0 rounded-md focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-current">
           {waveform ? (
-            <div className="pointer-events-none absolute inset-x-1 top-1/2 h-6 -translate-y-1/2" data-voice-visual="waveform" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-[10px] top-1/2 h-[24px] -translate-y-1/2" data-voice-visual="waveform" aria-hidden="true">
               <svg viewBox={`0 0 ${waveform.bars.length * 4} 24`} preserveAspectRatio="none" className="h-full w-full overflow-visible" fill="currentColor">
                 <path d={`M0 12H${waveform.bars.length * 4}`} stroke="currentColor" strokeWidth="0.5" opacity="0.35" />
                 {waveform.bars.map((amplitude, index) => {
@@ -138,23 +145,22 @@ function VoiceNotePlayerSession({
                   return <rect key={index} x={index * 4 + 1} y={(24 - height) / 2} width={2} height={height} rx={1} opacity={progress > index / waveform.bars.length * 100 ? 1 : 0.4} />;
                 })}
               </svg>
-              <span className="absolute inset-y-0 w-px bg-current" style={{ left: `${progress}%` }} />
             </div>
           ) : (
-            <div className="pointer-events-none absolute inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full" data-voice-visual="progress" aria-hidden="true">
+            <div className="pointer-events-none absolute inset-x-[10px] top-1/2 h-1 -translate-y-1/2 rounded-full" data-voice-visual="progress" aria-hidden="true">
               <span className="absolute inset-0 rounded-full bg-current opacity-25" />
               <span className="absolute inset-y-0 left-0 rounded-full bg-current" style={{ width: `${progress}%` }} />
-              <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" style={{ left: `${progress}%` }} />
             </div>
           )}
           <span className="sr-only" id={waveformDescriptionId}>
             {waveform ? "Waveform measured from this audio recording." : waveformUnavailable ? "Playback progress. Waveform unavailable for this audio." : "Playback progress. Audio waveform not loaded."}
+            {" Drag the handle or tap the waveform to seek. Arrow keys adjust one second; Home and End jump to either end."}
           </span>
           <input
             type="range"
             min={0}
             max={playback.duration || 1}
-            step={0.1}
+            step="any"
             value={playback.duration > 0 ? playback.currentTime : 0}
             disabled={!canSeek}
             aria-label={`Seek ${label}`}
@@ -162,13 +168,44 @@ function VoiceNotePlayerSession({
             aria-valuetext={`${current} elapsed${playback.duration > 0 ? ` of ${duration}` : "; duration not available yet"}`}
             title={playback.duration > 0 ? `Duration ${duration}` : "Duration not available yet"}
             onChange={(event) => playerRef.current?.seek(event.currentTarget.valueAsNumber)}
-            className="absolute inset-0 m-0 h-full w-full min-w-0 cursor-pointer opacity-0 disabled:cursor-default"
+            onPointerDown={(event) => {
+              if (!event.isPrimary || event.button !== 0 || !playerRef.current?.beginScrub()) return;
+              scrubPointer.current = event.pointerId;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerUp={(event) => { if (scrubPointer.current === event.pointerId) finishScrub(); }}
+            onPointerCancel={(event) => { if (scrubPointer.current === event.pointerId) finishScrub(true); }}
+            onLostPointerCapture={(event) => { if (scrubPointer.current === event.pointerId) finishScrub(); }}
+            onBlur={() => { if (scrubPointer.current !== null) finishScrub(true); }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && scrubPointer.current !== null) { event.preventDefault(); finishScrub(true); return; }
+              const deltas: Record<string, number> = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 };
+              const next = event.key === "Home" ? 0 : event.key === "End" ? playback.duration : event.key in deltas ? playback.currentTime + deltas[event.key] : null;
+              if (next !== null) { event.preventDefault(); playerRef.current?.seek(next); }
+            }}
+            className="nodeine-voice-range absolute inset-0 m-0 h-full w-full min-w-0 disabled:cursor-default"
           />
+          {playback.scrubbing && <span
+            className="pointer-events-none absolute bottom-full left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-current/20 px-2 py-1 font-mono text-xs tabular-nums"
+            style={{ backgroundColor: outgoing ? "var(--chat-bubble, #8de6ed)" : "#252d3a" }}
+            aria-hidden="true"
+          >{current} / {duration}</span>}
         </div>
-        <span data-voice-time className="pointer-events-none flex min-h-11 min-w-[4ch] shrink-0 items-center justify-end pr-1 font-mono text-xs tabular-nums" aria-hidden="true">
+        <span data-voice-time className="nodeine-voice-time pointer-events-none flex min-h-[44px] min-w-[4ch] shrink-0 items-center justify-end font-mono text-xs tabular-nums" aria-hidden="true">
           {playback.currentTime > 0 ? current : duration}
         </span>
+        <button
+          type="button"
+          className="nodeine-voice-speed grid size-[44px] place-items-center rounded-full font-mono text-xs font-semibold tabular-nums hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+          aria-label={`Playback speed ${playback.playbackRate}×. Change to ${nextRate}×`}
+          title={`Playback speed: ${playback.playbackRate}×. Click for ${nextRate}×`}
+          disabled={playback.scrubbing}
+          onClick={() => playerRef.current?.setRate(nextRate)}
+        >
+          <span className="rounded-full border border-current/25 px-1 py-0.5">{playback.playbackRate}×</span>
+        </button>
       </div>
+      {playback.rateError && <p className="px-1 pb-1 text-xs leading-5" role="status">{playback.rateError}</p>}
       {playback.error && (
         <div className="space-y-1 px-1 pb-1" role="alert">
           <p className="break-words text-xs leading-5">{playback.error}</p>

@@ -2,8 +2,6 @@
 
 import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Bell,
-  BellOff,
   Camera,
   Crown,
   Flag,
@@ -30,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope } from "@/lib/activity-session";
 import ConversationAvatar from "./conversation-avatar";
+import ConversationMuteControl from "./conversation-mute-control";
 import type {
   ConversationInviteRow,
   ConversationRole,
@@ -125,7 +124,6 @@ function GroupSettingsSession({
   const viewerRole = viewerMembership?.role ?? "member";
   const canManage = viewerRole === "owner" || viewerRole === "admin";
   const canChangeRoles = viewerRole === "owner";
-  const muted = Boolean(viewerMembership?.muted_until);
 
   const pendingProfileIds = useMemo(
     () => new Set(invites.map((invite) => invite.invited_profile_id)),
@@ -419,29 +417,16 @@ function GroupSettingsSession({
     toast.success("Member removed");
   }
 
-  async function toggleMute() {
-    const client = supabase;
-    if (!client || !conversation || busyKey) return;
+  function muteChanged(mutedUntil: string | null) {
     const isCurrent = requestScope.current.capture(viewerId);
     if (!isCurrent()) return;
-    setBusyKey("mute");
-    const { error } = await client.rpc("set_conversation_mute", {
-      target_conversation_id: conversation.id,
-      new_muted_until: muted ? null : "2999-12-31T23:59:59.000Z",
+    setMemberships(current => current.map(member => member.profile_id === viewerId
+      ? { ...member, muted_until: mutedUntil } : member));
+    void onConversationChanged().catch(() => {
+      if (isCurrent()) toast.error("Notifications saved, but the inbox couldn't refresh", {
+        description: "Reopen the inbox to refresh its settings.",
+      });
     });
-    if (!isCurrent()) return;
-    setBusyKey(null);
-
-    if (error) {
-      toast.error("Mute setting wasn't changed", { description: error.message });
-      return;
-    }
-
-    await loadGroupData();
-    if (!isCurrent()) return;
-    await onConversationChanged();
-    if (!isCurrent()) return;
-    toast.success(muted ? "Notifications unmuted" : "Group notifications muted");
   }
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
@@ -793,22 +778,16 @@ function GroupSettingsSession({
 
             <section className="px-5 py-5 sm:px-6">
               <h3 className="text-sm font-medium text-white">Your controls</h3>
+              <div className="mt-3">
+                <ConversationMuteControl
+                  viewerId={viewerId}
+                  conversationId={conversation.id}
+                  mutedUntil={viewerMembership?.muted_until ?? null}
+                  onMuteChanged={muteChanged}
+                  disabled={Boolean(busyKey) || !viewerMembership}
+                />
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  disabled={Boolean(busyKey)}
-                  className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 px-3 text-xs text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200"
-                >
-                  {busyKey === "mute" ? (
-                    <LoaderCircle className="size-4 animate-spin" />
-                  ) : muted ? (
-                    <Bell className="size-4" />
-                  ) : (
-                    <BellOff className="size-4" />
-                  )}
-                  {muted ? "Unmute notifications" : "Mute notifications"}
-                </button>
                 <button
                   type="button"
                   onClick={leaveGroup}

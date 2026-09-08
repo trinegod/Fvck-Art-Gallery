@@ -226,6 +226,56 @@
   grid-template-columns: repeat(28, minmax(0, 1fr));
   column-gap: min(2px, 2%);
 }
+.nodeine-voice-player {
+  container-type: inline-size;
+}
+.nodeine-voice-controls {
+  display: grid;
+  grid-template-columns: 44px minmax(44px, 1fr) auto 44px;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nodeine-voice-range {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: inherit;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.nodeine-voice-range:active { cursor: grabbing; }
+.nodeine-voice-range:disabled { opacity: 0.4; }
+.nodeine-voice-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: transparent;
+}
+.nodeine-voice-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 12%);
+}
+.nodeine-voice-range::-moz-range-track { height: 2px; background: transparent; }
+.nodeine-voice-range::-moz-range-progress { background: transparent; }
+.nodeine-voice-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 12%);
+}
+@container (width < 12rem) {
+  .nodeine-voice-controls { grid-template-columns: 44px minmax(44px, 1fr) 44px; }
+  .nodeine-voice-seek { grid-column: 2 / -1; }
+  .nodeine-voice-time { grid-column: 2; grid-row: 2; justify-self: start; }
+  .nodeine-voice-speed { grid-column: 3; grid-row: 2; }
+}
 @container (width < 18rem) {
   .nodeine-chat-composer-row {
     grid-template-columns: 44px 44px minmax(44px, 1fr);

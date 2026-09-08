@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import {
   ArrowLeft,
+  BellOff,
   BookmarkPlus,
   Check,
   ImagePlus,
@@ -44,9 +45,11 @@ import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistC
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
 import { isMessageViewportNearBottom, scrollMessageViewportToEnd, syncMessageViewport } from "@/lib/message-viewport";
+import { createReadAcknowledgement, getMessageReadReceipt, newestDisplayedMessage, newestReceiptMessage, observeLatestMessageVisibility } from "@/lib/message-read-receipts";
 import { getMessagesShellMode } from "@/lib/messages-shell";
 import { persistMessageAttachment } from "@/lib/message-attachment";
 import { CHAT_PALETTES } from "@/lib/chat-appearance";
+import { isConversationMuted } from "@/lib/conversation-mute";
 import { VOICE_NOTE_BUCKET } from "@/lib/voice-note-upload";
 import { deliverVoiceNote } from "@/lib/voice-note-delivery";
 import WorldLoadingScreen from "../components/world-loading-screen";
@@ -61,6 +64,7 @@ import ChatArtworkCard from "./chat-artwork-card";
 import ConversationAvatar from "./conversation-avatar";
 import GroupSettingsDialog from "./group-settings-dialog";
 import ChatAppearanceDialog from "./chat-appearance-dialog";
+import ConversationMuteControl from "./conversation-mute-control";
 import { useChatAppearance } from "./use-chat-appearance";
 import type {
   ConversationRow,
@@ -191,6 +195,9 @@ export default function MessagesView({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loadOlderRef = useRef<(() => Promise<void>) | null>(null);
   const messagesScrollerRef = useRef<HTMLDivElement | null>(null);
+  const latestMessageContentRef = useRef<HTMLDivElement | null>(null);
+  const readAcknowledgementRef = useRef<ReturnType<typeof createReadAcknowledgement> | null>(null);
+  const [readStatusError, setReadStatusError] = useState<string | null>(null);
   const historyAnchor = useRef<{height: number; top: number} | null>(null);
   const lastHandledMessage = useRef<string | null>(null);
   const followingMessages = useRef(true);
@@ -212,6 +219,7 @@ export default function MessagesView({
   const activeConversation = inbox.find(
     (conversation) => conversation.id === activeConversationId
   );
+  const viewerMembership = activeConversation?.members.find(member => member.profile_id === viewerId);
   const shellMode = getMessagesShellMode({
     authReady,
     loadState,
@@ -233,9 +241,13 @@ export default function MessagesView({
     ? controlsCutoff : membershipCutoff;
   // A delayed send/edit response may carry an older row after a clear. Apply
   // the latest server watermark at the display boundary as well as in queries.
-  const messages = activeClearedBefore
-    ? messageHistory.filter(message => compareMessageTimestamps(message.created_at, activeClearedBefore) > 0)
-    : messageHistory;
+  const messages = messageHistory.filter(message => message.conversation_id === activeConversationId &&
+    (!activeClearedBefore || compareMessageTimestamps(message.created_at, activeClearedBefore) > 0));
+  const latestReadableMessage = newestDisplayedMessage(messages, activeConversationId);
+  const readReceipt = getMessageReadReceipt(
+    newestReceiptMessage(messages, activeConversationId, viewerId),
+    activeConversation?.members ?? [], viewerId, activeConversation?.kind ?? "direct",
+  );
   const { appearance, temporary, updateAppearance } = useChatAppearance(viewerId, activeConversationId);
   const themeArtworks = Array.from(sharedArtworks.values()).filter(artwork =>
     artwork.media_type === "image" && messages.some(message =>
@@ -522,9 +534,7 @@ export default function MessagesView({
             (!clearedBefore || compareMessageTimestamps(message.created_at, clearedBefore) > 0)
         );
         const latestMessage = conversationMessages[0];
-        const lastReadAt = viewerMembership?.last_read_at
-          ? new Date(viewerMembership.last_read_at).getTime()
-          : 0;
+        const lastReadAt = viewerMembership?.last_read_at ?? null;
         const otherMember = conversationMembers.find(
           (membership) => membership.profile_id !== userId
         );
@@ -544,7 +554,7 @@ export default function MessagesView({
           unreadCount: conversationMessages.filter(
             (message) =>
               message.sender_id !== userId &&
-              new Date(message.created_at).getTime() > lastReadAt
+              (!lastReadAt || compareMessageTimestamps(message.created_at, lastReadAt) > 0)
           ).length,
         };
       })
@@ -745,8 +755,6 @@ export default function MessagesView({
     const isCurrent = () => !cancelled && isAccountCurrent() && conversationVersion.current === version;
     let nextCursor: MessageCursor | null = null;
     let pagePending = false;
-    let initialPageReady = false;
-    let received: MessageRow[] = [];
     let clearedBefore = activeClearedBefore;
     const controlsRequest = getMessageControls(database, currentConversationId).then(controls => {
       if (!isCurrent()) return controls;
@@ -760,17 +768,6 @@ export default function MessagesView({
     lastHandledMessage.current = null;
     followingMessages.current = true;
     unseenMessageCount.current = 0;
-
-    async function markRetrievedRead(through: string | null) {
-      try {
-        if (!await persistConversationRead(database, currentViewerId, currentConversationId, through, isCurrent)) return;
-        // A message can arrive after our SELECT. Reload counts from its stored
-        // timestamp rather than clearing every unread message optimistically.
-        if (isCurrent()) await loadInbox(currentViewerId);
-      } catch {
-        if (isCurrent()) setError("Messages loaded, but the read status could not be saved. Reopen the conversation to retry.");
-      }
-    }
 
     async function loadPage(before: MessageCursor | null) {
       if (!isCurrent() || pagePending) return;
@@ -792,16 +789,11 @@ export default function MessagesView({
             top: messagesScrollerRef.current.scrollTop,
           };
         }
-        received = mergeMessageHistory(received, messageRows);
         setMessages(current => mergeMessageHistory(current, messageRows));
         nextCursor = page.olderCursor;
         setOlderCursor(nextCursor);
         if (!before) {
-          initialPageReady = true;
           setConversationLoading(false);
-          // The newest retrieved row (including buffered realtime inserts) is
-          // the watermark; never browser time or an unseen future message.
-          await markRetrievedRead(received.at(-1)?.created_at ?? null);
         }
       } catch {
         if (isCurrent()) setError(before ? "Older messages could not be loaded. Please try again." : "Messages could not be loaded. Reopen the conversation to retry.");
@@ -848,9 +840,7 @@ export default function MessagesView({
           if (!incoming || !isCurrent()) return;
           await loadSharedArtworkState([incoming], currentViewerId, isCurrent);
           if (!isCurrent()) return;
-          received = mergeMessageHistory(received, [incoming]);
           setMessages(current => mergeMessageHistory(current, [incoming]));
-          if (initialPageReady && payload.eventType === "INSERT") await markRetrievedRead(incoming.created_at);
         }
       )
       .subscribe();
@@ -863,7 +853,6 @@ export default function MessagesView({
   }, [
     activeConversationId,
     hydrateMessages,
-    loadInbox,
     loadSharedArtworkState,
     viewerId,
     activeClearedBefore,
@@ -888,6 +877,44 @@ export default function MessagesView({
       setNewMessageCount(result.unseenCount);
     }
   }, [messages, conversationLoading, viewerId]);
+
+  useEffect(() => {
+    const database = supabase;
+    if (!database || !viewerId || !activeConversationId || !currentVoiceKey) return;
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const version = conversationVersion.current;
+    const isCurrent = () => isAccountCurrent() && conversationVersion.current === version;
+    const acknowledgement = createReadAcknowledgement({
+      isCurrent,
+      persist: (through, current) => persistConversationRead(database, viewerId, activeConversationId, through, current),
+      onSaved: () => {
+        setReadStatusError(null);
+        // Reload bounded counts from SQL; messages arriving after the displayed
+        // row remain unread. A Seen receipt never asserts audio was listened to.
+        void loadInbox(viewerId);
+      },
+      onError: () => setReadStatusError(currentVoiceKey),
+    });
+    readAcknowledgementRef.current = acknowledgement;
+    return () => {
+      acknowledgement.dispose();
+      if (readAcknowledgementRef.current === acknowledgement) readAcknowledgementRef.current = null;
+    };
+  }, [viewerId, activeConversationId, currentVoiceKey, loadInbox]);
+
+  useEffect(() => {
+    const scroller = messagesScrollerRef.current;
+    const content = latestMessageContentRef.current;
+    const acknowledgement = readAcknowledgementRef.current;
+    if (!focusedConversation || conversationLoading || !latestReadableMessage || !scroller || !content || !acknowledgement) return;
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const version = conversationVersion.current;
+    return observeLatestMessageVisibility({
+      scroller, content,
+      isCurrent: () => isAccountCurrent() && conversationVersion.current === version,
+      onVisible: () => { void acknowledgement.acknowledge(latestReadableMessage.created_at); },
+    });
+  }, [latestReadableMessage, conversationLoading, focusedConversation, viewerId, activeConversationId]);
 
   function trackMessageScroll() {
     const scroller = messagesScrollerRef.current;
@@ -1706,6 +1733,9 @@ export default function MessagesView({
                           <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
                             {conversation.preview}
                           </span>
+                          {isConversationMuted(conversation.members.find(member => member.profile_id === viewerId)?.muted_until) && (
+                            <span className="shrink-0 text-zinc-400" title="Notifications muted for you"><BellOff className="size-3.5" aria-hidden="true" /><span className="sr-only">Notifications muted for you</span></span>
+                          )}
                           {conversation.unreadCount > 0 && (
                             <span className="grid min-w-5 place-items-center rounded-full bg-cyan-300 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-950">
                               {conversation.unreadCount > 99
@@ -1873,6 +1903,7 @@ export default function MessagesView({
                                   {sender?.display_name ?? "NODEINE creator"}
                                 </p>
                               )}
+                              <div ref={message.id === latestReadableMessage?.id ? latestMessageContentRef : null} data-message-content={message.id}>
                               {message.removed_at ? (
                                 <p className="rounded-2xl bg-[#252d3a] px-4 py-3 text-left text-sm italic text-zinc-300">Message removed</p>
                               ) : message.message_type === "artwork" && artwork ? (
@@ -1945,12 +1976,19 @@ export default function MessagesView({
                                   </p>
                                 </div>
                               )}
-                              <div className={`mt-1 flex items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+                              </div>
+                              <div className={`mt-1 flex flex-wrap items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                                 <time className="inline-block rounded-md bg-[#202632] px-2 py-1 text-[10px] text-[#c7cfde]">
                                   {formatMessageTime(message.created_at)}{message.edited_at && !message.removed_at ? " · edited" : ""}
                                 </time>
                                 {mine && !message.removed_at && <MessageActionsDialog key={`${currentVoiceKey}:${message.id}`} message={message} enabled={Boolean(controlsEnabled)} onEdit={body => changeOwnMessage(message, body)} onRemove={() => changeOwnMessage(message)} />}
                               </div>
+                              {readReceipt?.messageId === message.id && (
+                                <p data-message-receipt={message.id} className="mt-1 ml-auto w-fit max-w-full break-words rounded-md bg-[#202632] px-2 py-1 text-right text-[11px] leading-4 text-[#c7cfde]">
+                                  {readReceipt.label}
+                                  <span className="sr-only">. Seen means displayed in a foreground chat, not proof of reading or listening.</span>
+                                </p>
+                              )}
                             </div>
                           </article>
                         );
@@ -2063,6 +2101,11 @@ export default function MessagesView({
                       {error}
                     </p>
                   )}
+                  {readStatusError === currentVoiceKey && currentVoiceKey && (
+                    <p className="mt-2 text-xs leading-5 text-rose-300" role="status">
+                      Read status could not be saved. Return to the latest message or refocus this chat to retry.
+                    </p>
+                  )}
                 </form>
               </>
             ) : (
@@ -2098,6 +2141,22 @@ export default function MessagesView({
             <DialogTitle>Conversation options</DialogTitle>
             <DialogDescription>Keep your archive and conversation organized.</DialogDescription>
           </DialogHeader>
+          {viewerId && activeConversation && viewerMembership && <ConversationMuteControl
+            viewerId={viewerId}
+            conversationId={activeConversation.id}
+            mutedUntil={viewerMembership.muted_until}
+            disabled={clearingConversation}
+            onMuteChanged={mutedUntil => {
+              // Invalidate an older inbox read before committing the confirmed
+              // personal setting; an unrelated in-flight read must not undo it.
+              accountScope.current.latest("inbox", viewerId);
+              setInbox(current => current.map(conversation => conversation.id === activeConversation.id ? {
+                ...conversation,
+                members: conversation.members.map(member => member.profile_id === viewerId ? { ...member, muted_until: mutedUntil } : member),
+              } : conversation));
+              void loadInbox(viewerId);
+            }}
+          />}
           {messages.some(message => message.artwork_id) && <Button type="button" variant="outline" className="min-h-11 justify-start" disabled={savingArtworkId === "all"} onClick={() => void saveAllSharedArtwork()}><BookmarkPlus className="size-4" />Save all shared artwork</Button>}
           {activeConversation?.kind === "group" && <Button type="button" variant="outline" className="min-h-11 justify-start" onClick={() => {setConversationOptionsKey(null); setGroupSettingsOpen(true);}}><Settings className="size-4" />Group settings</Button>}
           <div className="space-y-3 border-t border-white/10 pt-4">

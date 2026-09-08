@@ -2,6 +2,8 @@
 
 Group chat already exists; this update does not introduce a second implementation or a new database schema.
 
+The latest follow-up exposes **Mute notifications** directly in Conversation options for direct and group chats, with a confirmed personal setting, safe retry and an unmute action. Group settings reuse that control. Muted chats still receive messages and show unread counts. The latest outgoing message shows a compact Seen count for eligible current members; opening a hidden tab or loading offscreen messages no longer acknowledges them. [Verification and remaining multi-account checks](audits/2026-09-07-seeking-seen-mute.md).
+
 ## Existing path
 
 The inline-voice review adds a visible **New group** shortcut in the inbox, opening this same creation flow directly. The existing **+ → Group chat** path remains available. No group schema or membership rule changes in this revision.

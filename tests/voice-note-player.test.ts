@@ -53,3 +53,17 @@ test("the real player renders themed custom controls without native audio contro
   assert.match(incoming, /background-color:#252d3a;color:#f2f3f8/);
   assert.match(incoming, /aria-label="Play Voice preview"/);
 });
+
+test("seeking is visibly grabbable and speed controls remain labeled in a five-minute bubble", () => {
+  const html = renderToStaticMarkup(createElement(Player, {src: "blob:long", durationMs: 300000}));
+  assert.match(html, /5:00/);
+  assert.match(html, /aria-label="Playback speed 1×\. Change to 1.5×"/);
+  assert.match(html, /Drag the handle or tap the waveform to seek/);
+  assert.match(html, /step="any"/);
+  assert.doesNotMatch(html, /<input[^>]*opacity-0/);
+  const css = readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8");
+  assert.match(css, /nodeine-voice-range::-webkit-slider-thumb/);
+  assert.match(css, /nodeine-voice-range::-moz-range-thumb/);
+  assert.match(css, /touch-action: pan-y/);
+  assert.match(css, /@container/);
+});

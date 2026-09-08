@@ -19,6 +19,7 @@ function loadModule(modulePath: string): Record<string, unknown> {
   const compiled = ts.transpileModule(readFileSync(exact, "utf8"), { compilerOptions }).outputText;
   const loadedModule = { exports: {} as Record<string, unknown> };
   const localRequire = (specifier: string): unknown => {
+    if (specifier === "@/lib/supabase-browser") return { supabase: null };
     if (specifier.startsWith("@/")) return loadModule(resolve(process.cwd(), specifier.slice(2)));
     if (specifier.startsWith(".")) return loadModule(resolve(dirname(exact), specifier));
     return requireFromTest(specifier);
@@ -50,11 +51,11 @@ function renderSettings(overrides: Record<string, unknown> = {}) {
     memberships: [{ profile_id: "viewer", role: "owner" }, { profile_id: "other", role: "member" }],
     profileById: new Map([["other", { display_name: "A long member name", username: "member" }]]),
     invites: [{ id: "invite", invited_profile_id: "invited" }], busyKey: null,
-    inviteSearch: "", inviteCandidates: [], muted: false, reporting: false,
+    inviteSearch: "", inviteCandidates: [], viewerMembership: { muted_until: null }, reporting: false,
     reportTarget: "", reportReason: "spam", reportDetails: "",
     saveDetails: noop, setTitle: noop, setAvatarFile: noop, setRemoveAvatar: noop, setAvatarUrl: noop,
     changeRole: noop, removeMember: noop, cancelInvite: noop, setInviteSearch: noop, inviteProfile: noop,
-    toggleMute: noop, leaveGroup: noop, submitReport: noop, setReportTarget: noop, setReportReason: noop, setReportDetails: noop,
+    muteChanged: noop, leaveGroup: noop, submitReport: noop, setReportTarget: noop, setReportReason: noop, setReportDetails: noop,
     ...overrides,
   };
   const div = ({ children, className }: { children?: ReactNode; className?: string }) => createElement("div", { className }, children);
@@ -155,7 +156,7 @@ test("current group data loads normally and a failed refresh exposes a recoverab
 });
 
 test("late group mutations cannot change the new dialog or navigate away from a new conversation", async () => {
-  for (const name of ["inviteProfile", "cancelInvite", "changeRole", "removeMember", "toggleMute", "submitReport", "leaveGroup", "saveDetails"]) {
+  for (const name of ["inviteProfile", "cancelInvite", "changeRole", "removeMember", "submitReport", "leaveGroup", "saveDetails"]) {
     const scope = createAccountScope();
     scope.setAccount("viewer");
     const response = deferred<{ error: null }>();
@@ -229,6 +230,13 @@ test("only the newest group refresh applies even when both requests complete", a
   harness.response.resolve({ data: [{ id: "current-member" }], error: null });
   await Promise.all([first, second]);
   assert.equal(harness.writes.filter((value) => Array.isArray(value) && value[0] === "members").length, 1);
+});
+
+test("group settings explain that mute is personal and allow muting an expired value", () => {
+  const html = renderSettings({ viewerMembership: { muted_until: "2000-01-01T00:00:00Z" } });
+  assert.match(html, />Mute notifications</);
+  assert.match(html, /your account/);
+  assert.match(html, /Messages and unread counts still appear/);
 });
 
 test("a current successful leave still closes settings and returns to the inbox", async () => {
