@@ -6,7 +6,15 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
-## September 8, 2026 — clearer groups, receiver verification and mentions
+## September 8, 2026 — group About, avatar framing and snug text
+
+- **Group details → About this group** gives members a shared description. Owners/admins can edit up to 500 characters; conflicting edits require reviewing the latest saved version.
+- Group avatars and **Creator Studio → Profile → Profile picture** reuse one local crop editor: circular preview, drag/position/zoom, Cancel and Use avatar. Confirming prepares a preview; an explicit Save applies it. Each member edits their own profile, not somebody else's.
+- Still JPEG/PNG/WebP inputs are bounded before decoding (8 MiB, 24 MP, 8192px/side) and re-encoded as a metadata-free 512px JPEG up to 2 MiB. Existing images are not overwritten while saving a replacement. Old stored versions remain pending a separately reviewed cleanup workflow.
+- Short text such as “Hi” fits its contents without inheriting timestamp/action width. Voice and artwork cards retain their usable control widths and message actions retain full tap targets.
+- See the [avatar and group-details audit](docs/audits/2026-09-08-group-details-and-avatar-framing.md) for regression checks, live database evidence and remaining physical-device checks. Publishing and backup evidence is tracked in the [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
+
+## Previous checkpoint — clearer groups, receiver verification and mentions
 
 - Group headers distinguish **members** from **pending invitations** and open group details directly. Invitations arrive automatically; recipients choose **Join group** or **Decline**, with existing-history access explained before joining. The reported one-member group contained two pending invitations, not missing members.
 - Verified both perspectives using the designated **Princess Sakura (Test)** account: accepted the real invitation, opened the founder's direct reply and observed **Seen**, then sent, edited, removed one labeled test message and cleared only the test account's view. The other invitee remains pending.

@@ -81,6 +81,10 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 
 ## Group receiver clarity and mentions
 
+- Reuse `AvatarCropEditor` for group and personal profile images. Begin from a centered crop; expose a real circular preview, drag and labeled native position/zoom sliders. The preview stays local until **Use avatar**, and that action still requires the parent's explicit Save before upload. Cancel must preserve the prior selection and return keyboard focus. Keep 44px minimum targets, auto-growing buttons, narrow-screen reflow, and no decorative motion.
+- Keep group About with group identity, not a new global destination. Explain shared visibility and owner/admin editing beside the field. Save against the exact loaded version, preserve conflicting drafts and require reviewing newer content; never silently overwrite another editor. Background refresh must not destroy an unfinished crop.
+- Fit text and removed-message bubbles to their own contents, independently of timestamps and action rows. Preserve the existing 16px inner padding, readable maximum width and wrapping; do not shrink voice/media cards or their hit regions to mimic short text.
+
 - Give the compact group header one labeled 44px details target containing the name and truthful member/invitation status. Never treat pending invitations as memberships or failed reads as zero. Keep privileged invite details restricted to the appropriate role.
 - Explain prior-history access beside Join. Keep Join/Decline visible and distinct, preserve errors/retry, and wait for the saved response before reporting success or navigating. Do not use extra confirmation screens for a safe invitation response.
 - Keep mention suggestions contextual and out of normal flow, capped to the available viewport. Use real current-member names and ordinary keyboard-accessible 44px buttons; never add a permanent second toolbar. Enter inserts a suggestion before sending, Escape dismisses, and IME/Shift+Enter retain their usual behavior.

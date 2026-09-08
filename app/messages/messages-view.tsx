@@ -1907,7 +1907,8 @@ export default function MessagesView({
                                   {sender?.display_name ?? "NODEINE creator"}
                                 </p>
                               )}
-                              <div ref={message.id === latestReadableMessage?.id ? latestMessageContentRef : null} data-message-content={message.id}>
+                              <div ref={message.id === latestReadableMessage?.id ? latestMessageContentRef : null} data-message-content={message.id}
+                                className={`max-w-full ${message.message_type === "text" || message.removed_at ? `w-fit ${mine ? "ml-auto" : ""}` : ""}`}>
                               {message.removed_at ? (
                                 <p className="rounded-2xl bg-[#252d3a] px-4 py-3 text-left text-sm italic text-zinc-300">Message removed</p>
                               ) : message.message_type === "artwork" && artwork ? (

@@ -1,5 +1,15 @@
 # Group chat: receiver flow and current capabilities
 
+## September 8 group About and avatar framing
+
+Open the group header or **Conversation options → Group settings** to reach **Group details**. A member can read **About this group**; an owner/admin can save a plain-text description up to 500 Unicode code points. This is shared group content, unlike personal chat appearance/mute. The new private `group_descriptions` table is accessible only through `get_group_description` and `update_group_description`; optimistic versions protect another editor's newer save. Current membership and role are checked by the server. Nothing is published through table realtime; reopening, focus on a clean view, or explicit refresh retrieves the latest About.
+
+The additive [migration](../supabase/group-description.sql) was activated after a 38-assertion rollback rehearsal; existing message controls, mentions, invitations, grants and deletion restrictions are preserved. Do not rerun historical group migrations as a substitute. [Verification and exact limits](audits/2026-09-08-group-details-and-avatar-framing.md).
+
+Group **Choose image** now opens the shared crop editor also used by **Creator Studio → Profile**. Drag or use position/zoom sliders, review the circle, choose **Use avatar**, then **Save group details**. Cancel retains the previous selection. Use avatar does not upload. Inputs: still JPEG/PNG/WebP up to 8 MiB, 24 MP and 8192px per side; output is a metadata-free square 512px JPEG capped at 2 MiB. Group images stay in private conversation storage; personal avatars retain the existing public profile-image behavior. Profile editing remains scoped to the current account.
+
+Save uses a new image path rather than overwriting the old image first. Failed/uncertain saves retain drafts and potentially referenced images; old versions/orphans are intentionally not purged. Removing a displayed group avatar removes its reference, not a promise of erasing all historical image bytes. Existing avatar/group-name saves remain last-writer-wins; optimistic concurrency is added only for About in this release.
+
 ## September 8 receiver and mention update
 
 The header exposes group details and separates active members from invitations. Only owners/admins see exact pending counts; loading/error never masquerades as zero. Matching invitations remain discoverable in inbox search. Join/Decline are labeled 44px actions with saved-response feedback, stale-account/chat guards, and disclosure that joining exposes existing history. Invitations are delivered automatically; membership still requires Join. No direct-add mode was introduced.

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -65,6 +65,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-browser";
+import { createAccountScope } from "@/lib/activity-session";
+import AvatarCropEditor from "@/components/avatar-crop-editor";
 import MobileAppNavigation from "@/app/components/mobile-app-navigation";
 import DesktopAppNavigation from "@/app/components/desktop-app-navigation";
 import {
@@ -98,6 +100,8 @@ type CreatorProfile = {
   bio: string | null;
   avatar_url: string | null;
 };
+
+type ProfileAvatarCrop = { file: File; isCurrent: () => boolean };
 
 const acceptedUploadTypes = new Set([
   "image/jpeg",
@@ -227,6 +231,16 @@ export default function AdminPage() {
   const [profileAvatarFile, setProfileAvatarFile] = useState<File | null>(null);
   const [profileAvatarPreview, setProfileAvatarPreview] = useState("");
   const [profileAvatarInputKey, setProfileAvatarInputKey] = useState(0);
+  const [profileAvatarCrop, setProfileAvatarCrop] = useState<ProfileAvatarCrop | null>(null);
+  const profileAvatarCropRef = useRef<ProfileAvatarCrop | null>(null);
+  const profileAvatarObjectUrl = useRef<string | null>(null);
+  const profileAvatarInputRef = useRef<HTMLInputElement | null>(null);
+  const profileAvatarCropRegion = useRef<HTMLDivElement | null>(null);
+  const profileScope = useRef(createAccountScope());
+  const profileSaveLock = useRef<object | null>(null);
+  const [profileAccountEpoch, setProfileAccountEpoch] = useState(0);
+  const [profileLoadedFor, setProfileLoadedFor] = useState<string | null>(null);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
@@ -239,21 +253,28 @@ export default function AdminPage() {
 
     if (!client) return;
 
-    client.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-      setUserId(data.user?.id ?? null);
-      setAuthReady(true);
-    });
-
+    const scope = profileScope.current;
+    let active = true;
+    let revision = 0;
+    const bootstrap = client.auth.getUser();
     const { data: authListener } = client.auth.onAuthStateChange(
       (_event, session) => {
-        setUserEmail(session?.user.email ?? null);
-        setUserId(session?.user.id ?? null);
-        setAuthReady(true);
+        revision += 1;
+        if (active) bindProfileAccount(session?.user ?? null);
       }
     );
-
-    return () => authListener.subscription.unsubscribe();
+    void bootstrap.then(({ data }) => {
+      if (active && revision === 0) bindProfileAccount(data.user);
+    }).catch(() => {
+      if (active && revision === 0) bindProfileAccount(null);
+    });
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+      scope.clear();
+    };
+    // The profile binding uses stable refs/setters; form edits must not resubscribe auth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -306,37 +327,16 @@ export default function AdminPage() {
   }, [userId]);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client || !userId) return;
+    void loadProfile();
+    // Only a new account binding reloads the form, never an ordinary draft edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, profileAccountEpoch]);
 
-    async function loadProfile(database: NonNullable<typeof supabase>) {
-      const { data, error: profileError } = await database
-        .from("profiles")
-        .select("id, username, display_name, bio, avatar_url")
-        .eq("id", userId)
-        .single();
-
-      if (profileError) {
-        setError(profileError.message);
-        return;
-      }
-
-      const profile = data as CreatorProfile;
-      setProfileUsername(profile.username);
-      setProfileDisplayName(profile.display_name);
-      setProfileBio(profile.bio ?? "");
-      setProfileAvatarUrl(profile.avatar_url ?? "");
-      setProfileAvatarPreview(profile.avatar_url ?? "");
-    }
-
-    loadProfile(client);
-  }, [userId]);
-
-  useEffect(() => {
-    if (!profileAvatarPreview.startsWith("blob:")) return;
-
-    return () => URL.revokeObjectURL(profileAvatarPreview);
-  }, [profileAvatarPreview]);
+  useEffect(() => () => {
+    if (profileAvatarObjectUrl.current) URL.revokeObjectURL(profileAvatarObjectUrl.current);
+    profileAvatarObjectUrl.current = null;
+    profileAvatarCropRef.current = null;
+  }, []);
 
   function slugify(value: string) {
     return value
@@ -348,12 +348,111 @@ export default function AdminPage() {
   }
 
   function selectProfileAvatar(nextFile: File | null) {
-    setProfileAvatarFile(nextFile);
-    setProfileAvatarPreview(
-      nextFile ? URL.createObjectURL(nextFile) : profileAvatarUrl
-    );
+    const isCurrent = profileScope.current.capture(userId);
+    if (!nextFile || busy || profileLoadedFor !== userId || !isCurrent()) return;
+    const candidate = { file: nextFile, isCurrent };
+    profileAvatarCropRef.current = candidate;
+    setProfileAvatarCrop(candidate);
     setError(null);
     setMessage(null);
+  }
+
+  function bindProfileAccount(user: { id: string; email?: string } | null) {
+    const nextId = user?.id ?? null;
+    const changed = profileScope.current.account() !== nextId;
+    profileScope.current.setAccount(nextId);
+    setUserId(nextId);
+    setUserEmail(user?.email ?? null);
+    setAuthReady(true);
+    if (!changed && nextId) return;
+    if (changed) setProfileAccountEpoch(current => current + 1);
+    if (profileSaveLock.current) {
+      profileSaveLock.current = null;
+      setBusy(false);
+    }
+    profileAvatarCropRef.current = null;
+    setProfileAvatarCrop(null);
+    setProfileAvatarFile(null);
+    setProfileLoadedFor(null);
+    setProfileLoadError(null);
+    setProfileUsername("");
+    setProfileDisplayName("");
+    setProfileBio("");
+    setProfileAvatarUrl("");
+    replaceProfileAvatarPreview("");
+    setProfileAvatarInputKey(current => current + 1);
+  }
+
+  async function loadProfile() {
+    const client = supabase;
+    const isCurrent = profileScope.current.latest("profile-load", userId);
+    if (!client || !userId || !isCurrent()) return;
+    setProfileLoadError(null);
+    try {
+      const { data, error: profileError } = await client.from("profiles")
+        .select("id, username, display_name, bio, avatar_url").eq("id", userId).single();
+      if (!isCurrent()) return;
+      if (profileError) throw profileError;
+      const profile = data as CreatorProfile;
+      if (profile.id !== userId) throw new Error("The profile could not be verified.");
+      setProfileUsername(profile.username);
+      setProfileDisplayName(profile.display_name);
+      setProfileBio(profile.bio ?? "");
+      setProfileAvatarUrl(profile.avatar_url ?? "");
+      replaceProfileAvatarPreview(profile.avatar_url ?? "");
+      setProfileLoadedFor(userId);
+    } catch {
+      if (isCurrent()) setProfileLoadError("Your profile could not be loaded. Try again before editing.");
+    }
+  }
+
+  function replaceProfileAvatarPreview(nextUrl: string) {
+    const previous = profileAvatarObjectUrl.current;
+    profileAvatarObjectUrl.current = nextUrl.startsWith("blob:") ? nextUrl : null;
+    setProfileAvatarPreview(nextUrl);
+    if (previous && previous !== nextUrl) URL.revokeObjectURL(previous);
+  }
+
+  function confirmProfileAvatar(file: File, candidate: ProfileAvatarCrop) {
+    if (profileAvatarCropRef.current !== candidate || !candidate.isCurrent()) return;
+    // Let the shared editor retain its ready crop and offer retry if the browser
+    // cannot create this preview. Do not mutate the draft before that succeeds.
+    const preview = URL.createObjectURL(file);
+    replaceProfileAvatarPreview(preview);
+    setProfileAvatarFile(file);
+    restoreProfileAvatarFocus(candidate);
+    profileAvatarCropRef.current = null;
+    setProfileAvatarCrop(null);
+    setProfileAvatarInputKey(current => current + 1);
+    setError(null);
+  }
+
+  function cancelProfileAvatar(candidate: ProfileAvatarCrop) {
+    if (profileAvatarCropRef.current !== candidate || !candidate.isCurrent()) return;
+    restoreProfileAvatarFocus(candidate);
+    profileAvatarCropRef.current = null;
+    setProfileAvatarCrop(null);
+    setProfileAvatarInputKey(current => current + 1);
+  }
+
+  function restoreProfileAvatarFocus(candidate: ProfileAvatarCrop) {
+    if (!profileAvatarCropRegion.current?.contains(document.activeElement)) return;
+    queueMicrotask(() => {
+      if (candidate.isCurrent()) profileAvatarInputRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  function discardProfileAvatar() {
+    const isCurrent = profileScope.current.capture(userId);
+    if (busy || !isCurrent()) return;
+    profileAvatarCropRef.current = null;
+    setProfileAvatarCrop(null);
+    setProfileAvatarFile(null);
+    replaceProfileAvatarPreview(profileAvatarUrl);
+    setProfileAvatarInputKey(current => current + 1);
+    queueMicrotask(() => {
+      if (isCurrent()) profileAvatarInputRef.current?.focus({ preventScroll: true });
+    });
   }
 
   function selectUploadFiles(nextFiles: File[]) {
@@ -725,6 +824,13 @@ export default function AdminPage() {
     const client = supabase;
     const username = profileUsername.trim().toLowerCase();
     const displayName = profileDisplayName.trim();
+    const isCurrent = profileScope.current.capture(userId);
+
+    if (busy || profileSaveLock.current || !isCurrent() || profileLoadedFor !== userId) return;
+    if (profileAvatarCrop) {
+      setError("Confirm or cancel the crop before saving your profile.");
+      return;
+    }
 
     if (!client || !userId || !displayName) {
       setError("Enter a display name and username.");
@@ -738,88 +844,66 @@ export default function AdminPage() {
       return;
     }
 
-    const allowedAvatarTypes = ["image/png", "image/jpeg", "image/webp"];
-
-    if (
-      profileAvatarFile &&
-      !allowedAvatarTypes.includes(profileAvatarFile.type)
-    ) {
-      setError("The profile picture must be a PNG, JPG, or WebP image.");
+    if (profileAvatarFile && (profileAvatarFile.type !== "image/jpeg" || profileAvatarFile.size === 0 || profileAvatarFile.size > 2 * 1024 * 1024)) {
+      setError("Choose and crop the profile picture again before saving.");
       return;
     }
 
-    if (profileAvatarFile && profileAvatarFile.size > 5 * 1024 * 1024) {
-      setError("The profile picture must be 5 MB or smaller.");
-      return;
-    }
-
+    const save = {};
+    profileSaveLock.current = save;
     setBusy(true);
     setError(null);
     setMessage(null);
 
-    let avatarUrl = profileAvatarUrl || null;
-
-    if (profileAvatarFile) {
-      const avatarPath = `avatars/${userId}/avatar`;
-      const { error: avatarUploadError } = await client.storage
-        .from("artworks")
-        .upload(avatarPath, profileAvatarFile, {
-          cacheControl: "3600",
-          contentType: profileAvatarFile.type,
-          upsert: true,
-        });
-
-      if (avatarUploadError) {
-        setError(avatarUploadError.message);
-        setBusy(false);
-        return;
+    try {
+      let avatarUrl = profileAvatarUrl || null;
+      if (profileAvatarFile) {
+        // Keep the saved public image intact if uploading or saving the row
+        // fails. Old versions are retained; this is not a deletion workflow.
+        const avatarPath = `avatars/${userId}/${crypto.randomUUID()}.jpg`;
+        const { error: avatarUploadError } = await client.storage.from("artworks")
+          .upload(avatarPath, profileAvatarFile, {
+            cacheControl: "3600", contentType: "image/jpeg", upsert: false,
+          });
+        if (!isCurrent()) return;
+        if (avatarUploadError) throw avatarUploadError;
+        avatarUrl = client.storage.from("artworks").getPublicUrl(avatarPath).data.publicUrl;
       }
-
-      const { data: avatarPublicUrl } = client.storage
-        .from("artworks")
-        .getPublicUrl(avatarPath);
-
-      avatarUrl = `${avatarPublicUrl.publicUrl}?v=${Date.now()}`;
+      if (!isCurrent()) return;
+      const { data, error: profileError } = await client.from("profiles")
+        .update({ username, display_name: displayName, bio: profileBio.trim() || null,
+          avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+        .eq("id", userId).select("id, username, display_name, bio, avatar_url").single();
+      if (!isCurrent()) return;
+      if (profileError) throw profileError;
+      const profile = data as CreatorProfile;
+      if (profile?.id !== userId) throw new Error("The saved profile could not be verified.");
+      setProfileUsername(profile.username);
+      setProfileDisplayName(profile.display_name);
+      setProfileBio(profile.bio ?? "");
+      setProfileAvatarUrl(profile.avatar_url ?? "");
+      replaceProfileAvatarPreview(profile.avatar_url ?? "");
+      setProfileAvatarFile(null);
+      setProfileAvatarInputKey(current => current + 1);
+      setMessage("Creator profile updated.");
+    } catch (saveError) {
+      if (isCurrent()) setError((saveError as { code?: string })?.code === "23505"
+        ? "That username is already taken. Your draft and cropped image are kept."
+        : "Profile save could not be confirmed. Your draft and cropped image are kept; check your connection and try again.");
+    } finally {
+      if (profileSaveLock.current === save) {
+        profileSaveLock.current = null;
+        if (isCurrent()) setBusy(false);
+      }
     }
-
-    const { data, error: profileError } = await client
-      .from("profiles")
-      .update({
-        username,
-        display_name: displayName,
-        bio: profileBio.trim() || null,
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
-      .select("id, username, display_name, bio, avatar_url")
-      .single();
-
-    if (profileError) {
-      setError(
-        profileError.code === "23505"
-          ? "That username is already taken."
-          : profileError.message
-      );
-      setBusy(false);
-      return;
-    }
-
-    const profile = data as CreatorProfile;
-    setProfileUsername(profile.username);
-    setProfileDisplayName(profile.display_name);
-    setProfileBio(profile.bio ?? "");
-    setProfileAvatarUrl(profile.avatar_url ?? "");
-    setProfileAvatarPreview(profile.avatar_url ?? "");
-    setProfileAvatarFile(null);
-    setProfileAvatarInputKey((current) => current + 1);
-    setMessage("Creator profile updated.");
-    setBusy(false);
   }
 
   async function handleSignOut() {
     if (!supabase) return;
+    const isCurrent = profileScope.current.capture(userId);
     await supabase.auth.signOut({ scope: "local" });
+    // A later login (including the same viewer) must not be cleared by this response.
+    if (profileScope.current.account() !== null && !isCurrent()) return;
     setCollections([]);
     setPublishedArtworkCount(0);
     setUserId(null);
@@ -830,11 +914,18 @@ export default function AdminPage() {
     setProfileBio("");
     setProfileAvatarUrl("");
     setProfileAvatarFile(null);
-    setProfileAvatarPreview("");
+    replaceProfileAvatarPreview("");
+    profileAvatarCropRef.current = null;
+    setProfileAvatarCrop(null);
     setMessage(null);
   }
 
   function handleModeChange(nextMode: StudioMode) {
+    if (nextMode !== "profile") {
+      profileAvatarCropRef.current = null;
+      setProfileAvatarCrop(null);
+      setProfileAvatarInputKey(current => current + 1);
+    }
     setMode(nextMode);
     setError(null);
     setMessage(null);
@@ -1922,21 +2013,34 @@ export default function AdminPage() {
                           </FieldLabel>
                           <Input
                             id="profile-picture"
+                            ref={profileAvatarInputRef}
                             key={profileAvatarInputKey}
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
-                            onChange={(event) =>
-                              selectProfileAvatar(
-                                event.target.files?.[0] ?? null
-                              )
-                            }
-                            className="h-auto border-dashed bg-black/35 py-3 file:mr-3 file:rounded-lg file:bg-cyan-300 file:px-3 file:text-zinc-950"
+                            disabled={busy || profileLoadedFor !== userId}
+                            onChange={(event) => {
+                              selectProfileAvatar(event.target.files?.[0] ?? null);
+                              event.target.value = "";
+                            }}
+                            className="h-auto min-h-11 border-dashed bg-black/35 py-3 file:mr-3 file:rounded-lg file:bg-cyan-300 file:px-3 file:text-zinc-950"
                           />
                           <FieldDescription>
-                            PNG, JPG, or WebP. Maximum size 5 MB.
+                            PNG, JPG, or WebP up to 8 MiB. Crop and position locally, then save your profile to apply it.
                           </FieldDescription>
+                          {profileAvatarFile && <div className="text-xs text-cyan-200">
+                            <p role="status">Crop ready. Save profile to apply it.</p>
+                            <Button type="button" variant="outline" disabled={busy} className="mt-2 h-auto min-h-11 max-w-full whitespace-normal py-2" onClick={discardProfileAvatar}>Discard selected image</Button>
+                          </div>}
                         </Field>
                       </div>
+
+                      {profileAvatarCrop && <div ref={profileAvatarCropRegion}><AvatarCropEditor file={profileAvatarCrop.file}
+                        onConfirm={file => confirmProfileAvatar(file, profileAvatarCrop)}
+                        onCancel={() => cancelProfileAvatar(profileAvatarCrop)} /></div>}
+                      {profileLoadedFor !== userId && <div role={profileLoadError ? "alert" : "status"} className="text-sm text-zinc-300">
+                        <p>{profileLoadError ?? "Loading your profile…"}</p>
+                        {profileLoadError && <Button type="button" variant="outline" className="mt-2 h-auto min-h-11 max-w-full whitespace-normal py-2" onClick={() => void loadProfile()}>Retry profile</Button>}
+                      </div>}
 
                       <div className="grid gap-5 sm:grid-cols-2">
                         <Field>
@@ -1945,6 +2049,7 @@ export default function AdminPage() {
                           </FieldLabel>
                           <Input
                             id="profile-username"
+                            disabled={busy || profileLoadedFor !== userId}
                             value={profileUsername}
                             onChange={(event) =>
                               setProfileUsername(event.target.value)
@@ -1967,6 +2072,7 @@ export default function AdminPage() {
                           </FieldLabel>
                           <Input
                             id="profile-display-name"
+                            disabled={busy || profileLoadedFor !== userId}
                             value={profileDisplayName}
                             onChange={(event) =>
                               setProfileDisplayName(event.target.value)
@@ -1983,6 +2089,7 @@ export default function AdminPage() {
                         <FieldLabel htmlFor="profile-bio">Bio</FieldLabel>
                         <Textarea
                           id="profile-bio"
+                          disabled={busy || profileLoadedFor !== userId}
                           value={profileBio}
                           onChange={(event) =>
                             setProfileBio(event.target.value)
@@ -2002,8 +2109,8 @@ export default function AdminPage() {
                       <Button
                         type="submit"
                         size="lg"
-                        disabled={busy}
-                        className="h-11 w-full"
+                        disabled={busy || Boolean(profileAvatarCrop) || profileLoadedFor !== userId}
+                        className="h-auto min-h-11 max-w-full whitespace-normal py-2 w-full"
                       >
                         <BadgeCheck data-icon="inline-start" />
                         {busy ? "Saving..." : "Save creator profile"}

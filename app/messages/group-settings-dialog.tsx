@@ -25,6 +25,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import AvatarCropEditor from "@/components/avatar-crop-editor";
+import GroupDescriptionSection from "./group-description-section";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope } from "@/lib/activity-session";
 import ConversationAvatar from "./conversation-avatar";
@@ -105,6 +107,16 @@ function GroupSettingsSession({
   const [title, setTitle] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [cropSource, setCropSource] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const saveLock = useRef(false);
+  const preparedUpload = useRef<{ file: File; path: string } | null>(null);
+  const confirmedAvatarPath = useRef(conversation?.avatar_path ?? null);
+  useLayoutEffect(() => { confirmedAvatarPath.current = conversation?.avatar_path ?? null; }, [conversation?.avatar_path]);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const cropRegion = useRef<HTMLDivElement>(null);
+  useEffect(() => () => { if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl); }, [avatarPreviewUrl]);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [inviteSearch, setInviteSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -161,7 +173,9 @@ function GroupSettingsSession({
     if (!client || !conversation) return;
     const isCurrent = requestScope.current.latest("group-data", viewerId);
     if (!isCurrent()) return;
-    setLoading(true);
+    // Focus/realtime refreshes must not unmount a crop editor or reset its
+    // local positioning. Only the first authorized load needs a full spinner.
+    setLoading(!membershipsRef.current.some(member => member.profile_id === viewerId));
     setLoadError(null);
 
     try {
@@ -186,17 +200,39 @@ function GroupSettingsSession({
 
       setLoading(false);
 
-      const queryError = memberResult.error ?? inviteResult.error;
-      if (queryError) {
-        setLoadError(queryError.message);
+      if (memberResult.error) {
+        if (memberResult.error.code === "42501") {
+          membershipsRef.current = [];
+          setMemberships([]);
+          setInvites([]);
+        }
+        setLoadError(memberResult.error.message);
         toast.error("Group settings couldn't be loaded", {
-          description: queryError.message,
+          description: memberResult.error.message,
         });
         return;
       }
 
-      setMemberships((memberResult.data ?? []) as MembershipRow[]);
-      setInvites((inviteResult.data ?? []) as ConversationInviteRow[]);
+      const currentMembers = (memberResult.data ?? []) as MembershipRow[];
+      const currentViewer = currentMembers.find(member => member.profile_id === viewerId);
+      if (!currentViewer) {
+        membershipsRef.current = [];
+        setMemberships([]);
+        setInvites([]);
+        setLoadError("Your group membership could not be found. You may no longer have access.");
+        return;
+      }
+      // Apply authoritative membership/role changes even when the separate
+      // invitation request fails. Never retain manager-only lists on demotion.
+      membershipsRef.current = currentMembers;
+      setMemberships(currentMembers);
+      const managesInvites = currentViewer.role === "owner" || currentViewer.role === "admin";
+      if (!managesInvites || inviteResult.error?.code === "42501") setInvites([]);
+      if (inviteResult.error) {
+        setLoadError(inviteResult.error.message);
+        return;
+      }
+      setInvites(managesInvites ? (inviteResult.data ?? []) as ConversationInviteRow[] : []);
     } catch {
       if (!isCurrent()) return;
       setLoading(false);
@@ -223,12 +259,13 @@ function GroupSettingsSession({
     });
 
     if (conversation.avatar_path) {
+      const requestedAvatarPath = conversation.avatar_path;
       client.storage
         .from("conversation-media")
-        .createSignedUrl(conversation.avatar_path, 3600)
+        .createSignedUrl(requestedAvatarPath, 3600)
         .then(({ data }) => {
-          if (!cancelled) setAvatarUrl(data?.signedUrl ?? null);
-        });
+          if (!cancelled && confirmedAvatarPath.current === requestedAvatarPath) setAvatarUrl(data?.signedUrl ?? null);
+        }).catch(() => { /* Retain the already loaded avatar if preview refresh fails. */ });
     }
 
     return () => {
@@ -254,82 +291,93 @@ function GroupSettingsSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id, open, viewerId]);
 
+  function restoreAvatarFocus() {
+    const isCurrent = requestScope.current.capture(viewerId);
+    if (!cropRegion.current?.contains(document.activeElement)) return;
+    queueMicrotask(() => { if (isCurrent()) avatarInput.current?.focus({ preventScroll: true }); });
+  }
+
   async function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const client = supabase;
     const cleanTitle = title.trim();
-    if (!client || !conversation || !cleanTitle || savingDetails) return;
+    if (!client || !conversation || !cleanTitle || !canManage || savingDetails || saveLock.current || cropSource) return;
     const isCurrent = requestScope.current.capture(viewerId);
     if (!isCurrent()) return;
 
+    saveLock.current = true;
     setSavingDetails(true);
-    let uploadedPath: string | null = null;
-    let nextAvatarPath = removeAvatar ? null : conversation.avatar_path;
+    setDetailsError(null);
+    try {
+      let nextAvatarPath = removeAvatar ? null : confirmedAvatarPath.current;
 
-    if (avatarFile) {
-      if (!avatarFile.type.startsWith("image/")) {
-        toast.error("Choose an image for the group avatar");
-        setSavingDetails(false);
-        return;
-      }
-      if (avatarFile.size > 10 * 1024 * 1024) {
-        toast.error("Group avatars must be 10 MB or smaller");
-        setSavingDetails(false);
-        return;
+      if (avatarFile) {
+        if (avatarFile.type !== "image/jpeg" || avatarFile.size === 0 || avatarFile.size > 2 * 1024 * 1024) throw new Error("Choose and confirm a cropped avatar up to 2 MiB before saving.");
+
+        const uploadedPath = preparedUpload.current?.file === avatarFile
+          ? preparedUpload.current.path
+          : `${conversation.id}/avatars/${safeFileName(avatarFile.name)}`;
+        if (preparedUpload.current?.file !== avatarFile) {
+          const { error: uploadError } = await client.storage
+            .from("conversation-media")
+            .upload(uploadedPath, avatarFile, {
+              contentType: avatarFile.type,
+              upsert: false,
+            });
+          if (!isCurrent()) return;
+
+          if (uploadError) throw new Error(`Group avatar wasn't uploaded. ${uploadError.message}`);
+          preparedUpload.current = { file: avatarFile, path: uploadedPath };
+        }
+        nextAvatarPath = uploadedPath;
       }
 
-      uploadedPath = `${conversation.id}/avatars/${safeFileName(avatarFile.name)}`;
-      const { error: uploadError } = await client.storage
-        .from("conversation-media")
-        .upload(uploadedPath, avatarFile, {
-          contentType: avatarFile.type,
-          upsert: false,
-        });
+      const { error } = await client.rpc("update_group_details", {
+        target_conversation_id: conversation.id,
+        new_title: cleanTitle,
+        new_avatar_path: nextAvatarPath,
+      });
       if (!isCurrent()) return;
 
-      if (uploadError) {
-        toast.error("Group avatar wasn't uploaded", {
-          description: uploadError.message,
-        });
-        setSavingDetails(false);
-        return;
+      if (error) {
+        // A transport error can follow a committed save. Keep both image versions
+        // rather than deleting an object that may now be the group's active avatar.
+        throw new Error(`Group details weren't confirmed. Your draft is kept. ${error.message}`);
       }
-      nextAvatarPath = uploadedPath;
-    }
 
-    const { error } = await client.rpc("update_group_details", {
-      target_conversation_id: conversation.id,
-      new_title: cleanTitle,
-      new_avatar_path: nextAvatarPath,
-    });
-    if (!isCurrent()) return;
-
-    if (error) {
-      if (uploadedPath) {
-        await client.storage.from("conversation-media").remove([uploadedPath]);
+      // The RPC is authoritative even if the parent inbox/image refresh fails.
+      // A later title-only save must not restore an older prop's avatar path.
+      confirmedAvatarPath.current = nextAvatarPath;
+      setAvatarFile(null);
+      setRemoveAvatar(false);
+      preparedUpload.current = null;
+      // A failed display refresh is not a failed save. Keep the confirmed local
+      // preview until a new signed image can be displayed, without re-uploading.
+      try {
+        await onConversationChanged();
         if (!isCurrent()) return;
+        if (nextAvatarPath) {
+          const result = await client.storage.from("conversation-media").createSignedUrl(nextAvatarPath, 3600);
+          if (!isCurrent() || confirmedAvatarPath.current !== nextAvatarPath) return;
+          if (result.error || !result.data?.signedUrl) throw new Error("Image refresh unavailable");
+          setAvatarUrl(result.data.signedUrl);
+          setAvatarPreviewUrl(null);
+        } else {
+          setAvatarUrl(null);
+          setAvatarPreviewUrl(null);
+        }
+      } catch {
+        if (!isCurrent()) return;
+        setDetailsError("Group details saved, but the display could not refresh. Reopen Group details to see the latest image.");
       }
-      toast.error("Group details weren't saved", { description: error.message });
-      setSavingDetails(false);
-      return;
-    }
-
-    if (
-      conversation.avatar_path &&
-      conversation.avatar_path !== nextAvatarPath
-    ) {
-      await client.storage
-        .from("conversation-media")
-        .remove([conversation.avatar_path]);
       if (!isCurrent()) return;
+      toast.success("Group details updated");
+    } catch (failure) {
+      if (!isCurrent()) return;
+      setDetailsError(failure instanceof Error ? failure.message : "Group details could not be confirmed. Your draft is kept; check your connection and try again.");
+    } finally {
+      if (isCurrent()) { saveLock.current = false; setSavingDetails(false); }
     }
-
-    setAvatarFile(null);
-    setRemoveAvatar(false);
-    await onConversationChanged();
-    if (!isCurrent()) return;
-    toast.success("Group details updated");
-    setSavingDetails(false);
   }
 
   async function inviteProfile(profileId: string) {
@@ -515,7 +563,7 @@ function GroupSettingsSession({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92dvh] overflow-y-auto border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-2xl [&_[data-slot=dialog-close]]:size-11 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-cyan-300 motion-reduce:animate-none! motion-reduce:transition-none!">
         <DialogHeader className="border-b border-white/10 px-5 py-5 pr-16 sm:px-6 sm:pr-16">
-          <DialogTitle className="text-xl text-white">Group settings</DialogTitle>
+          <DialogTitle className="text-xl text-white">Group details</DialogTitle>
           <DialogDescription className="leading-6 text-zinc-500">
             Manage the group, its members, invitations, notifications, and
             safety controls.
@@ -527,18 +575,22 @@ function GroupSettingsSession({
             <LoaderCircle className="size-7 animate-spin text-cyan-300 motion-reduce:animate-none" aria-hidden="true" />
             <span className="sr-only">Loading group settings…</span>
           </div>
-        ) : loadError ? (
+        ) : loadError && !memberships.some(member => member.profile_id === viewerId) ? (
           <div className="space-y-4 px-5 py-6 sm:px-6">
             <p role="alert" className="text-sm leading-6 text-amber-100">Group settings couldn&apos;t be loaded. {loadError}</p>
             <Button type="button" className="min-h-11" onClick={() => void loadGroupData()}>Try again</Button>
           </div>
         ) : (
           <div className="divide-y divide-white/10">
+            {loadError && <div className="space-y-3 px-5 py-4 sm:px-6">
+              <p role="alert" className="text-sm leading-6 text-amber-100">Group settings couldn&apos;t refresh. Previously loaded details may be out of date. {loadError}</p>
+              <Button type="button" className="min-h-11" onClick={() => void loadGroupData()}>Try again</Button>
+            </div>}
             <section className="px-5 py-5 sm:px-6">
               <div className="flex items-center gap-4">
                 <ConversationAvatar
                   group
-                  groupAvatarUrl={removeAvatar ? null : avatarUrl}
+                  groupAvatarUrl={removeAvatar ? null : avatarPreviewUrl ?? avatarUrl}
                   className="size-16"
                 />
                 <div className="min-w-0 flex-1">
@@ -560,6 +612,7 @@ function GroupSettingsSession({
                     </span>
                     <Input
                       value={title}
+                      disabled={savingDetails}
                       onChange={(event) => setTitle(event.target.value)}
                       maxLength={80}
                       className="h-11 border-white/12 bg-black/45"
@@ -575,16 +628,15 @@ function GroupSettingsSession({
                         <Camera className="size-4" />
                         Choose image
                         <input
+                          ref={avatarInput}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          accept="image/jpeg,image/png,image/webp"
+                          aria-label="Choose group avatar image"
+                          disabled={savingDetails}
                           className="sr-only"
                           onChange={(event) => {
                             const file = event.target.files?.[0] ?? null;
-                            setAvatarFile(file);
-                            if (file) {
-                              setRemoveAvatar(false);
-                              setAvatarUrl(URL.createObjectURL(file));
-                            }
+                            if (file) setCropSource(file);
                             event.target.value = "";
                           }}
                         />
@@ -592,8 +644,10 @@ function GroupSettingsSession({
                       {(conversation.avatar_path || avatarFile) && (
                         <button
                           type="button"
+                          disabled={savingDetails || Boolean(cropSource)}
                           onClick={() => {
                             setAvatarFile(null);
+                            setAvatarPreviewUrl(null);
                             setAvatarUrl(null);
                             setRemoveAvatar(true);
                           }}
@@ -604,12 +658,20 @@ function GroupSettingsSession({
                         </button>
                       )}
                     </div>
+                    <p className="mt-2 text-xs leading-5 text-zinc-400">Choose a still JPEG, PNG or WebP up to 8 MiB, then position it inside the circle. Nothing uploads until Save group details.</p>
+                    {cropSource && <div ref={cropRegion} className="mt-4"><AvatarCropEditor file={cropSource} onCancel={() => { restoreAvatarFocus(); setCropSource(null); }} onConfirm={file => {
+                      if (!requestScope.current.capture(viewerId)() || !canManage) return;
+                      const preview = URL.createObjectURL(file);
+                      restoreAvatarFocus();
+                      setAvatarFile(file); setAvatarPreviewUrl(preview); setRemoveAvatar(false); setCropSource(null); setDetailsError(null);
+                    }} /></div>}
+                    {avatarFile && !cropSource && <p role="status" className="mt-2 text-xs text-cyan-200">Avatar preview ready. Save group details to apply it for everyone.</p>}
                   </div>
 
                   <Button
                     type="submit"
                     className="h-auto min-h-11 max-w-full whitespace-normal py-2"
-                    disabled={savingDetails || !title.trim()}
+                    disabled={savingDetails || Boolean(cropSource) || !title.trim()}
                   >
                     {savingDetails && (
                       <LoaderCircle
@@ -619,9 +681,12 @@ function GroupSettingsSession({
                     )}
                     Save group details
                   </Button>
+                  {detailsError && <p role="alert" className="text-sm leading-5 text-amber-100">{detailsError}</p>}
                 </form>
               )}
             </section>
+
+            <GroupDescriptionSection key={`${viewerId}:${conversation.id}:${canManage}`} conversationId={conversation.id} viewerId={viewerId} canManage={canManage} />
 
             <section className="px-5 py-5 sm:px-6">
               <div className="flex items-center justify-between gap-3">
