@@ -1,6 +1,6 @@
 # NODEINE chat and audio
 
-**Status:** personal appearance verified; audio phases gated
+**Status:** private voice notes and message controls activated; receiver/mentions release in verification; live rooms gated
 
 ## Outcome
 
@@ -10,7 +10,7 @@ Turn the approved artwork-first chat preview into readable, private conversation
 
 - Wayfinder map: Not required for the settled themes/voice-note slices; provider activation remains a separate gate.
 - Testing checklist: [NODEINE chat rollout #1](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
-- Audio implementation spec/tickets: not yet published; provider and schema activation remain separate decisions.
+- Implemented voice-note and message-control evidence: `docs/VOICE_NOTES_ROLLOUT.md`, `docs/MESSAGE_CONTROLS_ROLLOUT.md`, and the current receiver audit. Live-room provider/spec/tickets remain a separate decision.
 - Visual study: [`codex/chat-visual-study`](https://github.com/trinegod/Fvck-Art-Gallery/tree/codex/chat-visual-study), preserved outside the release source.
 - Foundation assessment: Draft pending publication with spec.
 - Domain glossary: Created lazily.
@@ -18,11 +18,11 @@ Turn the approved artwork-first chat preview into readable, private conversation
 
 ## Current frontier
 
-The owner approved implementation, confirmed NODEINE branding, and signed in to complete the real-inbox audit. Personal appearance is implemented and authenticated interaction is verified on desktop and narrow/short viewports. Blocked storage and key isolation are tested through the production store seam. See `docs/audits/2026-09-07-chat-release.md` for evidence and limits. The public GitHub checklist tracks release completion and the remaining physical-device acceptance pass. Voice notes and real rooms are not implemented or activated.
+Personal appearance, five-minute/4 MiB private voice notes, waveform seeking/speed, personal mute, and visibility-based Seen are implemented and activated. The owner explicitly approved message-controls permission tightening on September 8; Edit/Remove/Clear and the separately rehearsed mention migration are active. The actual designated receiver accepted a group invitation, read the founder's direct reply with Seen, and exercised its own test-message lifecycle. Group invitations remain opt-in; direct-add and OS push are not implemented. See `docs/audits/2026-09-08-group-receiver-and-controls.md` and the canonical GitHub checklist for release evidence and device/concurrency limits. Real audio rooms remain unimplemented and require a separate provider decision.
 
 ## Owner decisions needed
 
-- Production database changes and live-audio provider activation need separate authorization.
+- The message-controls and group-mention migrations were authorized and applied; further database changes and live-audio provider activation need their own authorization.
 - Physical-device keyboard and two-account/two-device acceptance require appropriate test sessions; do not create fake conversation activity to manufacture proof.
 
 ## Notes

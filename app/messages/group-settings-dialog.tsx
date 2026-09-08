@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope } from "@/lib/activity-session";
 import ConversationAvatar from "./conversation-avatar";
 import ConversationMuteControl from "./conversation-mute-control";
+import { groupMembershipNeedsRefresh } from "@/lib/group-membership-status";
 import type {
   ConversationInviteRow,
   ConversationRole,
@@ -98,6 +99,8 @@ function GroupSettingsSession({
   }, [open, viewerId]);
 
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
+  const membershipsRef = useRef(memberships);
+  useLayoutEffect(() => { membershipsRef.current = memberships; }, [memberships]);
   const [invites, setInvites] = useState<ConversationInviteRow[]>([]);
   const [title, setTitle] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -235,6 +238,22 @@ function GroupSettingsSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id, open]);
 
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !open || !conversation) return;
+    const refresh = () => { void loadGroupData(); };
+    const channel = client.channel(`nodeine-group-details-${viewerId}-${conversation.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_members", filter: `conversation_id=eq.${conversation.id}` }, event => {
+        if (groupMembershipNeedsRefresh(membershipsRef.current, event)) refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_invites", filter: `conversation_id=eq.${conversation.id}` }, refresh)
+      .subscribe(status => { if (status === "SUBSCRIBED") refresh(); });
+    window.addEventListener("focus", refresh);
+    return () => { window.removeEventListener("focus", refresh); void client.removeChannel(channel); };
+    // The request scope cancels old responses; same-group renders do not need a new channel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation?.id, open, viewerId]);
+
   async function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const client = supabase;
@@ -334,6 +353,8 @@ function GroupSettingsSession({
     setInviteSearch("");
     await loadGroupData();
     if (!isCurrent()) return;
+    await onConversationChanged();
+    if (!isCurrent()) return;
     toast.success("Invitation sent");
   }
 
@@ -355,6 +376,8 @@ function GroupSettingsSession({
     }
 
     await loadGroupData();
+    if (!isCurrent()) return;
+    await onConversationChanged();
   }
 
   async function changeRole(profileId: string, role: "admin" | "member") {
@@ -605,7 +628,8 @@ function GroupSettingsSession({
                 <div>
                   <h3 className="text-sm font-medium text-white">Members</h3>
                   <p className="mt-1 text-xs text-zinc-600">
-                    {memberships.length} active · {invites.length} pending
+                    {memberships.length} {memberships.length === 1 ? "member" : "members"}
+                    {canManage ? ` · ${invites.length} invited` : " · Invitations are managed by the owner and admins"}
                   </p>
                 </div>
               </div>
@@ -684,7 +708,7 @@ function GroupSettingsSession({
               {canManage && invites.length > 0 && (
                 <div className="mt-5">
                   <p className="text-xs uppercase tracking-[0.16em] text-zinc-600">
-                    Pending invitations
+                    Invited · waiting to join
                   </p>
                   <div className="mt-2 space-y-2">
                     {invites.map((invite) => {
@@ -699,7 +723,7 @@ function GroupSettingsSession({
                             <p className="truncate text-sm text-zinc-300">
                               {profile?.display_name ?? "Invited creator"}
                             </p>
-                            <p className="mt-0.5 text-xs text-zinc-700">Pending</p>
+                            <p className="mt-0.5 text-xs text-zinc-400">Invitation sent · not yet a member</p>
                           </div>
                           <button
                             type="button"

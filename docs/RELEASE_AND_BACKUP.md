@@ -1,6 +1,10 @@
 # Release and backup notes
 
-## Approved production rollout — September 7, 2026
+## September 8, 2026 — group receiver follow-up
+
+The owner authorized publication of the group receiver and mention improvements plus the previously rehearsed message-controls permission restrictions. Both database migrations are now activated and the consenting test account verified real Join, Seen, Edit/Remove/Clear and mention/mute behavior. [Current audit](audits/2026-09-08-group-receiver-and-controls.md) separates automated, live and outstanding checks. The [canonical release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) records exact public deployment and new backup identifiers after verification. This source file alone is not proof of publishing, remote iCloud synchronization, or a live database backup.
+
+## Historical approved rollout — September 7, 2026
 
 The owner approved promoting the chat expansion and follow-up refinements to both maintained public hosts, not just a review preview. The release includes full-height mobile conversations, a 54px icon-only dock, full-width desktop chat, centered inbox/conversation loading, group-settings hardening and reading-position preservation. 186 automated tests, TypeScript, lint (zero errors/five existing warnings), an optimized build and a bounded independent standards/spec audit passed. See [the current audit](audits/2026-09-07-chat-space-and-voice-release.md).
 

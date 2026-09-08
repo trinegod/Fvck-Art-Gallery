@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope, observeAccount, runAccountRequest } from "@/lib/activity-session";
-import { fetchActivity, persistActivitySeen, type ActivityKind, type NotificationRow, type ActivityProfile as ProfileRow, type ActivityArtwork as ArtworkRow, type ActivityConversation as ConversationRow } from "@/lib/activity-data";
+import { fetchActivity, persistActivitySeen, messageActivityLabel, type ActivityKind, type NotificationRow, type ActivityProfile as ProfileRow, type ActivityArtwork as ArtworkRow, type ActivityConversation as ConversationRow } from "@/lib/activity-data";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import DesktopAppNavigation from "../components/desktop-app-navigation";
 import PolishedImage from "../components/polished-image";
@@ -387,7 +387,7 @@ export default function ActivityView() {
                         )}
                         {notification.kind === "message" && (
                           <>
-                            sent a message
+                            {messageActivityLabel(notification)}
                             {conversation?.kind === "group" && conversation.title
                               ? ` in ${conversation.title}.`
                               : "."}

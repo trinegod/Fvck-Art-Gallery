@@ -5,15 +5,34 @@ export type NotificationRow = {
   id: string; recipient_id: string; actor_id: string; kind: ActivityKind;
   artwork_id: string | null; conversation_id: string | null;
   preview: string | null; read_at: string | null; created_at: string;
+  mention_kind?: "person" | "everyone" | null;
 };
 export type ActivityProfile = { id: string; username: string; display_name: string; avatar_url: string | null };
 export type ActivityArtwork = { id: string; title: string };
 export type ActivityConversation = { id: string; kind: "direct" | "group"; title: string | null };
 
+/** Classification is supplied by the server, never inferred from preview text. */
+export function messageActivityLabel(notification: Pick<NotificationRow, "mention_kind" | "preview">) {
+  if (notification.mention_kind === "person") return "mentioned you";
+  if (notification.mention_kind === "everyone") return "mentioned everyone";
+  return "sent a message";
+}
+
 export async function fetchActivity(database: SupabaseClient, accountId: string, isCurrent = () => true) {
-  const result = await database.from("notifications")
-    .select("id, recipient_id, actor_id, kind, artwork_id, conversation_id, preview, read_at, created_at")
-    .eq("recipient_id", accountId).order("created_at", { ascending: false }).limit(80);
+  const columns = "id, recipient_id, actor_id, kind, artwork_id, conversation_id, preview, read_at, created_at";
+  const readNotifications = (includeMentions: boolean) => database.from("notifications")
+    .select(includeMentions ? `${columns}, mention_kind` : columns)
+    .eq("recipient_id", accountId).order("created_at", { ascending: false }).limit(80)
+    .returns<NotificationRow[]>();
+  let result = await readNotifications(true);
+  if (!isCurrent()) return null;
+  // Older deployments still have a working Activity feed. Fall back only when
+  // this optional column is absent, never for authorization or network errors.
+  if (result.error && ["42703", "PGRST204"].includes(result.error.code)
+    && /\bmention_kind\b/.test(result.error.message)) {
+    result = await readNotifications(false);
+    if (!isCurrent()) return null;
+  }
   if (result.error) throw result.error;
   const notifications = (result.data ?? []) as NotificationRow[];
   const actorIds = [...new Set(notifications.map(row => row.actor_id))];

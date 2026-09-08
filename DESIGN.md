@@ -79,6 +79,14 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 - Account/chat changes, cancel, and unmount release capture/analyser/playback resources and discard unsent local audio. Denied permission and failed delivery preserve the text draft. An unknown delivery outcome disables immediate resend and tells the user to check history; do not claim failure or risk duplicate sending. See the [inline voice audit](docs/audits/2026-09-07-inline-voice-review.md) and [official messaging references](docs/research/2026-09-07-inline-voice-messaging-references.md).
 - **New group** is visible in the inbox and opens the existing invitation-based group flow. It is not a second messaging implementation; direct and group chats use the same composer.
 
+## Group receiver clarity and mentions
+
+- Give the compact group header one labeled 44px details target containing the name and truthful member/invitation status. Never treat pending invitations as memberships or failed reads as zero. Keep privileged invite details restricted to the appropriate role.
+- Explain prior-history access beside Join. Keep Join/Decline visible and distinct, preserve errors/retry, and wait for the saved response before reporting success or navigating. Do not use extra confirmation screens for a safe invitation response.
+- Keep mention suggestions contextual and out of normal flow, capped to the available viewport. Use real current-member names and ordinary keyboard-accessible 44px buttons; never add a permanent second toolbar. Enter inserts a suggestion before sending, Escape dismisses, and IME/Shift+Enter retain their usual behavior.
+- Highlight valid mention text within the existing opaque message palette. In-app Activity labels come from server metadata; highlighting alone is not evidence of delivery. Muting suppresses mention alerts as well as ordinary alerts, without hiding conversation history. No OS-push claim without its own verified service.
+- The receiver master prompt and current audit in `docs/` separate implemented behavior from the broader roadmap. Preserve these evidence boundaries when reusing patterns in other projects.
+
 ## Loading identity
 
 The original **World Aperture** combines a framed world, geometric portal, and one quiet orbiting point. Keep the familiar map/lens cue small and separate from the optional NODEINE wordmark. Use it only while a route or data region is actually pending; retain informative skeletons and loaded navigation. No forced startup duration, fake progress, imported combat effects, or full-screen overlay on finished content. The 7.2-second orbit becomes static under reduced motion. See `docs/design/loading-screen-concept.md`.

@@ -6,7 +6,15 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
-## September 7, 2026 — voice seeking and conversation controls
+## September 8, 2026 — clearer groups, receiver verification and mentions
+
+- Group headers distinguish **members** from **pending invitations** and open group details directly. Invitations arrive automatically; recipients choose **Join group** or **Decline**, with existing-history access explained before joining. The reported one-member group contained two pending invitations, not missing members.
+- Verified both perspectives using the designated **Princess Sakura (Test)** account: accepted the real invitation, opened the founder's direct reply and observed **Seen**, then sent, edited, removed one labeled test message and cleared only the test account's view. The other invitee remains pending.
+- Type **@** for current-member suggestions. **@everyone** is limited to owners/admins. The server classifies existing in-app Activity notifications, honors personal mute, excludes pending/nonmembers/self, and enforces mention rate limits without duplicate alerts. This first version resolves usernames at original send; it does not preserve historical mention identity through renames or deliver OS push.
+- **Edit text**, **Remove for everyone**, and **Clear chat for me** are activated through reviewed permission tightening. Direct client message/role writes and private cleanup-receipt access remain restricted. Whole-group deletion remains disabled, now enforced on the server too.
+- The independent audit, 50-assertion mention rollback rehearsal, actual receiver checks and remaining device/concurrency limits are recorded in the [group release audit](docs/audits/2026-09-08-group-receiver-and-controls.md). The [receiver master prompt](docs/prompts/group-chat-receiver-master-prompt.md) captures the broader matrix for future work; it is not a claim that every roadmap feature exists. Deployment and backup completion are tracked in the [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
+
+## Previous checkpoint — September 7 voice seeking and conversation controls
 
 - Latest refinement: a smaller **16px seek handle** retains its 44px-high interaction area. A reproduced replay race is fixed; repeated browser first-tap checks passed, although the owner's intermittent physical-device report still needs retesting. See the [playback and activation audit](docs/audits/2026-09-07-playback-and-message-activation.md).
 - Drag the visible waveform handle to a timestamp with a mouse or touch; keyboard seeking is supported too. Seeking a paused note does not start it. A playing note resumes from the chosen position after release.
@@ -14,8 +22,8 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Narrow bubbles and 200% text reflow controls while retaining 44px targets and the aligned, opaque chat palette.
 - The latest outgoing message shows **Sent / Seen**; groups show **Seen by N / Seen by all**. New read acknowledgements require foreground, focused, visible message content—not merely loading a background tab. Seen does not prove somebody listened to a voice note.
 - **Conversation options → Mute notifications** works for direct and group chats and can be undone there. Muting is personal: messages/unread counts still appear, but future notifications are suppressed for your account. Exact verification and public rollout are tracked in the [chat-controls audit](docs/audits/2026-09-07-seeking-seen-mute.md) and [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
-- **Princess Sakura (Test)** now exists as a clearly labeled test account and has sent the founder the requested test message. Group creation/invitation/acceptance remains a separate live test; no group activity is simulated as complete.
-- Own-message editing/removal and personal clearing passed a **92-assertion rollback-only database rehearsal**. Production activation remains blocked on specific approval for the migration's permission tightening; no permission changes were applied. Their buttons remain gated; see [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
+- **Princess Sakura (Test)** was created as a clearly labeled test account and sent the founder the requested test message. Its actual group acceptance and receiver verification followed on September 8, above.
+- Own-message editing/removal and personal clearing passed a **92-assertion rollback-only database rehearsal** before the September 8 explicit approval and activation; see [Message controls rollout](docs/MESSAGE_CONTROLS_ROLLOUT.md).
 - The [shared UX playbook](docs/design/ux-review-playbook.md#personal-component-library-preference) now records the owner's maintained personal-component-library direction. NODEINE already has project-owned UI primitives; a distributed cross-project registry/package is not yet built or installed.
 
 ## Previous checkpoint — sent waveforms and five-minute voice notes

@@ -1,6 +1,6 @@
 # Message controls rollout
 
-Status, September 7 follow-up: implementation plus a 92-assertion rollback-only rehearsal against the authorized backend passed. The exact migration was rolled back with no surviving fixture records or schema additions. Production activation was stopped by safety review because table/column permission tightening needs specific owner approval. `supabase/message-controls.sql` is **not activated**; the client remains capability-gated. See the [activation audit](audits/2026-09-07-playback-and-message-activation.md) for evidence and remaining tests.
+Status, September 8 UTC: **activated** after the owner's explicit approval of the table/column permission restrictions. The exact previously rehearsed migration succeeded, and read-only privilege postconditions passed. A clearly labeled test message was sent, edited, and removed through the real test account's UI; personal clearing was also verified on that test account. See the [live receiver/controls audit](audits/2026-09-08-group-receiver-and-controls.md). The [earlier audit](audits/2026-09-07-playback-and-message-activation.md) retains the 92-assertion rollback rehearsal and historical approval gate.
 
 ## User contract
 
@@ -33,4 +33,4 @@ The checked-in [rollback rehearsal](../supabase/tests/message-controls.rollback.
 - Verify receipt-table SELECT/INSERT/UPDATE/DELETE fail with publishable-key clients, and only the authenticated sender with current membership can recover a receipt through the function.
 - Audit existing schema policies, triggers, function ownership/search paths and storage policies together; static SQL review alone is not a production authorization test.
 
-No actual private messages or stored files were edited, cleared or deleted to test this implementation.
+Only the explicitly labeled test message was edited/removed during the live activation check, and only the designated test account's group view was cleared. Original founder messages and stored files were not edited or deleted. Whole-group deletion and unproven file cleanup remain gated.

@@ -1,6 +1,20 @@
-# Group chat: existing capability and September 7 hardening
+# Group chat: receiver flow and current capabilities
 
-Group chat already exists; this update does not introduce a second implementation or a new database schema.
+## September 8 receiver and mention update
+
+The header exposes group details and separates active members from invitations. Only owners/admins see exact pending counts; loading/error never masquerades as zero. Matching invitations remain discoverable in inbox search. Join/Decline are labeled 44px actions with saved-response feedback, stale-account/chat guards, and disclosure that joining exposes existing history. Invitations are delivered automatically; membership still requires Join. No direct-add mode was introduced.
+
+Type `@` for accepted-member suggestions; Enter inserts the first suggestion before a later Enter sends. Arrow keys or Tab reach ordinary suggestion buttons; Escape dismisses. The popup floats above the composer instead of permanently reducing history. The active member directory is resolved independently of the general 500-profile discovery limit. Display text stays inert React text, never injected HTML.
+
+`supabase/group-mentions.sql` runs after `message-controls.sql`. The activated server classifies existing message notifications as `person` or `everyone`; Activity labels rely on that metadata, not message text. It keeps one notification per eligible recipient, honors mute, excludes pending/departed/outsider/self recipients, limits `@everyone` to owner/admin, and preserves original-send rate history after edits/removal. Limits: 10 direct targets/message, 49 other recipients/broadcast, 10 mention-bearing messages/minute and 2 broadcasts/minute per sender. An ordinary message is not blocked by those mention quotas. Whole-group deletion is denied server-side pending reviewed cleanup.
+
+V1 matches conservative 3–30-character username tokens against current members at send time. Embedded email/path tokens and ambiguous case-folded usernames do not become accidental targets. Valid pasted tokens can notify just like typed tokens; there is no separate quote parser. Edits do not issue new mentions. Stable-ID historical mention tokens across renames, direct-add privacy preferences, invitation expiry, joined-since history and operating-system push are not implemented.
+
+The real designated receiver joined, read a direct reply with Seen visible to the founder, and verified own-message edit/remove plus personal clear. See the [current audit](audits/2026-09-08-group-receiver-and-controls.md) for the 50-assertion SQL rehearsal, actual live checks, independent review and outstanding boundaries. The [receiver master prompt](prompts/group-chat-receiver-master-prompt.md) defines future scenarios, not blanket production permission.
+
+## Historical September 7 hardening
+
+The earlier update reused group chat without introducing a second implementation or new group schema.
 
 The latest follow-up exposes **Mute notifications** directly in Conversation options for direct and group chats, with a confirmed personal setting, safe retry and an unmute action. Group settings reuse that control. Muted chats still receive messages and show unread counts. The latest outgoing message shows a compact Seen count for eligible current members; opening a hidden tab or loading offscreen messages no longer acknowledges them. [Verification and remaining multi-account checks](audits/2026-09-07-seeking-seen-mute.md).
 

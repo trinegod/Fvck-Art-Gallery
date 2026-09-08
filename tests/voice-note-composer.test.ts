@@ -133,7 +133,7 @@ test("the production voice composer is inside the real message form, never a dia
   assert.equal(parents.some(element => /^Dialog/.test(tag(element))), false);
   assert.equal(expressionAttribute(composer, "key")?.getText(), "currentVoiceKey");
   assert.ok(attribute(composer, "attachment"));
-  assert.equal(elements(composer).filter(element => tag(element) === "textarea").length, 1);
+  assert.equal(elements(composer).filter(element => tag(element) === "GroupMessageInput").length, 1, "the tested message field remains inside the real voice composer");
 });
 
 test("sent voice players receive real duration and direction with a voice-only preferred bubble width", () => {

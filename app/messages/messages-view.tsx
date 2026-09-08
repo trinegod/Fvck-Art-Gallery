@@ -50,6 +50,7 @@ import { getMessagesShellMode } from "@/lib/messages-shell";
 import { persistMessageAttachment } from "@/lib/message-attachment";
 import { CHAT_PALETTES } from "@/lib/chat-appearance";
 import { isConversationMuted } from "@/lib/conversation-mute";
+import { fetchGroupInvitationStatus, type GroupInvitationStatus } from "@/lib/group-membership-status";
 import { VOICE_NOTE_BUCKET } from "@/lib/voice-note-upload";
 import { deliverVoiceNote } from "@/lib/voice-note-delivery";
 import WorldLoadingScreen from "../components/world-loading-screen";
@@ -63,6 +64,10 @@ import ArtworkShareDialog from "./artwork-share-dialog";
 import ChatArtworkCard from "./chat-artwork-card";
 import ConversationAvatar from "./conversation-avatar";
 import GroupSettingsDialog from "./group-settings-dialog";
+import GroupMembershipStatus from "./group-membership-status";
+import GroupInvitations from "./group-invitations";
+import GroupMessageInput from "./group-message-input";
+import GroupMentionText from "./group-mention-text";
 import ChatAppearanceDialog from "./chat-appearance-dialog";
 import ConversationMuteControl from "./conversation-mute-control";
 import { useChatAppearance } from "./use-chat-appearance";
@@ -135,6 +140,7 @@ export default function MessagesView({
   initialProfileId,
 }: MessagesViewProps) {
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [accountEpoch, setAccountEpoch] = useState(0);
   const [authReady, setAuthReady] = useState(!supabase);
   const [loadState, setLoadState] = useState<LoadState>(
     supabase ? "loading" : "unavailable"
@@ -148,6 +154,9 @@ export default function MessagesView({
   );
   const [messageHistory, setMessages] = useState<MessageRow[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
+  const [inviteLoadError, setInviteLoadError] = useState<string | null>(null);
+  const [groupInvitationStatus, setGroupInvitationStatus] = useState<{ key: string; status: GroupInvitationStatus } | null>(null);
+  const groupInvitationVersion = useRef(0);
   const [sharedArtworks, setSharedArtworks] = useState<Map<string, SharedArtwork>>(
     new Map()
   );
@@ -220,6 +229,9 @@ export default function MessagesView({
     (conversation) => conversation.id === activeConversationId
   );
   const viewerMembership = activeConversation?.members.find(member => member.profile_id === viewerId);
+  const groupMembers = useMemo(() => activeConversation?.kind === "group"
+    ? profiles.filter(profile => activeConversation.memberIds.includes(profile.id)) : [], [activeConversation, profiles]);
+  const canManageActiveGroup = activeConversation?.kind === "group" && (viewerMembership?.role === "owner" || viewerMembership?.role === "admin");
   const shellMode = getMessagesShellMode({
     authReady,
     loadState,
@@ -292,7 +304,7 @@ export default function MessagesView({
     }
     void checkVoiceDelivery();
     return () => controller.abort();
-  }, [viewerId, activeConversationId, currentVoiceKey]);
+  }, [viewerId, activeConversationId, currentVoiceKey, accountEpoch]);
 
   const filteredInbox = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -364,20 +376,18 @@ export default function MessagesView({
     const client = supabase;
     const isCurrent = accountScope.current.latest("invites");
     if (!client || !isCurrent()) return;
-    const { data, error: inviteError } = await client.rpc(
-      "list_my_group_invites"
-    );
-    if (!isCurrent()) return;
-
-    if (inviteError) {
-      if (!isMissingMessagingError(inviteError.code)) {
-        setError(inviteError.message);
+    try {
+      const { data, error: inviteError } = await client.rpc("list_my_group_invites");
+      if (!isCurrent()) return;
+      if (inviteError) {
+        setInviteLoadError("Group invitations could not be checked.");
+        return;
       }
-      setPendingInvites([]);
-      return;
+      setInviteLoadError(null);
+      setPendingInvites((data ?? []) as PendingGroupInvite[]);
+    } catch {
+      if (isCurrent()) setInviteLoadError("Group invitations could not be checked.");
     }
-
-    setPendingInvites((data ?? []) as PendingGroupInvite[]);
   }, []);
 
   const loadSharedArtworkState = useCallback(
@@ -469,7 +479,7 @@ export default function MessagesView({
       return;
     }
 
-    const profileRows = (allProfilesResult.data ?? []) as Profile[];
+    let profileRows = (allProfilesResult.data ?? []) as Profile[];
     setProfiles(profileRows);
 
     if (!conversationIds.length) {
@@ -514,6 +524,14 @@ export default function MessagesView({
     const conversations = (conversationResult.data ?? []) as ConversationRow[];
     const memberships = (membersResult.data ?? []) as MembershipRow[];
     const recentMessages = (messagesResult.data ?? []) as MessageRow[];
+    const knownProfiles = new Set(profileRows.map(profile => profile.id));
+    const missingMemberIds = [...new Set(memberships.map(member => member.profile_id).filter(id => !knownProfiles.has(id)))];
+    if (missingMemberIds.length) {
+      const memberProfiles = await client.from("profiles").select("id, username, display_name, avatar_url").in("id", missingMemberIds);
+      if (!isCurrent()) return;
+      if (memberProfiles.error) setError("Some member names could not be loaded. Refresh the conversation to try again.");
+      else { profileRows = [...profileRows, ...(memberProfiles.data ?? []) as Profile[]]; setProfiles(profileRows); }
+    }
     const profilesMap = new Map(profileRows.map((profile) => [profile.id, profile]));
     const viewerMembershipByConversation = new Map(
       viewerMemberships.map((membership) => [
@@ -597,6 +615,38 @@ export default function MessagesView({
     await loadPendingInvites();
   }, [loadPendingInvites]);
 
+  const refreshGroupInvitations = useCallback(async () => {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || !currentVoiceKey || !canManageActiveGroup) return;
+    const isAccountCurrent = accountScope.current.latest("group-invitation-count", viewerId);
+    const version = groupInvitationVersion.current;
+    const conversation = conversationVersion.current;
+    const isCurrent = () => isAccountCurrent() && groupInvitationVersion.current === version && conversationVersion.current === conversation;
+    if (!isCurrent()) return;
+    setGroupInvitationStatus({ key: currentVoiceKey, status: { state: "loading" } });
+    const status = await fetchGroupInvitationStatus(client, activeConversationId);
+    if (isCurrent()) setGroupInvitationStatus({ key: currentVoiceKey, status });
+  }, [activeConversationId, canManageActiveGroup, currentVoiceKey, viewerId]);
+
+  useLayoutEffect(() => {
+    groupInvitationVersion.current += 1;
+    return () => { groupInvitationVersion.current += 1; };
+  }, [activeConversationId, canManageActiveGroup, viewerId]);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !viewerId || !activeConversationId || !canManageActiveGroup) return;
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void refreshGroupInvitations(); });
+    const channel = client.channel(`nodeine-group-invitations-${viewerId}-${activeConversationId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_invites", filter: `conversation_id=eq.${activeConversationId}` },
+        () => { void refreshGroupInvitations(); void loadInbox(viewerId); })
+      .subscribe(status => { if (status === "SUBSCRIBED") void refreshGroupInvitations(); });
+    const refreshOnFocus = () => { void refreshGroupInvitations(); };
+    window.addEventListener("focus", refreshOnFocus);
+    return () => { cancelled = true; window.removeEventListener("focus", refreshOnFocus); void client.removeChannel(channel); };
+  }, [activeConversationId, canManageActiveGroup, loadInbox, refreshGroupInvitations, viewerId, accountEpoch]);
+
   useEffect(() => {
     const client = supabase;
     if (!client) return;
@@ -604,6 +654,9 @@ export default function MessagesView({
     const stop = observeAccount(client.auth, (userId) => {
       const changed = scope.account() !== userId;
       scope.setAccount(userId);
+      // Effect replays can rebind the same viewer. Readers still need a fresh
+      // scope even when React correctly leaves viewerId unchanged.
+      if (changed) setAccountEpoch(current => current + 1);
       setViewerId(userId);
       setAuthReady(true);
       if (changed || !userId) {
@@ -612,6 +665,8 @@ export default function MessagesView({
         setProfiles([]);
         setMessages([]);
         setPendingInvites([]);
+        setInviteLoadError(null);
+        setGroupInvitationStatus(null);
         setSharedArtworks(new Map());
         setSavedArtworkIds(new Set());
         setDraft("");
@@ -739,7 +794,7 @@ export default function MessagesView({
     }
 
     startConversation();
-  }, [initialProfileId, loadInbox, loadState, viewerId]);
+  }, [initialProfileId, loadInbox, loadState, viewerId, accountEpoch]);
 
   useEffect(() => {
     const client = supabase;
@@ -856,6 +911,7 @@ export default function MessagesView({
     loadSharedArtworkState,
     viewerId,
     activeClearedBefore,
+    accountEpoch,
   ]);
 
   useLayoutEffect(() => {
@@ -900,7 +956,7 @@ export default function MessagesView({
       acknowledgement.dispose();
       if (readAcknowledgementRef.current === acknowledgement) readAcknowledgementRef.current = null;
     };
-  }, [viewerId, activeConversationId, currentVoiceKey, loadInbox]);
+  }, [viewerId, activeConversationId, currentVoiceKey, loadInbox, accountEpoch]);
 
   useEffect(() => {
     const scroller = messagesScrollerRef.current;
@@ -914,7 +970,7 @@ export default function MessagesView({
       isCurrent: () => isAccountCurrent() && conversationVersion.current === version,
       onVisible: () => { void acknowledgement.acknowledge(latestReadableMessage.created_at); },
     });
-  }, [latestReadableMessage, conversationLoading, focusedConversation, viewerId, activeConversationId]);
+  }, [latestReadableMessage, conversationLoading, focusedConversation, viewerId, activeConversationId, accountEpoch]);
 
   function trackMessageScroll() {
     const scroller = messagesScrollerRef.current;
@@ -1362,32 +1418,31 @@ export default function MessagesView({
     if (!client || !viewerId || busyInviteId) return;
     const isCurrent = accountScope.current.capture(viewerId);
     if (!isCurrent()) return;
+    const version = conversationVersion.current;
     setBusyInviteId(inviteId);
-    const { data, error: inviteError } = await client.rpc(
-      "respond_to_group_invite",
-      {
-        target_invite_id: inviteId,
-        accept_invite: accept,
+    try {
+      const { data, error: inviteError } = await client.rpc("respond_to_group_invite", { target_invite_id: inviteId, accept_invite: accept });
+      if (!isCurrent()) return;
+      if (inviteError) {
+        toast.error("Invitation response could not be confirmed", { description: inviteError.message });
+        await loadPendingInvites();
+        return;
       }
-    );
-    if (!isCurrent()) return;
-    setBusyInviteId(null);
-
-    if (inviteError) {
-      toast.error("Invitation response wasn't saved", {
-        description: inviteError.message,
-      });
-      return;
-    }
-
-    await loadInbox(viewerId);
-    if (!isCurrent()) return;
-    if (accept) {
-      const conversationId = data as string;
-      selectConversation(conversationId);
-      toast.success("Group invitation accepted");
-    } else {
-      toast.success("Invitation declined");
+      setPendingInvites(current => current.filter(invite => invite.invite_id !== inviteId));
+      await loadInbox(viewerId);
+      if (!isCurrent()) return;
+      if (accept) {
+        const sameConversation = conversationVersion.current === version;
+        if (sameConversation) selectConversation(data as string);
+        toast.success(sameConversation ? "Group invitation accepted" : "Group joined. Open it from your inbox.");
+      } else toast.success("Invitation declined");
+    } catch {
+      if (isCurrent()) {
+        toast.error("Invitation response could not be confirmed", { description: "Refresh your invitations before trying again." });
+        await loadPendingInvites();
+      }
+    } finally {
+      if (isCurrent()) setBusyInviteId(null);
     }
   }
 
@@ -1612,59 +1667,11 @@ export default function MessagesView({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {!search && pendingInvites.length > 0 && (
-                <section className="border-b border-cyan-300/15 bg-cyan-300/[0.035] px-5 py-4 sm:px-7">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">
-                    Group invitations
-                  </p>
-                  <div className="mt-3 space-y-3">
-                    {pendingInvites.map((invite) => {
-                      const inviter = profileById.get(invite.invited_by);
-                      const responding = busyInviteId === invite.invite_id;
-                      return (
-                        <article
-                          key={invite.invite_id}
-                          className="rounded-xl border border-white/10 bg-black/30 p-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <ConversationAvatar group className="size-10" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-white">
-                                {invite.conversation_title}
-                              </p>
-                              <p className="mt-0.5 truncate text-xs text-zinc-600">
-                                Invited by {inviter?.display_name ?? "a creator"}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => respondToInvite(invite.invite_id, false)}
-                              disabled={Boolean(busyInviteId)}
-                              className="nodeine-action inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-white/10 px-3 text-xs text-zinc-400 hover:border-white/25 hover:text-white"
-                            >
-                              Decline
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => respondToInvite(invite.invite_id, true)}
-                              disabled={Boolean(busyInviteId)}
-                              className="nodeine-action inline-flex min-h-9 flex-1 items-center justify-center rounded-lg bg-cyan-300 px-3 text-xs font-medium text-zinc-950 hover:bg-cyan-200 disabled:opacity-60"
-                            >
-                              {responding ? (
-                                <LoaderCircle className="size-4 animate-spin" />
-                              ) : (
-                                "Join group"
-                              )}
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
+              {inviteLoadError && <div role="alert" className="border-b border-white/10 px-5 py-3 text-xs text-amber-200">
+                <p>{inviteLoadError} Any invitations below may be out of date.</p>
+                <button type="button" onClick={() => void loadPendingInvites()} className="nodeine-action mt-1 min-h-11 rounded-md px-2 underline focus-visible:outline-2 focus-visible:outline-cyan-300">Retry invitations</button>
+              </div>}
+              <GroupInvitations invites={pendingInvites} search={search} profiles={profileById} busyId={busyInviteId} onRespond={respondToInvite} />
 
               {search && inboxProfileResults.length > 0 && (
                 <section className="border-b border-white/10">
@@ -1804,15 +1811,12 @@ export default function MessagesView({
                         <h2 className="w-full truncate text-sm font-medium text-white">{conversationName(activeConversation)}</h2>
                         <p className="mt-0.5 w-full truncate text-xs text-zinc-400">@{activeConversation.otherProfile.username}</p>
                       </Link>
+                    ) : activeConversation.kind === "group" ? (
+                      <GroupMembershipStatus title={conversationName(activeConversation)} memberCount={activeConversation.memberCount}
+                        invitations={canManageActiveGroup ? (groupInvitationStatus?.key === currentVoiceKey ? groupInvitationStatus.status : { state: "loading" }) : undefined}
+                        onOpen={() => { setGroupSettingsOpen(true); void refreshGroupInvitations(); }} />
                     ) : (
-                      <div className="flex min-h-11 min-w-0 flex-col justify-center">
-                        <h2 className="truncate text-sm font-medium text-white">{conversationName(activeConversation)}</h2>
-                        <p className="mt-0.5 truncate text-xs text-zinc-400">
-                          {activeConversation.kind === "group"
-                            ? `${activeConversation.memberCount} ${activeConversation.memberCount === 1 ? "member" : "members"}`
-                            : "Private conversation"}
-                        </p>
-                      </div>
+                      <h2 className="truncate text-sm font-medium text-white">{conversationName(activeConversation)}</h2>
                     )}
                   </div>
                   <ChatAppearanceDialog key={`${viewerId}:${activeConversationId}`} appearance={appearance} temporary={temporary} artworks={themeArtworks} onChange={updateAppearance} />
@@ -1923,7 +1927,7 @@ export default function MessagesView({
                                       }`}
                                     >
                                       <p className="whitespace-pre-wrap break-words">
-                                        {message.body}
+                                        <GroupMentionText body={message.body} members={groupMembers} allowEveryone={activeConversation.kind === "group" && activeConversation.members.some(member => member.profile_id === message.sender_id && (member.role === "owner" || member.role === "admin"))} />
                                       </p>
                                     </div>
                                   )}
@@ -1956,7 +1960,7 @@ export default function MessagesView({
                                   )}
                                   {message.body && (
                                     <p className="whitespace-pre-wrap break-words px-4 py-3 text-left text-sm leading-6 text-zinc-200">
-                                      {message.body}
+                                      <GroupMentionText body={message.body} members={groupMembers} allowEveryone={activeConversation.kind === "group" && activeConversation.members.some(member => member.profile_id === message.sender_id && (member.role === "owner" || member.role === "admin"))} />
                                     </p>
                                   )}
                                 </div>
@@ -1969,10 +1973,10 @@ export default function MessagesView({
                                   }`}
                                 >
                                   <p className="whitespace-pre-wrap break-words">
-                                    {message.body ??
+                                    <GroupMentionText members={groupMembers} allowEveryone={activeConversation.kind === "group" && activeConversation.members.some(member => member.profile_id === message.sender_id && (member.role === "owner" || member.role === "admin"))} body={message.body ??
                                       (message.message_type === "artwork"
                                         ? "Shared artwork is unavailable."
-                                        : "Shared media is unavailable.")}
+                                        : "Shared media is unavailable.")} />
                                   </p>
                                 </div>
                               )}
@@ -2058,30 +2062,7 @@ export default function MessagesView({
                       </DropdownMenuContent>
                     </DropdownMenu>}
                   >
-                    <label className="nodeine-chat-composer-input flex min-w-0">
-                      <span className="sr-only">Message</span>
-                      <textarea
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (
-                            event.key === "Enter" &&
-                            !event.shiftKey &&
-                            !event.nativeEvent.isComposing
-                          ) {
-                            event.preventDefault();
-                            event.currentTarget.form?.requestSubmit();
-                          }
-                        }}
-                        maxLength={2000}
-                        rows={1}
-                        placeholder={
-                          uploadingMedia ? "Uploading media..." : "Message..."
-                        }
-                        disabled={uploadingMedia}
-                        className="max-h-32 min-h-11 w-full resize-none rounded-2xl border border-white/12 bg-white/[.035] px-3 py-2.5 text-base leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-cyan-300 lg:text-sm"
-                      />
-                    </label>
+                    <GroupMessageInput value={draft} onChange={setDraft} members={groupMembers} group={activeConversation.kind === "group"} allowEveryone={canManageActiveGroup} disabled={uploadingMedia} />
                     <Button
                       type="submit"
                       size="icon-lg"
@@ -2331,9 +2312,8 @@ export default function MessagesView({
             ) : (
               <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-zinc-950 px-5 py-4 sm:px-6">
                 <p className="text-xs leading-5 text-zinc-600">
-                  {selectedMemberIds.length + 1 === 1
-                    ? "1 person total"
-                    : `${selectedMemberIds.length + 1} people total`}
+                  You + {selectedMemberIds.length} {selectedMemberIds.length === 1 ? "invitation" : "invitations"}
+                  <span className="block">People become members after accepting.</span>
                   {selectedMemberIds.length < 2 && (
                     <span className="block text-amber-300/80">
                       Choose at least 2 people
@@ -2380,7 +2360,7 @@ export default function MessagesView({
           }
           viewerId={viewerId}
           profiles={profiles}
-          onConversationChanged={() => loadInbox(viewerId)}
+          onConversationChanged={async () => { await Promise.all([loadInbox(viewerId), refreshGroupInvitations()]); }}
           onLeft={handleGroupLeft}
         />
       )}
