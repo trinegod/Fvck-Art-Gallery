@@ -25,17 +25,19 @@ Downloads stream with a 4 MiB cap and no-store; one page-wide 8kHz offline decod
 
 ## Final source verification
 
-- 272 automated tests pass, including duration/parser/delivery boundaries, exact narrow-migration/rehearsal consistency, preview-to-sent contention, timeout/late-recovery behavior, silence/RMS samples, duration correction, palette/44px controls and responsive contracts.
+- All 273 automated tests pass, covering duration/parser/delivery boundaries, exact narrow-migration/rehearsal consistency, preview-to-sent contention, timeout/late-recovery behavior, silence/RMS samples, duration correction, palette/44px controls and responsive contracts.
 - Nonincremental TypeScript and the production Webpack build pass. ESLint has zero errors and five unchanged pre-existing warnings. The temporary synthetic recording route was removed before the production build; no test audio is included in the source or deployment.
 - In-browser rapid Stop → Send now produces the second measured waveform automatically; its intentionally incorrect 1s hint resolves to the actual 56.1s audio duration. Text draft remains unchanged and active capture tracks return to zero.
 - The authenticated 390px conversation still has 717px of message history, a 63px contextual header and 62px composer, with zero document overflow and no global dock/brand reserve. Its microphone tooltip correctly states five minutes/4MiB. These are browser viewport measurements, not a physical-phone keyboard or touch test.
 - The real inbox's **New group** entry opens the existing group-name/search/invitation dialog. Create stays disabled until its required selections are present. No test invitations or groups were created in the absence of the third account.
+- Authenticated history reload exposed a pre-existing query omission: `voice_duration_ms` was absent from the selected message columns, leaving older WebM notes with no duration hint or automatic waveform. A projection-aware regression failed before the fix and passed after the shared field list included duration. Inbox, text-send and artwork-send queries now reuse that list. This release targets the already-activated voice schema; fresh installations must apply the documented voice migration before this client.
+- After that repair, the signed-in conversation at 390px reloaded all three visible existing voice notes with measured 48-bin waveforms and their respective actual durations. No private note was played aloud, sent or copied into the repository.
 
 ## Verification boundaries
 
 Three agents own the recording/backend limits, waveform player, and responsive layout/audit respectively; the primary agent verifies integration and release. Automated browser input is synthetic audio only: the owner's ambient microphone is never captured. Local fixture sends append browser-only test bubbles, not actual messages.
 
-Deployment, final test counts, database rehearsal and backup results are recorded below only after they complete. Real iOS/Android recording, interruptions, keyboard/safe-area behavior and recipient delivery remain hands-on checks. Browser full-file decoding cannot be preempted internally: bounded input, downsampled single-job decoding and post-decode bounds reduce exposure, but do not constitute a trusted media scanner or a hard predecode duration guarantee.
+Deployment and backup completion are tracked in [GitHub issue #1](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) and the release backup manifest after publication. Real iOS/Android recording, interruptions, keyboard/safe-area behavior and recipient delivery remain hands-on checks. Browser full-file decoding cannot be preempted internally: bounded input, downsampled single-job decoding and post-decode bounds reduce exposure, but do not constitute a trusted media scanner or a hard predecode duration guarantee.
 
 The requested “Princess Sakura (Test)” account needs an owner-controlled email and any normal signup confirmation. No account, invitation, public activity, or access-control bypass is fabricated while that information is missing.
 

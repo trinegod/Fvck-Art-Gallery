@@ -158,6 +158,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 
 Environment files, dependencies, build output, private keys, and deployment state are excluded by `.gitignore`. No private credentials should be committed.
 
+For a fresh messaging installation, apply `supabase/messages.sql`, then `supabase/group-chat-expansion.sql`, then `supabase/voice-notes.sql` through an authorized database workflow. Current chat queries select `voice_duration_ms` for all message types, so the baseline voice schema is required even for text-only chats. For the already-activated live project, do not rerun those broad migrations: use the narrow five-minute upgrade and checks documented in [Voice notes rollout](docs/VOICE_NOTES_ROLLOUT.md).
+
 ## Validation
 
 ```bash

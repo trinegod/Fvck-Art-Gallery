@@ -40,7 +40,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope, observeAccount } from "@/lib/activity-session";
-import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, type MessageCursor } from "@/lib/message-history";
+import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, MESSAGE_FIELDS, type MessageCursor } from "@/lib/message-history";
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
 import { isMessageViewportNearBottom, scrollMessageViewportToEnd, syncMessageViewport } from "@/lib/message-viewport";
@@ -482,9 +482,7 @@ export default function MessagesView({
         .in("conversation_id", conversationIds),
       client
         .from("messages")
-        .select(
-          "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
-        )
+        .select(MESSAGE_FIELDS)
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false })
         .limit(300),
@@ -1000,9 +998,7 @@ export default function MessagesView({
         body,
         message_type: "text",
       })
-      .select(
-        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
-      )
+      .select(MESSAGE_FIELDS)
       .single();
     if (!isCurrent()) return;
 
@@ -1039,9 +1035,7 @@ export default function MessagesView({
         message_type: "artwork",
         artwork_id: artwork.id,
       })
-      .select(
-        "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at"
-      )
+      .select(MESSAGE_FIELDS)
       .single();
     if (!isCurrent()) return false;
 

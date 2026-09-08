@@ -38,7 +38,7 @@ export type MessageRow = {
   attachment_path: string | null;
   attachment_mime: string | null;
   attachment_name: string | null;
-  // Optional so the existing history query works before the voice migration.
+  // Optional for non-voice/legacy rows; current queries require the voice schema.
   voice_duration_ms?: number | null;
   edited_at?: string | null;
   removed_at?: string | null;

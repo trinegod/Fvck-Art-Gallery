@@ -50,6 +50,8 @@ Vercel limits a Function request body to 4.5 MB and rejects oversized payloads w
 
 ## Migration safeguards
 
+The current client requires the baseline voice schema before use: history, inbox and text/artwork/media insert-return queries all select `voice_duration_ms`. Optional TypeScript row values and sending capability gates do not make those queries compatible with a database missing that column. Apply the prerequisites below on a fresh installation; use only the narrow five-minute upgrade above for the existing activated deployment.
+
 Run [voice-notes.sql](../supabase/voice-notes.sql) after `messages.sql` and `group-chat-expansion.sql`, in one transaction. It adds the `voice` payload option and `voice_duration_ms`, creates the capability RPC, creates the private audio-only bucket (4 MiB), and leaves existing image/video bucket policies untouched. The bucket limit and message-trigger metadata check both use 4,194,304 bytes. If an earlier voice migration was already applied, the revised SQL must also be applied through an authorized database workflow to align those stored limits; changing application code alone does not update the database.
 
 The migration's `before insert` trigger checks that a voice message uses a path for its authenticated sender and conversation, has a matching sender-owned object in that bucket, and matches the object MIME/size metadata. It overwrites caller-supplied voice-message `created_at` with server time, serializes a sender's inserts with an advisory transaction lock, and limits that sender to six accepted voice messages per rolling minute.

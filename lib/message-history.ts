@@ -4,7 +4,7 @@ import { checkedMessageTimestamp, compareMessageTimestamps } from "./message-tim
 
 export const MESSAGE_PAGE_SIZE = 200;
 export type MessageCursor = Pick<MessageRow, "created_at" | "id">;
-export const MESSAGE_FIELDS = "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, created_at";
+export const MESSAGE_FIELDS = "id, conversation_id, sender_id, body, message_type, artwork_id, attachment_path, attachment_mime, attachment_name, voice_duration_ms, created_at";
 export const CONTROLLED_MESSAGE_FIELDS = `${MESSAGE_FIELDS}, edited_at, removed_at`;
 export const MEMBERSHIP_FIELDS = "conversation_id, profile_id, role, joined_at, last_read_at, muted_until";
 

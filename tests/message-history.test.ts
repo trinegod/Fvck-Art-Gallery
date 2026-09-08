@@ -51,6 +51,23 @@ test("opening a 205-message conversation returns the newest 200 and keyset pagin
   assert.equal(new Set(merged.map(message => message.id)).size, 205);
 });
 
+test("reloaded voice history retrieves its stored duration in both normal and controlled queries", async () => {
+  const voice = { ...row(1), body: null, message_type: "voice", voice_duration_ms: 300000 };
+  const database = createClient("https://fixture.invalid", "fixture", {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: async input => {
+      const fields = new URL(String(input)).searchParams.get("select")!.split(",");
+      // Match the actual database projection instead of returning unselected data.
+      const projected = Object.fromEntries(fields.map(field => [field, voice[field as keyof typeof voice] ?? null]));
+      return new Response(JSON.stringify([projected]), { headers: { "Content-Type": "application/json" } });
+    } },
+  });
+  for (const controlsEnabled of [false, true]) {
+    const page = await fetchMessagePage(database, id(9999), null, { controlsEnabled });
+    assert.equal(page.rows[0].voice_duration_ms, 300000);
+  }
+});
+
 test("an incoming message does not shift older pagination or get lost when hydration finishes", async () => {
   const {database, rows} = fixture();
   const latest = await fetchMessagePage(database, id(9999));
