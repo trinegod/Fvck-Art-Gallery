@@ -6,6 +6,13 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 14, 2026 — pick up your conversation drafts
+
+- Direct and group chats retain separate unfinished text drafts while switching conversations, returning to the inbox, or navigating elsewhere within the open app. A quiet **Draft:** preview replaces the latest-message preview without hiding unread counts or mute status.
+- Drafts are **memory-only in this app tab**: not uploaded, not device storage, not cross-device sync. Refreshing, closing, signing out, or changing accounts clears them. Delete the text to discard a draft. Voice recordings and files are not retained as drafts.
+- Confirmed text/media sends clear only the captured draft revision; text typed while a send is pending survives. Failed/unconfirmed delivery preserves the draft, and pending sends stay locked across chat navigation.
+- [Draft verification](docs/audits/2026-09-14-message-drafts.md) records tests, browser checks, remaining device checks, and release boundaries.
+
 ## September 8, 2026 — group About, avatar framing and snug text
 
 - **Group details → About this group** gives members a shared description. Owners/admins can edit up to 500 characters; conflicting edits require reviewing the latest saved version.
