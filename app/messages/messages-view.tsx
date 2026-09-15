@@ -70,6 +70,8 @@ import GroupMessageInput from "./group-message-input";
 import GroupMentionText from "./group-mention-text";
 import ChatAppearanceDialog from "./chat-appearance-dialog";
 import ConversationMuteControl from "./conversation-mute-control";
+import InboxMessagePreview from "./inbox-message-preview";
+import { useMessageDrafts } from "../components/message-drafts-provider";
 import { useChatAppearance } from "./use-chat-appearance";
 import type {
   ConversationRow,
@@ -163,7 +165,12 @@ export default function MessagesView({
   const [savedArtworkIds, setSavedArtworkIds] = useState<Set<string>>(new Set());
   const [savingArtworkId, setSavingArtworkId] = useState<string | null>(null);
   const [conversationLoading, setConversationLoading] = useState(false);
-  const [draft, setDraft] = useState("");
+  const { draftStore, drafts, sending: pendingDraftSends } = useMessageDrafts(viewerId);
+  const draft = activeConversationId ? drafts.get(activeConversationId)?.text ?? "" : "";
+  const draftSending = Boolean(activeConversationId && pendingDraftSends.has(activeConversationId));
+  const setDraft = useCallback((text: string) => {
+    draftStore.write(viewerId, activeConversationId, text);
+  }, [draftStore, viewerId, activeConversationId]);
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [voiceActiveKey, setVoiceActiveKey] = useState<string | null>(null);
@@ -654,6 +661,7 @@ export default function MessagesView({
     const stop = observeAccount(client.auth, (userId) => {
       const changed = scope.account() !== userId;
       scope.setAccount(userId);
+      draftStore.setAccount(userId);
       // Effect replays can rebind the same viewer. Readers still need a fresh
       // scope even when React correctly leaves viewerId unchanged.
       if (changed) setAccountEpoch(current => current + 1);
@@ -669,7 +677,6 @@ export default function MessagesView({
         setGroupInvitationStatus(null);
         setSharedArtworks(new Map());
         setSavedArtworkIds(new Set());
-        setDraft("");
         setError(null);
         setOlderCursor(null);
         setLoadingOlder(false);
@@ -704,7 +711,7 @@ export default function MessagesView({
       scope.clear();
       conversationVersion.current += 1;
     };
-  }, [loadInbox]);
+  }, [loadInbox, draftStore]);
 
   useEffect(() => {
     const client = supabase;
@@ -1003,7 +1010,6 @@ export default function MessagesView({
     setClearingConversation(false);
     setClearError(null);
     setSavingArtworkId(null);
-    setDraft("");
     setDragActive(false);
     setArtworkShareOpen(false);
     setGroupSettingsOpen(false);
@@ -1011,7 +1017,7 @@ export default function MessagesView({
     followingMessages.current = true;
     unseenMessageCount.current = 0;
     setNewMessageCount(0);
-  }, []);
+  }, [setArtworkShareOpen, setGroupSettingsOpen]);
 
   useEffect(() => {
     function syncConversationFromHistory() {
@@ -1066,40 +1072,53 @@ export default function MessagesView({
     const client = supabase;
     const body = draft.trim();
 
-    if (!client || !viewerId || !activeConversationId || !body || sending || uploadingMedia || voiceSending || voiceActive) return;
+    if (!client || !viewerId || !activeConversationId || !body || sending || draftSending || uploadingMedia || voiceSending || voiceActive) return;
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    const submission = draftStore.beginSend(viewerId, activeConversationId);
+    if (!submission) return;
 
     setSending(true);
     setError(null);
 
-    const { data, error: sendError } = await client
-      .from("messages")
-      .insert({
-        conversation_id: activeConversationId,
-        sender_id: viewerId,
-        body,
-        message_type: "text",
-      })
-      .select(MESSAGE_FIELDS)
-      .single();
-    if (!isCurrent()) return;
+    try {
+      const { data, error: sendError } = await client
+        .from("messages")
+        .insert({
+          conversation_id: activeConversationId,
+          sender_id: viewerId,
+          body: submission.text.trim(),
+          message_type: "text",
+        })
+        .select(MESSAGE_FIELDS)
+        .single();
+      submission.complete(!sendError && Boolean(data));
+      if (!isAccountCurrent()) return;
+      if (!isCurrent()) {
+        if (!sendError && data) void loadInbox(viewerId);
+        return;
+      }
 
-    if (sendError) {
-      setError(sendError.message);
-      toast.error("Message wasn't sent", { description: sendError.message });
-    } else {
-      const sentMessage = data as MessageRow;
-      setMessages((current) =>
-        current.some((message) => message.id === sentMessage.id)
-          ? current
-          : [...current, sentMessage]
-      );
-      setDraft("");
-      await loadInbox(viewerId);
+      if (sendError || !data) {
+        const reason = sendError?.message ?? "No delivery confirmation was received. Check the conversation before retrying.";
+        setError(reason);
+        toast.error("Message could not be confirmed", { description: reason });
+      } else {
+        const sentMessage = data as MessageRow;
+        setMessages((current) =>
+          current.some((message) => message.id === sentMessage.id)
+            ? current
+            : [...current, sentMessage]
+        );
+        void loadInbox(viewerId);
+      }
+    } catch {
+      if (isCurrent()) setError("Delivery could not be confirmed. Your draft is kept; check the conversation before retrying.");
+    } finally {
+      submission.complete(false);
+      if (isCurrent()) setSending(false);
     }
-    if (!isCurrent()) return;
-    setSending(false);
   }
 
   async function shareArtwork(artwork: SharedArtwork) {
@@ -1317,7 +1336,7 @@ export default function MessagesView({
 
   async function sendAttachment(file: File) {
     const client = supabase;
-    if (!client || !viewerId || !activeConversationId || uploadingMedia || voiceSending || voiceActive) return;
+    if (!client || !viewerId || !activeConversationId || sending || draftSending || uploadingMedia || voiceSending || voiceActive) return;
     const isAccountCurrent = accountScope.current.capture(viewerId);
     const isCurrent = captureConversation();
     if (!isCurrent()) return;
@@ -1353,7 +1372,9 @@ export default function MessagesView({
             : "video/mp4";
     const mimeType = file.type || fallbackMime;
     const attachmentPath = `${activeConversationId}/attachments/${safeAttachmentName(file.name)}`;
-    const caption = draft.trim() || null;
+    const submission = draftStore.beginSend(viewerId, activeConversationId);
+    if (!submission) return;
+    const caption = submission.text.trim() || null;
 
     setUploadingMedia(true);
     setError(null);
@@ -1365,11 +1386,13 @@ export default function MessagesView({
         path: attachmentPath, file, mime: mimeType, caption, messageType,
       }, isAccountCurrent);
     } catch (attachmentError) {
+      submission.complete(false);
       if (!isCurrent()) return;
       setUploadingMedia(false);
       toast.error("Media message wasn't sent", {description: attachmentError instanceof Error ? attachmentError.message : "Please try again."});
       return;
     }
+    submission.complete(Boolean(persisted));
     if (!persisted || !isAccountCurrent()) return;
 
     if (!isCurrent()) {
@@ -1384,7 +1407,6 @@ export default function MessagesView({
         ? current
         : [...current, message]
     );
-    setDraft("");
     setUploadingMedia(false);
     await loadInbox(viewerId);
     if (!isCurrent()) return;
@@ -1664,6 +1686,9 @@ export default function MessagesView({
                   className="h-11 border-white/10 bg-black/45 pl-10"
                 />
               </label>
+              {Array.from(drafts.values()).some(item => item.text.trim()) && (
+                <p className="mt-3 text-xs leading-5 text-zinc-400">Drafts stay in this open app only. Refreshing, closing, or signing out clears them.</p>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1737,9 +1762,7 @@ export default function MessagesView({
                           </span>
                         </span>
                         <span className="mt-1 flex items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
-                            {conversation.preview}
-                          </span>
+                          <InboxMessagePreview draft={drafts.get(conversation.id)?.text} preview={conversation.preview} />
                           {isConversationMuted(conversation.members.find(member => member.profile_id === viewerId)?.muted_until) && (
                             <span className="shrink-0 text-zinc-400" title="Notifications muted for you"><BellOff className="size-3.5" aria-hidden="true" /><span className="sr-only">Notifications muted for you</span></span>
                           )}
@@ -2043,35 +2066,35 @@ export default function MessagesView({
                     conversationKey={currentVoiceKey ?? "unavailable"}
                     sendEnabled={voiceEnabled}
                     disabledReason={voiceDisabledReason}
-                    disabled={sending || uploadingMedia}
+                    disabled={sending || draftSending || uploadingMedia}
                     onActiveChange={onVoiceActiveChange}
                     onSend={sendVoiceNote}
                     attachment={<DropdownMenu key={currentVoiceKey}>
                       <DropdownMenuTrigger
-                        disabled={uploadingMedia || sending || voiceSending}
+                        disabled={uploadingMedia || sending || draftSending || voiceSending}
                         render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
                       >
                         {uploadingMedia ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-5" />}
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="top" align="start" sideOffset={10} className="min-w-56 rounded-2xl border border-white/10 bg-zinc-950 p-2 text-zinc-100 shadow-2xl motion-reduce:animate-none! motion-reduce:transition-none!">
-                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || voiceSending} onClick={() => attachmentInputRef.current?.click()}>
+                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || draftSending || voiceSending} onClick={() => attachmentInputRef.current?.click()}>
                           <ImagePlus className="size-4 text-cyan-200" /> Photo or video
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || voiceSending} onClick={() => setArtworkShareOpen(true)}>
+                        <DropdownMenuItem className="min-h-11 gap-3 rounded-xl px-3" disabled={uploadingMedia || sending || draftSending || voiceSending} onClick={() => setArtworkShareOpen(true)}>
                           <BookmarkPlus className="size-4 text-cyan-200" /> Artwork from your worlds
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>}
                   >
-                    <GroupMessageInput value={draft} onChange={setDraft} members={groupMembers} group={activeConversation.kind === "group"} allowEveryone={canManageActiveGroup} disabled={uploadingMedia} />
+                    <GroupMessageInput key={currentVoiceKey} value={draft} onChange={setDraft} members={groupMembers} group={activeConversation.kind === "group"} allowEveryone={canManageActiveGroup} disabled={uploadingMedia} />
                     <Button
                       type="submit"
                       size="icon-lg"
-                      disabled={sending || uploadingMedia || voiceSending || !draft.trim()}
+                      disabled={sending || draftSending || uploadingMedia || voiceSending || !draft.trim()}
                       className="size-[44px] shrink-0 justify-self-end rounded-full"
                       aria-label="Send message"
                     >
-                      {sending ? (
+                      {sending || draftSending ? (
                         <LoaderCircle className="animate-spin" />
                       ) : (
                         <Send />

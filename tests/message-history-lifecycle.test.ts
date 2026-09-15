@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
 import { createAccountScope } from "../lib/activity-session";
+import { createMessageDraftStore } from "../lib/message-drafts";
 import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, MESSAGE_FIELDS } from "../lib/message-history";
 import { getMessageControls } from "../lib/message-actions";
 import { compareMessageTimestamps } from "../lib/message-timestamp";
@@ -45,9 +46,11 @@ function message(id: string, sender: string): MessageRow {
 function lifecycle(initialViewer: string | null, boundAccount = initialViewer) {
   const scope = createAccountScope();
   scope.setAccount(boundAccount);
+  const draftStore = createMessageDraftStore();
+  draftStore.setAccount(boundAccount);
   const state: Record<string, unknown> = { viewerId: initialViewer, accountEpoch: 0, messages: [], loadState: "ready" };
   const bindings: Record<string, unknown> = {
-    scope, accountScope: { current: scope }, conversationVersion: { current: 1 },
+    scope, draftStore, accountScope: { current: scope }, conversationVersion: { current: 1 },
     activeConversationId: "group", activeClearedBefore: null, MESSAGE_FIELDS, VOICE_NOTE_BUCKET,
     fetchMessagePage, fetchViewerMemberships, getMessageControls, mergeMessageHistory, compareMessageTimestamps,
   };
@@ -90,7 +93,7 @@ function lifecycle(initialViewer: string | null, boundAccount = initialViewer) {
   let dependencies: unknown[] | null = null;
   let cleanup: (() => void) | undefined;
   return {
-    state, pages,
+    state, pages, draftStore,
     auth: (viewer: string | null) => execute<(value: string | null) => void>(authCallback, bindings)(viewer),
     rebind: () => { scope.clear(); (bindings.conversationVersion as { current: number }).current++; },
     commit: () => {
@@ -175,10 +178,24 @@ test("scope-bound readers restart on account epoch without resubscribing the aut
     assert.ok(reader.arguments[1].elements.some(element => element.getText(source) === "accountEpoch"), marker);
   }
   const observer = calls.find(call => call.expression.getText(source) === "useEffect" && call.arguments[0].getText(source).includes("observeAccount("))!;
-  assert.equal(observer.arguments[1].getText(source), "[loadInbox]");
+  assert.equal(observer.arguments[1].getText(source), "[loadInbox, draftStore]");
   for (const name of ["loadInbox", "loadPendingInvites"]) {
     const declaration = nodes.find(node => ts.isVariableDeclaration(node) && node.name.getText(source) === name) as ts.VariableDeclaration;
     assert.ok(declaration.initializer && ts.isCallExpression(declaration.initializer));
     assert.doesNotMatch(declaration.initializer.arguments[1].getText(source), /accountEpoch/, name);
   }
+});
+
+test("the real auth callback preserves token-refresh drafts and purges them on logout/account changes", () => {
+  const app = lifecycle("viewer-one");
+  app.draftStore.write("viewer-one", "group", "unfinished");
+  app.auth("viewer-one");
+  assert.equal(app.draftStore.getSnapshot().drafts.get("group")?.text, "unfinished");
+  app.auth(null);
+  assert.equal(app.draftStore.getSnapshot().drafts.size, 0);
+  app.auth("viewer-one");
+  app.draftStore.write("viewer-one", "group", "new private draft");
+  app.auth("viewer-two");
+  assert.equal(app.draftStore.getSnapshot().drafts.size, 0);
+  app.dispose();
 });

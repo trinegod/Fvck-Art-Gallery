@@ -6,6 +6,7 @@ import ts from "typescript";
 import type { MessageRow } from "../app/messages/messages-types";
 import { mergeMessageHistory } from "../lib/message-history";
 import { compareMessageTimestamps } from "../lib/message-timestamp";
+import { createMessageDraftStore } from "../lib/message-drafts";
 
 const viewPath = resolve(process.cwd(), "app/messages/messages-view.tsx");
 const viewText = readFileSync(viewPath, "utf8");
@@ -272,4 +273,140 @@ test("the extracted removal callback preserves a confirmed tombstone when storag
   assert.equal(messages[0].removed_at, "2026-09-07T00:00:01.000000Z");
   assert.deepEqual(warnings, ["Message removed; its stored file still needs cleanup."]);
   assert.equal(loadCalls, 1);
+});
+
+function draftSendHarness(throws = false) {
+  const draftStore = createMessageDraftStore();
+  draftStore.setAccount(viewerId);
+  draftStore.write(viewerId, conversationId, "  First message  ");
+  const response = deferred<{data: MessageRow | null; error: {message: string} | null}>();
+  let current = true;
+  let accountCurrent = true;
+  let sending = false;
+  let error: string | null = null;
+  let inserted: unknown;
+  let inboxLoads = 0;
+  let messages: MessageRow[] = [];
+  const callback = productionCallback("sendMessage", {
+    supabase: { from: () => ({ insert: (row: unknown) => {
+      inserted = row;
+      return {select: () => ({single: async () => {
+        const result = await response.promise;
+        if (throws) throw new TypeError("connection lost");
+        return result;
+      }})};
+    }})},
+    draft: "  First message  ", viewerId, activeConversationId: conversationId,
+    sending: false, draftSending: false, uploadingMedia: false, voiceSending: false, voiceActive: false,
+    captureConversation: () => () => current && accountCurrent,
+    accountScope: {current: {capture: () => () => accountCurrent}},
+    draftStore, MESSAGE_FIELDS: "*",
+    setSending: (next: boolean) => { sending = next; },
+    setError: (next: string | null) => { error = next; },
+    setMessages: (update: (old: MessageRow[]) => MessageRow[]) => { messages = update(messages); },
+    toast: {error: () => {}},
+    loadInbox: async () => { inboxLoads += 1; },
+  });
+  return {
+    run: () => callback({preventDefault() {}}), draftStore,
+    finish: (failure = false) => response.resolve({
+      data: failure ? null : textMessage("sent", "2026-09-14T00:00:00Z", "First message"),
+      error: failure ? {message: "not delivered"} : null,
+    }),
+    switchConversation: () => { current = false; },
+    switchAccount: () => { accountCurrent = false; draftStore.setAccount("another-viewer"); },
+    state: () => ({sending, error, inserted, inboxLoads, messages}),
+  };
+}
+
+test("production text send consumes a confirmed draft and refreshes the real inbox", async () => {
+  const harness = draftSendHarness();
+  const pending = harness.run();
+  assert.equal(harness.state().sending, true);
+  assert.deepEqual(harness.state().inserted, {conversation_id: conversationId, sender_id: viewerId, body: "First message", message_type: "text"});
+  harness.finish();
+  await pending;
+  assert.equal(harness.draftStore.getSnapshot().drafts.size, 0);
+  assert.equal(harness.draftStore.getSnapshot().sending.size, 0);
+  assert.equal(harness.state().sending, false);
+  assert.equal(harness.state().messages.length, 1);
+  assert.equal(harness.state().inboxLoads, 1);
+});
+
+test("production send completion after navigation clears the original draft, not the new destination", async () => {
+  const harness = draftSendHarness();
+  const pending = harness.run();
+  harness.switchConversation();
+  harness.draftStore.write(viewerId, "other-chat", "New destination draft");
+  harness.finish();
+  await pending;
+  assert.equal(harness.draftStore.getSnapshot().drafts.has(conversationId), false);
+  assert.equal(harness.draftStore.getSnapshot().drafts.get("other-chat")?.text, "New destination draft");
+  assert.equal(harness.state().messages.length, 0);
+  assert.equal(harness.state().inboxLoads, 1);
+});
+
+test("production send does not erase text entered while delivery is pending", async () => {
+  const harness = draftSendHarness();
+  const pending = harness.run();
+  harness.draftStore.write(viewerId, conversationId, "Next thought");
+  harness.finish();
+  await pending;
+  assert.equal(harness.draftStore.getSnapshot().drafts.get(conversationId)?.text, "Next thought");
+});
+
+for (const throws of [false, true]) {
+  test(`production ${throws ? "thrown network error" : "reported send error"} retains text and finishes pending state`, async () => {
+    const harness = draftSendHarness(throws);
+    const pending = harness.run();
+    harness.finish(true);
+    await pending;
+    assert.equal(harness.draftStore.getSnapshot().drafts.get(conversationId)?.text, "  First message  ");
+    assert.equal(harness.draftStore.getSnapshot().sending.size, 0);
+    assert.equal(harness.state().sending, false);
+    assert.ok(harness.state().error);
+  });
+}
+
+test("production send cannot affect a newly signed-in account", async () => {
+  const harness = draftSendHarness();
+  const pending = harness.run();
+  harness.switchAccount();
+  harness.draftStore.write("another-viewer", conversationId, "New account draft");
+  harness.finish();
+  await pending;
+  assert.equal(harness.draftStore.getSnapshot().drafts.get(conversationId)?.text, "New account draft");
+  assert.equal(harness.state().messages.length, 0);
+  assert.equal(harness.state().inboxLoads, 0);
+});
+
+test("production attachment consumes only its confirmed caption even after navigation", async () => {
+  const draftStore = createMessageDraftStore();
+  draftStore.setAccount(viewerId);
+  draftStore.write(viewerId, conversationId, "  photo caption  ");
+  const response = deferred<MessageRow>();
+  let current = true;
+  let capturedCaption: unknown;
+  let inboxLoads = 0;
+  const callback = productionCallback("sendAttachment", {
+    supabase: {}, viewerId, activeConversationId: conversationId, sending: false, draftSending: false,
+    uploadingMedia: false, voiceSending: false, voiceActive: false,
+    captureConversation: () => () => current,
+    accountScope: {current: {capture: () => () => true}},
+    draftStore, safeAttachmentName: () => "test.jpg",
+    setUploadingMedia: () => {}, setError: () => {},
+    persistMessageAttachment: async (_client: unknown, options: {caption: string}) => {
+      capturedCaption = options.caption;
+      return response.promise;
+    },
+    loadInbox: () => { inboxLoads += 1; },
+  });
+  const pending = callback({name: "test.jpg", type: "image/jpeg", size: 200});
+  current = false;
+  assert.equal(capturedCaption, "photo caption");
+  response.resolve(textMessage("sent", "2026-09-14T00:00:00Z", "photo caption"));
+  await pending;
+  assert.equal(draftStore.getSnapshot().drafts.has(conversationId), false);
+  assert.equal(draftStore.getSnapshot().sending.size, 0);
+  assert.equal(inboxLoads, 1);
 });
