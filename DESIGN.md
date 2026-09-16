@@ -53,6 +53,15 @@ The earlier visual refinement also considered [Linear's March 2026 refresh](http
 
 For the latest conversation pass, official [Instagram messaging guidance](https://about.fb.com/news/2024/03/instagram-dm-updates/) provides a familiar reference for contextual themes and message actions. This is a feature-pattern comparison, not a live visual inspection of Instagram. NODEINE keeps its own artwork-first styling, opaque readable bubbles, explicit scope labels, and permission boundaries; no external UI assets were copied.
 
+## World artwork picker — September 15
+
+- Keep the viewer in the current conversation, but give browsing a near-full-height modal surface on phones. Do not move the global navigation or shrink the composer to accommodate the picker.
+- Use a compact world selector with counts, optional search and a visible scroll hint. Keep one bounded scrolling region for the artwork, separated from a persistent selection/Share footer with safe-area clearance.
+- Whole tiles are selectable buttons with a visible selected state. Selection is not delivery: an explicit Share artwork action confirms the destination already chosen by the conversation.
+- At short viewport heights or enlarged text, allow filters to scroll with the gallery, keep Close in a sticky opaque header, and keep the footer reachable. Account for the visual viewport without forcing the keyboard open on entry.
+- Preserve unfinished text while sharing artwork; retain selection on a known failed send. If delivery is uncertain, offer Check chat instead of a blind resend. Keep transport errors out of the user's decision path.
+- Reuse the existing graphite/cyan palette, dialog focus management, 44px controls and reduced-motion behavior. No artwork source or credit is changed by selection. Evidence and device limitations: `docs/audits/2026-09-15-world-artwork-picker.md`.
+
 ## Verification gate
 
 Test phone widths 320px and 390px, tablet width, desktop breakpoint, keyboard traversal, direct routes, history navigation, Studio escape path, and bottom-content clearance. Keep automated route-mapping tests with the shared destination model. See `docs/MOBILE_NAVIGATION.md` and `docs/audits/2026-09-06-repair-verification.md` for delivery evidence and limitations.

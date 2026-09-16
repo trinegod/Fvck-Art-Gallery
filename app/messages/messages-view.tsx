@@ -46,6 +46,7 @@ import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistC
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
 import { getMessageDayDividers, watchMessageDay } from "@/lib/message-days";
+import { classifyArtworkShareResponse, UNCONFIRMED_ARTWORK_SHARE, type ArtworkShareResult } from "@/lib/artwork-share";
 import { isMessageViewportNearBottom, scrollMessageViewportToEnd, syncMessageViewport } from "@/lib/message-viewport";
 import { createReadAcknowledgement, getMessageReadReceipt, newestDisplayedMessage, newestReceiptMessage, observeLatestMessageVisibility } from "@/lib/message-read-receipts";
 import { getMessagesShellMode } from "@/lib/messages-shell";
@@ -205,9 +206,11 @@ export default function MessagesView({
   const [startingDirectId, setStartingDirectId] = useState<string | null>(null);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [artworkShareOpen, setArtworkShareOpen] = useState(false);
+  const artworkShareLock = useRef<{ token: symbol; isCurrent: () => boolean } | null>(null);
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
   const startedProfileRef = useRef<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentTriggerRef = useRef<HTMLButtonElement | null>(null);
   const accountScope = useRef(createAccountScope());
   const conversationVersion = useRef(0);
   const [olderCursor, setOlderCursor] = useState<MessageCursor | null>(null);
@@ -1130,49 +1133,69 @@ export default function MessagesView({
     }
   }
 
-  async function shareArtwork(artwork: SharedArtwork) {
+  async function shareArtwork(artwork: SharedArtwork): Promise<ArtworkShareResult> {
     const client = supabase;
-    if (!client || !viewerId || !activeConversationId || sending) return false;
-    const isCurrent = captureConversation();
-    if (!isCurrent()) return false;
-    setSending(true);
-
-    const { data, error: shareError } = await client
-      .from("messages")
-      .insert({
-        conversation_id: activeConversationId,
-        sender_id: viewerId,
-        body: null,
-        message_type: "artwork",
-        artwork_id: artwork.id,
-      })
-      .select(MESSAGE_FIELDS)
-      .single();
-    if (!isCurrent()) return false;
-
-    if (shareError) {
-      setError(shareError.message);
-      toast.error("Artwork wasn't shared", { description: shareError.message });
-      setSending(false);
-      return false;
+    if (!client || !viewerId || !activeConversationId) {
+      return { status: "failed", message: "Reopen the conversation before sharing artwork." };
     }
+    if (sending || draftSending || uploadingMedia || voiceSending || voiceActive || artworkShareLock.current?.isCurrent()) {
+      return { status: "failed", message: "Wait for the current message to finish before sharing artwork." };
+    }
+    const isCurrent = captureConversation();
+    const isAccountCurrent = accountScope.current.capture(viewerId);
+    if (!isCurrent()) return { status: "failed", message: "The conversation changed. Reopen it before sharing artwork." };
+    const token = Symbol("artwork-share");
+    artworkShareLock.current = { token, isCurrent };
+    setSending(true);
+    setError(null);
 
-    const message = data as MessageRow;
-    setMessages((current) =>
-      current.some((item) => item.id === message.id)
-        ? current
-        : [...current, message]
-    );
-    setSharedArtworks((current) => {
-      const next = new Map(current);
-      next.set(artwork.id, artwork);
-      return next;
-    });
-    await loadInbox(viewerId);
-    if (!isCurrent()) return false;
-    toast.success("Artwork shared");
-    setSending(false);
-    return true;
+    try {
+      const { data, error: shareError } = await client
+        .from("messages")
+        .insert({
+          conversation_id: activeConversationId,
+          sender_id: viewerId,
+          body: null,
+          message_type: "artwork",
+          artwork_id: artwork.id,
+        })
+        .select(MESSAGE_FIELDS)
+        .single();
+      const outcome = classifyArtworkShareResponse(data, shareError, {
+        conversationId: activeConversationId, senderId: viewerId, artworkId: artwork.id,
+      });
+      if (outcome.status !== "sent") {
+        if (isCurrent()) setError(outcome.message);
+        return outcome;
+      }
+
+      // Refresh the same account even after navigation, but never let an
+      // ancillary read failure turn confirmed delivery into a resend prompt.
+      if (isAccountCurrent()) void loadInbox(viewerId).catch(() => {
+        if (isCurrent()) setError("Artwork was shared, but the inbox could not be refreshed. Reopen the conversation to refresh it.");
+      });
+      if (isCurrent()) {
+        const message = outcome.message;
+        setMessages((current) =>
+          current.some((item) => item.id === message.id)
+            ? current
+            : [...current, message]
+        );
+        setSharedArtworks((current) => {
+          const next = new Map(current);
+          next.set(artwork.id, artwork);
+          return next;
+        });
+        toast.success("Artwork shared");
+      }
+      return { status: "sent" };
+    } catch {
+      if (isCurrent()) setError(UNCONFIRMED_ARTWORK_SHARE);
+      return { status: "unconfirmed", message: UNCONFIRMED_ARTWORK_SHARE };
+    } finally {
+      if (artworkShareLock.current?.token === token) artworkShareLock.current = null;
+      if (isCurrent()) setSending(false);
+    }
   }
 
   async function saveSharedArtwork(artworkId: string) {
@@ -2083,7 +2106,7 @@ export default function MessagesView({
                     attachment={<DropdownMenu key={currentVoiceKey}>
                       <DropdownMenuTrigger
                         disabled={uploadingMedia || sending || draftSending || voiceSending}
-                        render={<button type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
+                        render={<button ref={attachmentTriggerRef} type="button" aria-label="Add attachment" title="Add attachment" className="nodeine-action grid size-[44px] shrink-0 place-items-center rounded-full border border-white/12 text-zinc-300 hover:border-cyan-300/40 hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60" />}
                       >
                         {uploadingMedia ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-5" />}
                       </DropdownMenuTrigger>
@@ -2381,9 +2404,11 @@ export default function MessagesView({
       </Dialog>
 
       <ArtworkShareDialog
+        key={`${currentVoiceKey}:${accountEpoch}`}
         open={artworkShareOpen}
         onOpenChange={setArtworkShareOpen}
         onShare={shareArtwork}
+        returnFocusRef={attachmentTriggerRef}
       />
 
       {viewerId && (

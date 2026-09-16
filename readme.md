@@ -6,6 +6,13 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 15, 2026 — room to browse and share world artwork
+
+- The chat artwork picker now uses a near-full-height mobile dialog with its own scrolling gallery, a visible scroll hint, and a separate Share footer. Whole artwork tiles select; nothing sends until **Share artwork** is pressed.
+- World counts, title/mood search, empty-state recovery and paginated loading keep the full catalog reachable. Short screens and enlarged text allow the filters to scroll away while Close and the Share footer remain reachable.
+- Confirmed artwork delivery preserves any unfinished text draft. Failed delivery stays recoverable; uncertain delivery asks the sender to check the chat before retrying to avoid accidental duplicate messages.
+- [Picker verification](docs/audits/2026-09-15-world-artwork-picker.md) records the reproduced clipping bug, responsive checks, one real test-chat share, automated coverage and physical-device limitations. Deployment and iCloud-folder backup evidence is recorded in the [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
+
 ## September 15, 2026 — quiet chat dates and Aspects of the Moon
 
 - Chats have small, centered **Today / Yesterday / calendar-date** dividers, based on the viewer's local day. Loading older messages does not duplicate a same-day label; midnight and returning to a sleeping tab refresh the labels without polling.

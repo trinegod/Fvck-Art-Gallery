@@ -1,262 +1,263 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  ImageIcon,
-  Layers3,
-  LoaderCircle,
-  Play,
-  Search,
-  Send,
-} from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { ArrowDown, Check, ImageIcon, LoaderCircle, Play, Search, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { supabase } from "@/lib/supabase-browser";
+import { filterPickerArtworks, loadPickerArtworks, type ArtworkWorld } from "@/lib/artwork-picker";
+import type { ArtworkShareResult } from "@/lib/artwork-share";
 import PolishedImage from "../components/polished-image";
 import type { SharedArtwork } from "./messages-types";
+import styles from "./artwork-share-dialog.module.css";
 
 type ArtworkShareDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onShare: (artwork: SharedArtwork) => Promise<boolean>;
+  onShare: (artwork: SharedArtwork) => Promise<ArtworkShareResult>;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
 };
 
-type ArtworkWorld = {
-  id: string;
-  title: string;
-  world_code: string | null;
-  sort_order: number | null;
-};
+export default function ArtworkShareDialog(props: ArtworkShareDialogProps) {
+  // Reopening fetches fresh artwork and never inherits an unfinished selection.
+  return <ArtworkPickerSession key={String(props.open)} {...props} />;
+}
 
-export default function ArtworkShareDialog({
-  open,
-  onOpenChange,
-  onShare,
-}: ArtworkShareDialogProps) {
+function ArtworkPickerSession({ open, onOpenChange, onShare, returnFocusRef }: ArtworkShareDialogProps) {
   const [artworks, setArtworks] = useState<SharedArtwork[]>([]);
   const [worlds, setWorlds] = useState<ArtworkWorld[]>([]);
-  const [selectedWorldId, setSelectedWorldId] = useState("all");
+  const [worldId, setWorldId] = useState("all");
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [sharing, setSharing] = useState(false);
+  const [delivery, setDelivery] = useState<Exclude<ArtworkShareResult, { status: "sent" }> | null>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const [reflow, setReflow] = useState(false);
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const browserRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const sendLock = useRef(false);
+  const mounted = useRef(true);
+  const searchId = useId();
+  const hintId = useId();
+  const locked = sharing || delivery?.status === "unconfirmed";
 
   useEffect(() => {
-    const client = supabase;
-    if (!open || !client || loaded) return;
-    const database = client;
-    let cancelled = false;
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
-    async function loadArtworks() {
-      setLoading(true);
-      const [artworkResult, worldResult] = await Promise.all([
-        database
-          .from("artworks")
-          .select(
-            "id, collection_id, title, src, thumb_src, media_type, mood"
-          )
-          .order("created_at", { ascending: false })
-          .limit(1000),
-        database
-          .from("collections")
-          .select("id, title, world_code, sort_order")
-          .order("sort_order", { ascending: true }),
-      ]);
-
-      if (cancelled) return;
-      setLoading(false);
-      setLoaded(true);
-
-      const error = artworkResult.error ?? worldResult.error;
-      if (error) {
-        toast.error("Artwork couldn't be loaded", {
-          description: error.message,
-        });
-        return;
-      }
-
-      setArtworks((artworkResult.data ?? []) as SharedArtwork[]);
-      setWorlds((worldResult.data ?? []) as ArtworkWorld[]);
-    }
-
-    loadArtworks();
-    return () => {
-      cancelled = true;
-    };
-  }, [loaded, open]);
-
-  const filteredArtworks = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return artworks.filter((artwork) => {
-      const matchesWorld =
-        selectedWorldId === "all" ||
-        artwork.collection_id === selectedWorldId;
-      const matchesSearch =
-        !query ||
-        `${artwork.title} ${artwork.mood ?? ""}`
-          .toLowerCase()
-          .includes(query);
-      return matchesWorld && matchesSearch;
+  useEffect(() => {
+    if (!open) return;
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+    // iOS keyboards can resize only the visual viewport, not CSS viewport units.
+    const update = () => setViewport(current => {
+      const next = { height: visualViewport.height, top: visualViewport.offsetTop };
+      return current?.height === next.height && current.top === next.top ? current : next;
     });
-  }, [artworks, search, selectedWorldId]);
+    update();
+    visualViewport.addEventListener("resize", update);
+    visualViewport.addEventListener("scroll", update);
+    return () => {
+      visualViewport.removeEventListener("resize", update);
+      visualViewport.removeEventListener("scroll", update);
+    };
+  }, [open]);
 
-  const artworkCountByWorld = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const artwork of artworks) {
-      if (!artwork.collection_id) continue;
-      counts.set(
-        artwork.collection_id,
-        (counts.get(artwork.collection_id) ?? 0) + 1
-      );
+  useEffect(() => {
+    if (!open) return;
+    const database = supabase;
+    let cancelled = false;
+    const request = new AbortController();
+    async function load() {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        if (!database) throw new Error("Artwork is unavailable right now.");
+        const [pieces, worldResult] = await Promise.all([
+          loadPickerArtworks((from, to) => database.from("artworks")
+            .select("id, collection_id, title, src, thumb_src, media_type, mood")
+            .order("created_at", { ascending: false }).order("sort_order", { ascending: true }).order("id", { ascending: true }).range(from, to).abortSignal(request.signal)),
+          database.from("collections").select("id, title, world_code, sort_order").order("sort_order", { ascending: true }).abortSignal(request.signal),
+        ]);
+        if (worldResult.error) throw new Error(worldResult.error.message);
+        if (!Array.isArray(worldResult.data)) throw new Error("Worlds response was incomplete.");
+        if (cancelled) return;
+        setArtworks(pieces);
+        setWorlds((worldResult.data ?? []) as ArtworkWorld[]);
+      } catch {
+        if (!cancelled) setLoadError("We couldn't load the artwork. Check your connection and try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    return counts;
+    void load();
+    return () => { cancelled = true; request.abort(); };
+  }, [open, retry]);
+
+  const filtered = useMemo(() => filterPickerArtworks(artworks, worldId, search), [artworks, worldId, search]);
+  const selected = filtered.find(artwork => artwork.id === selectedId) ?? null;
+  const counts = useMemo(() => {
+    const result = new Map<string, number>();
+    for (const artwork of artworks) {
+      if (artwork.collection_id) result.set(artwork.collection_id, (result.get(artwork.collection_id) ?? 0) + 1);
+    }
+    return result;
   }, [artworks]);
 
-  async function shareArtwork(artwork: SharedArtwork) {
-    if (sharingId) return;
-    setSharingId(artwork.id);
-    const shared = await onShare(artwork);
-    setSharingId(null);
-    if (shared) {
+  useLayoutEffect(() => {
+    const gallery = galleryRef.current;
+    const browser = browserRef.current;
+    const filters = filtersRef.current;
+    const header = browser?.querySelector("header");
+    if (!open || !gallery || !browser || !filters || !header) return;
+    const scroller = reflow ? browser : gallery;
+    const update = () => {
+      const headerHeight = `${header.clientHeight}px`;
+      if (browser.style.getPropertyValue("--picker-header-height") !== headerHeight) browser.style.setProperty("--picker-header-height", headerHeight);
+      // At large text sizes or with the keyboard up, let the filters scroll
+      // away too instead of trapping the artwork in a tiny remaining strip.
+      setReflow(browser.clientHeight - header.clientHeight - filters.clientHeight < 160);
+      setMoreBelow(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 4);
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(gallery);
+    observer.observe(browser);
+    observer.observe(filters);
+    observer.observe(header);
+    update();
+    scroller.addEventListener("scroll", update, { passive: true });
+    return () => { observer.disconnect(); scroller.removeEventListener("scroll", update); };
+  }, [open, filtered.length, loading, loadError, reflow]);
+
+  function resetSelection() {
+    setSelectedId(null);
+    setDelivery(null);
+    galleryRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    browserRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  function changeOpen(next: boolean) {
+    if (!sendLock.current) onOpenChange(next);
+  }
+
+  function toggleSearch() {
+    if (searchOpen) {
       setSearch("");
-      setSelectedWorldId("all");
-      onOpenChange(false);
+      resetSelection();
+      setSearchOpen(false);
+      searchToggleRef.current?.focus();
+    } else setSearchOpen(true);
+  }
+
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  async function shareSelected() {
+    if (!selected || locked || sendLock.current) return;
+    sendLock.current = true;
+    setSharing(true);
+    setDelivery(null);
+    try {
+      const result = await onShare(selected);
+      if (!mounted.current) return;
+      if (result.status === "sent") onOpenChange(false);
+      else setDelivery(result);
+    } catch {
+      if (mounted.current) setDelivery({ status: "unconfirmed", message: "Delivery couldn't be confirmed. Check this chat before trying again." });
+    } finally {
+      sendLock.current = false;
+      if (mounted.current) setSharing(false);
     }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88svh] overflow-hidden border border-white/10 bg-zinc-950/98 p-0 shadow-2xl shadow-black/70 ring-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-white/10 px-5 py-5 sm:px-6">
-          <DialogTitle className="text-xl text-white">
-            Drop from a world
-          </DialogTitle>
-          <DialogDescription className="leading-6 text-zinc-500">
-            Choose one of your visual worlds, then drop a piece into this
-            conversation with its original page and credit intact.
-          </DialogDescription>
-        </DialogHeader>
+  const viewportStyle = viewport ? {
+    "--picker-viewport-height": `${viewport.height}px`,
+    "--picker-viewport-top": `${viewport.top}px`,
+  } as CSSProperties : undefined;
 
-        <div className="space-y-3 border-b border-white/10 px-5 py-4 sm:px-6">
-          <label className="block">
-            <span className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-              <Layers3 className="size-3.5 text-cyan-300" />
-              Choose a world
-            </span>
-            <NativeSelect
-              value={selectedWorldId}
-              onChange={(event) => setSelectedWorldId(event.target.value)}
-              aria-label="Choose a visual world"
-              className="w-full [&_select]:h-11"
-            >
-              <NativeSelectOption value="all">
-                All worlds ({artworks.length})
-              </NativeSelectOption>
-              {worlds.map((world) => (
-                <NativeSelectOption key={world.id} value={world.id}>
-                  {world.world_code ? `${world.world_code} — ` : ""}
-                  {world.title} ({artworkCountByWorld.get(world.id) ?? 0})
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-
-          <label className="relative block">
-            <span className="sr-only">Search artwork</span>
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600" />
-            <Input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search artwork or mood"
-              className="h-11 border-white/12 bg-black/45 pl-10"
-            />
-          </label>
+  return <Dialog open={open} onOpenChange={changeOpen}>
+    <DialogContent className={styles.picker} style={viewportStyle} data-reflow={reflow ? "true" : undefined} data-compact={viewport && viewport.height < 480 ? "true" : undefined}
+      showCloseButton={false} initialFocus={titleRef} finalFocus={returnFocusRef}>
+      <div ref={browserRef} className={styles.browser} role={reflow ? "region" : undefined} aria-label={reflow ? "Artwork browser" : undefined} tabIndex={reflow ? 0 : undefined}>
+      <header className={styles.header}>
+        <div className="min-w-0">
+          <DialogTitle ref={titleRef} tabIndex={-1} className="text-lg text-white outline-none">Drop from a world</DialogTitle>
+          <DialogDescription className="sr-only">Select an artwork, then choose Share artwork. Its original page and credit stay attached. Nothing is sent until you confirm.</DialogDescription>
         </div>
+        <button type="button" onClick={() => changeOpen(false)} disabled={sharing} aria-label="Close artwork picker" className={styles.iconButton}><X className="size-5" /></button>
+      </header>
 
-        <div className="min-h-72 overflow-y-auto p-4 sm:p-5">
-          {loading ? (
-            <div className="grid min-h-72 place-items-center">
-              <LoaderCircle className="size-7 animate-spin text-cyan-300" />
-            </div>
-          ) : filteredArtworks.length ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {filteredArtworks.map((artwork) => {
-                const sharing = sharingId === artwork.id;
-                return (
-                  <article
-                    key={artwork.id}
-                    className="overflow-hidden rounded-xl border border-white/10 bg-black/35"
-                  >
-                    <div className="relative aspect-[4/5] bg-zinc-900">
-                      {artwork.thumb_src || artwork.media_type === "image" ? (
-                        <PolishedImage
-                          src={artwork.thumb_src ?? artwork.src}
-                          alt={artwork.title}
-                          wrapperClassName="size-full"
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <span className="grid size-full place-items-center text-zinc-700">
-                          <ImageIcon className="size-8" />
-                        </span>
-                      )}
-                      {artwork.media_type === "video" && (
-                        <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 text-white backdrop-blur">
-                          <Play className="size-3.5" fill="currentColor" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h3 className="line-clamp-2 text-sm leading-5 text-zinc-100">
-                        {artwork.title}
-                      </h3>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => shareArtwork(artwork)}
-                        disabled={Boolean(sharingId)}
-                        className="mt-3 w-full"
-                      >
-                        {sharing ? (
-                          <LoaderCircle
-                            data-icon="inline-start"
-                            className="animate-spin"
-                          />
-                        ) : (
-                          <Send data-icon="inline-start" />
-                        )}
-                        Share
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="grid min-h-72 place-items-center px-5 text-center">
-              <div>
-                <ImageIcon className="mx-auto size-8 text-zinc-700" />
-                <p className="mt-3 text-sm text-zinc-500">
-                  No matching artwork found in this world.
-                </p>
-              </div>
-            </div>
-          )}
+      <div ref={filtersRef} className={styles.filters}>
+        <div className={styles.filterRow}>
+          <NativeSelect aria-label="Choose a visual world" value={worldId} disabled={loading || Boolean(loadError) || locked}
+            onChange={event => { setWorldId(event.target.value); setSearch(""); resetSelection(); }}
+            className="min-w-0 w-full [&_select]:h-11 [&_select]:text-base [&_select]:text-zinc-100">
+            <NativeSelectOption value="all">{loading ? "Loading worlds…" : `All worlds (${artworks.length})`}</NativeSelectOption>
+            {worlds.map(world => <NativeSelectOption key={world.id} value={world.id}>{world.title} ({counts.get(world.id) ?? 0})</NativeSelectOption>)}
+          </NativeSelect>
+          <button ref={searchToggleRef} type="button" className={styles.iconButton} onClick={toggleSearch} disabled={loading || Boolean(loadError) || locked}
+            aria-label={searchOpen ? "Close artwork search" : "Search artwork"} aria-expanded={searchOpen} aria-controls={searchId}>
+            {searchOpen ? <X className="size-5" /> : <Search className="size-5" />}
+          </button>
         </div>
-      </DialogContent>
-    </Dialog>
-  );
+        {searchOpen && <label id={searchId} className="block">
+          <span className="sr-only">Search artwork</span>
+          <Input ref={searchRef} type="search" value={search} disabled={locked} placeholder="Search title or mood" className="h-11 text-base!"
+            onChange={event => { setSearch(event.target.value); resetSelection(); }} />
+        </label>}
+        <div className={styles.listMeta} id={hintId}>
+          <span role="status">{loading ? "Loading artwork…" : loadError ? "Artwork unavailable" : `${filtered.length} ${filtered.length === 1 ? "artwork" : "artworks"}`}</span>
+          {!loading && !loadError && filtered.length > 0 && <span className="inline-flex items-center gap-1.5">{moreBelow ? <><ArrowDown className="size-3" aria-hidden="true" />Scroll to explore</> : "End of collection"}</span>}
+        </div>
+      </div>
+
+      <div ref={galleryRef} role="region" aria-label="World artwork" aria-describedby={hintId} aria-busy={loading} tabIndex={0} className={styles.gallery}>
+        {loading ? <div role="status" className={styles.empty}><LoaderCircle className="size-6 animate-spin motion-reduce:animate-none" /><p>Loading your worlds…</p></div>
+          : loadError ? <div className={styles.empty}><p role="alert">{loadError}</p><Button className="min-h-11" variant="outline" onClick={() => setRetry(current => current + 1)}>Try again</Button></div>
+          : filtered.length ? <ul className={styles.grid}>
+            {filtered.map(artwork => <li key={artwork.id}>
+              <button type="button" className={styles.tile} aria-label={`Select ${artwork.title}`} aria-pressed={selectedId === artwork.id} disabled={locked}
+                onClick={() => { setSelectedId(current => current === artwork.id ? null : artwork.id); setDelivery(null); }}>
+                <span className={styles.preview}>
+                  {artwork.thumb_src || artwork.media_type === "image" ? <PolishedImage src={artwork.thumb_src ?? artwork.src} alt="" loading="lazy" decoding="async" wrapperClassName="size-full" className="size-full object-cover" />
+                    : <span className="grid size-full place-items-center text-zinc-400"><ImageIcon className="size-8" /></span>}
+                  {artwork.media_type === "video" && <span className={styles.videoTag}><Play className="size-3" fill="currentColor" />Video</span>}
+                  {selectedId === artwork.id && <span className={styles.check}><Check className="size-4" aria-hidden="true" /></span>}
+                </span>
+                <span className={styles.tileTitle}>{artwork.title}</span>
+              </button>
+            </li>)}
+          </ul>
+          : <div className={styles.empty}><ImageIcon className="size-7" /><p>{search ? "No artwork matches your search." : "No artwork in this world yet."}</p>{search && <Button variant="outline" className="min-h-11" onClick={() => { setSearch(""); resetSelection(); }}>Clear search</Button>}</div>}
+      </div>
+      </div>
+
+      <footer className={styles.footer} aria-busy={sharing}>
+        {delivery && <p role="alert" className="text-sm leading-5 text-amber-200">{delivery.message}</p>}
+        <div className={styles.footerRow}>
+          <div className="min-w-0" role="status">
+            <p className="text-xs text-zinc-400">{sharing ? "Sharing artwork…" : selected ? "Ready to share" : "Nothing selected"}</p>
+            <p className="truncate text-sm text-zinc-100" title={selected?.title}>{selected?.title ?? "Tap an artwork"}</p>
+          </div>
+          {delivery?.status === "unconfirmed" ? <Button className={styles.shareButton} onClick={() => changeOpen(false)}>Check chat</Button>
+            : <Button className={styles.shareButton} disabled={!selected || loading || sharing} onClick={() => void shareSelected()}>
+              {sharing ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Send className="size-4" />}<span>{sharing ? "Sharing…" : "Share artwork"}</span>
+            </Button>}
+        </div>
+      </footer>
+    </DialogContent>
+  </Dialog>;
 }
