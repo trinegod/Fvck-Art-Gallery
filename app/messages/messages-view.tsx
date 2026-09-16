@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   DragEvent,
   FormEvent,
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -44,6 +45,7 @@ import { createAccountScope, observeAccount } from "@/lib/activity-session";
 import { fetchMessagePage, fetchViewerMemberships, mergeMessageHistory, persistConversationRead, MESSAGE_FIELDS, type MessageCursor } from "@/lib/message-history";
 import { getMessageControls, editOwnMessage, removeOwnMessage, clearMyConversation } from "@/lib/message-actions";
 import { compareMessageTimestamps } from "@/lib/message-timestamp";
+import { getMessageDayDividers, watchMessageDay } from "@/lib/message-days";
 import { isMessageViewportNearBottom, scrollMessageViewportToEnd, syncMessageViewport } from "@/lib/message-viewport";
 import { createReadAcknowledgement, getMessageReadReceipt, newestDisplayedMessage, newestReceiptMessage, observeLatestMessageVisibility } from "@/lib/message-read-receipts";
 import { getMessagesShellMode } from "@/lib/messages-shell";
@@ -71,6 +73,7 @@ import GroupMentionText from "./group-mention-text";
 import ChatAppearanceDialog from "./chat-appearance-dialog";
 import ConversationMuteControl from "./conversation-mute-control";
 import InboxMessagePreview from "./inbox-message-preview";
+import MessageDayDivider from "./message-day-divider";
 import { useMessageDrafts } from "../components/message-drafts-provider";
 import { useChatAppearance } from "./use-chat-appearance";
 import type {
@@ -219,6 +222,7 @@ export default function MessagesView({
   const followingMessages = useRef(true);
   const unseenMessageCount = useRef(0);
   const [newMessageCount, setNewMessageCount] = useState(0);
+  const [calendarNow, setCalendarNow] = useState(() => new Date());
 
   // A history refresh (for example a clear cutoff) is not a new conversation.
   // Invalidate mutations only when the viewer/destination actually changes.
@@ -247,6 +251,10 @@ export default function MessagesView({
     resolvedConversationId: activeConversation?.id ?? null,
   });
   const focusedConversation = shellMode === "conversation";
+  useEffect(() => {
+    if (!focusedConversation) return;
+    return watchMessageDay(setCalendarNow);
+  }, [focusedConversation]);
   const currentVoiceKey = viewerId && activeConversationId
     ? `${viewerId}:${activeConversationId}` : null;
   const voiceActive = Boolean(currentVoiceKey && voiceActiveKey === currentVoiceKey);
@@ -262,6 +270,7 @@ export default function MessagesView({
   // the latest server watermark at the display boundary as well as in queries.
   const messages = messageHistory.filter(message => message.conversation_id === activeConversationId &&
     (!activeClearedBefore || compareMessageTimestamps(message.created_at, activeClearedBefore) > 0));
+  const dayDividers = getMessageDayDividers(messages, calendarNow);
   const latestReadableMessage = newestDisplayedMessage(messages, activeConversationId);
   const readReceipt = getMessageReadReceipt(
     newestReceiptMessage(messages, activeConversationId, viewerId),
@@ -1910,8 +1919,9 @@ export default function MessagesView({
                           message.message_type === "video";
 
                         return (
+                          <Fragment key={message.id}>
+                          {dayDividers.has(message.id) && <MessageDayDivider day={dayDividers.get(message.id)!} />}
                           <article
-                            key={message.id}
                             className={`flex gap-2.5 ${mine ? "justify-end" : "justify-start"}`}
                           >
                             {!mine && (
@@ -2019,6 +2029,7 @@ export default function MessagesView({
                               )}
                             </div>
                           </article>
+                          </Fragment>
                         );
                       })}
                     </div>

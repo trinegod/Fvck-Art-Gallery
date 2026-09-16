@@ -1,0 +1,677 @@
+// Generated from the reviewed Aspects of the Moon manifest.
+import type { ImportedFallbackItem } from "./imported-fallback-worlds";
+
+export const moonFallbackItems: ImportedFallbackItem[] = [
+  {
+    "id": "f364b74b-0b3c-5dc2-88bd-5a5863308a00",
+    "title": "Moon Companions",
+    "type": "image",
+    "src": "/art/moon-001.webp",
+    "thumbSrc": "/thumbs/moon-001.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The monkey and white rabbit share the moonlit scene. Separate portraits and the two-panel companion study keep those subjects together.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moon-companions",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "a04ed5c3-7fb9-5a90-ba51-432560d80754",
+    "title": "Moon Companions — Monkey portrait",
+    "type": "image",
+    "src": "/art/moon-002.webp",
+    "thumbSrc": "/thumbs/moon-002.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Monkey portrait in Aspects of the Moon. The monkey and white rabbit share the moonlit scene. Separate portraits and the two-panel companion study keep those subjects together.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moon-companions",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "8c061c5d-269a-520d-93dd-895dcee36c8f",
+    "title": "Moon Companions — Rabbit portrait",
+    "type": "image",
+    "src": "/art/moon-003.webp",
+    "thumbSrc": "/thumbs/moon-003.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Rabbit portrait in Aspects of the Moon. The monkey and white rabbit share the moonlit scene. Separate portraits and the two-panel companion study keep those subjects together.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moon-companions",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "207d1fd9-e379-5d87-a197-975e9f7ab2cc",
+    "title": "Moon Companions — Companion diptych",
+    "type": "image",
+    "src": "/art/moon-004.webp",
+    "thumbSrc": "/thumbs/moon-004.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Companion diptych in Aspects of the Moon. The monkey and white rabbit share the moonlit scene. Separate portraits and the two-panel companion study keep those subjects together.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moon-companions",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "f7e66140-688c-59e9-b077-ddf75067fda3",
+    "title": "Smoke over the Balcony",
+    "type": "image",
+    "src": "/art/moon-005.webp",
+    "thumbSrc": "/thumbs/moon-005.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The orange floral robe, smoking gesture and balcony scene connect this full composition with its portrait study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-balcony-smoke",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "05a251e2-83a1-55af-acf0-dcb7087eb701",
+    "title": "Smoke over the Balcony — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-006.webp",
+    "thumbSrc": "/thumbs/moon-006.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The orange floral robe, smoking gesture and balcony scene connect this full composition with its portrait study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-balcony-smoke",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "d08aa897-87d0-58b2-a59a-cd9536c72ebb",
+    "title": "Flight over the Water",
+    "type": "image",
+    "src": "/art/moon-007.webp",
+    "thumbSrc": "/thumbs/moon-007.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The airborne figure and distinctive red-and-purple checked garments connect the full scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-flight-over-water",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "60490dfb-28f7-538d-b9a5-e921672a18bd",
+    "title": "Flight over the Water — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-008.webp",
+    "thumbSrc": "/thumbs/moon-008.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The airborne figure and distinctive red-and-purple checked garments connect the full scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-flight-over-water",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "a40b730a-ec5c-5235-8798-989573be5212",
+    "title": "Crescent Fox",
+    "type": "image",
+    "src": "/art/moon-009.webp",
+    "thumbSrc": "/thumbs/moon-009.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The orange fox, teal headcloth and pale patterned robe connect the reed-filled scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-crescent-fox",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "dedd53f0-fb25-5a1b-aa75-f8501d751cdb",
+    "title": "Crescent Fox — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-010.webp",
+    "thumbSrc": "/thumbs/moon-010.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The orange fox, teal headcloth and pale patterned robe connect the reed-filled scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-crescent-fox",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "ac6aca54-81fd-5e57-8443-39665980d849",
+    "title": "Blossom Moon",
+    "type": "image",
+    "src": "/art/moon-011.webp",
+    "thumbSrc": "/thumbs/moon-011.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The blue floral robe, indigo headwrap and green fan connect the blossom scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-blossom-moon",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "85872363-2c20-593a-a009-cecfca40b89e",
+    "title": "Blossom Moon — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-012.webp",
+    "thumbSrc": "/thumbs/moon-012.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The blue floral robe, indigo headwrap and green fan connect the blossom scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-blossom-moon",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "2e1d694e-8354-536e-8430-ae165d398113",
+    "title": "Moonlit Court",
+    "type": "image",
+    "src": "/art/moon-013.webp",
+    "thumbSrc": "/thumbs/moon-013.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The layered court robes, pinned hair and large full moon connect this scene and portrait study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moonlit-court",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "1b21960c-ed39-5bf8-a1ca-c15a6ea0b54e",
+    "title": "Moonlit Court — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-014.webp",
+    "thumbSrc": "/thumbs/moon-014.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The layered court robes, pinned hair and large full moon connect this scene and portrait study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-moonlit-court",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "8f829cd3-e9fa-5cb2-800f-9977a4f3f9ef",
+    "title": "Mountain Flute",
+    "type": "image",
+    "src": "/art/moon-015.webp",
+    "thumbSrc": "/thumbs/moon-015.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The bearded flute player, pale robes and dark headpiece connect the mountain scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-mountain-flute",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "ad43a35f-cd32-5fa5-8be9-907bd6350ca4",
+    "title": "Mountain Flute — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-016.webp",
+    "thumbSrc": "/thumbs/moon-016.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The bearded flute player, pale robes and dark headpiece connect the mountain scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-mountain-flute",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "7ccbce8b-c135-5540-a37c-e48f7ae8072d",
+    "title": "Reed Warrior",
+    "type": "image",
+    "src": "/art/moon-017.webp",
+    "thumbSrc": "/thumbs/moon-017.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The warrior's striped sleeves and back-mounted equipment connect the reed scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-reed-warrior",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "9c05e408-9726-5f44-91a0-59ed7f127978",
+    "title": "Reed Warrior — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-018.webp",
+    "thumbSrc": "/thumbs/moon-018.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The warrior's striped sleeves and back-mounted equipment connect the reed scene and portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-reed-warrior",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "50863319-4bbf-59d3-9501-2334458ea6ad",
+    "title": "Archer and Deer",
+    "type": "image",
+    "src": "/art/moon-019.webp",
+    "thumbSrc": "/thumbs/moon-019.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The pale-robed archer and deer from the hillside composition reappear together in the split close-up study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-archer-and-deer",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "78da6c49-f908-5e58-838f-402b67443a81",
+    "title": "Archer and Deer — Archer and deer detail",
+    "type": "image",
+    "src": "/art/moon-020.webp",
+    "thumbSrc": "/thumbs/moon-020.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Archer and deer detail in Aspects of the Moon. The pale-robed archer and deer from the hillside composition reappear together in the split close-up study.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-archer-and-deer",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "3559a2cf-2325-5990-bd19-89a17938fa04",
+    "title": "Mountain Reader",
+    "type": "image",
+    "src": "/art/moon-021.webp",
+    "thumbSrc": "/thumbs/moon-021.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The wrapped headcloth, weathered travel clothes and open text connect the mountain scene and reader portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-mountain-reader",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "4d826c9a-fd58-5897-b18d-475e95bb8d71",
+    "title": "Mountain Reader — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-022.webp",
+    "thumbSrc": "/thumbs/moon-022.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The wrapped headcloth, weathered travel clothes and open text connect the mountain scene and reader portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-mountain-reader",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "ba708905-672f-50e3-a172-5e2082fa8b4b",
+    "title": "Wave Rider",
+    "type": "image",
+    "src": "/art/moon-023.webp",
+    "thumbSrc": "/thumbs/moon-023.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The silver-haired figure, black-and-gold cloak and cresting wave connect the boat scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-wave-rider",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "4d8debac-5311-5734-af5b-287a5142a4c3",
+    "title": "Wave Rider — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-024.webp",
+    "thumbSrc": "/thumbs/moon-024.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The silver-haired figure, black-and-gold cloak and cresting wave connect the boat scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-wave-rider",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "e22b4dc6-84a8-5691-923e-b91730f3294d",
+    "title": "Eclipse Encounter",
+    "type": "image",
+    "src": "/art/moon-025.webp",
+    "thumbSrc": "/thumbs/moon-025.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The red-robed woman and winged figure beneath an eclipse connect the full encounter and face-to-face detail.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-eclipse-encounter",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "3bad015e-b50e-5534-b731-eba1676eeb8d",
+    "title": "Eclipse Encounter — Encounter detail",
+    "type": "image",
+    "src": "/art/moon-026.webp",
+    "thumbSrc": "/thumbs/moon-026.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Encounter detail in Aspects of the Moon. The red-robed woman and winged figure beneath an eclipse connect the full encounter and face-to-face detail.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-eclipse-encounter",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "803b5349-762c-531f-94c6-e22c02e36667",
+    "title": "Pointing to the Moon",
+    "type": "image",
+    "src": "/art/moon-027.webp",
+    "thumbSrc": "/thumbs/moon-027.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The green-robed traveler and raised finger connect the wide composition and gesture close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-pointing-to-the-moon",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "1950170d-61fa-53fd-a975-63861c72c32b",
+    "title": "Pointing to the Moon — Gesture detail",
+    "type": "image",
+    "src": "/art/moon-028.webp",
+    "thumbSrc": "/thumbs/moon-028.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Gesture detail in Aspects of the Moon. The green-robed traveler and raised finger connect the wide composition and gesture close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-pointing-to-the-moon",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "16998dee-e8cf-552c-ad48-2373c67ee1d3",
+    "title": "White Fox",
+    "type": "image",
+    "src": "/art/moon-029.webp",
+    "thumbSrc": "/thumbs/moon-029.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The white fox, gold pendant and moonlit reeds connect the full animal study and frontal portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-white-fox",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "056089e0-96fb-56a1-8bcb-62c2d4c291a2",
+    "title": "White Fox — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-030.webp",
+    "thumbSrc": "/thumbs/moon-030.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The white fox, gold pendant and moonlit reeds connect the full animal study and frontal portrait.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-white-fox",
+      "detail-study"
+    ]
+  },
+  {
+    "id": "03537572-e334-54f3-83bf-5160ba1ba7c1",
+    "title": "Red-Robed Meditation",
+    "type": "image",
+    "src": "/art/moon-031.webp",
+    "thumbSrc": "/thumbs/moon-031.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Full composition in Aspects of the Moon. The bearded figure's red hood and robe connect the seated woodland scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-red-robed-meditation",
+      "full-composition"
+    ]
+  },
+  {
+    "id": "35ad5770-5278-5023-ab87-39dc6ee3ca82",
+    "title": "Red-Robed Meditation — Portrait detail",
+    "type": "image",
+    "src": "/art/moon-032.webp",
+    "thumbSrc": "/thumbs/moon-032.webp",
+    "series": "Aspects of the Moon",
+    "category": "Folklore World",
+    "mood": "Moonlit folklore and character studies",
+    "model": "AI Generated",
+    "description": "Portrait detail in Aspects of the Moon. The bearded figure's red hood and robe connect the seated woodland scene and close-up.",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art",
+      "moon-study-red-robed-meditation",
+      "detail-study"
+    ]
+  }
+];

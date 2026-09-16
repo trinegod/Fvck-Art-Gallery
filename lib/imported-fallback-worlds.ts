@@ -1,3 +1,5 @@
+import { moonFallbackItems } from "./moon-fallback-world";
+
 export type ImportedFallbackItem = {
   id: string;
   title: string;
@@ -343,12 +345,17 @@ const newWorldFallbackItems: ImportedFallbackItem[] = [
 export const importedFallbackItems: ImportedFallbackItem[] = [
   ...ashigaraFallbackItems,
   ...newWorldFallbackItems,
+  ...moonFallbackItems,
 ];
 
 export const importedCollectionDetails: Record<
   string,
   { order: number; summary: string }
 > = {
+  "Aspects of the Moon": {
+    order: 19,
+    summary: "Moonlit folklore, travelers, spirits and quiet encounters, with full compositions connected to their close-up studies.",
+  },
   Ashigara: {
     order: 11,
     summary:

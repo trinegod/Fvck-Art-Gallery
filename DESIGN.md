@@ -87,6 +87,13 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 - Erasing the composer discards its draft. Voice recording/discard, World artwork sharing, and clearing displayed history do not consume unrelated text. Voice/audio/file persistence is out of scope. Auth changes purge all entries and invalidate pending completions, including sign-out followed by sign-in to the same account.
 - No new animation, controls, database migration, paid provider, or generation service. See the [draft audit](docs/audits/2026-09-14-message-drafts.md) for observed and untested behavior.
 
+## Quiet conversation dates — September 15
+
+- Show one small, centered date divider at the first visible message of each local calendar day: Today, Yesterday, otherwise month/day (include the year outside the current year). Expose the complete date to assistive technology.
+- Use the existing opaque graphite metadata surface and faint, symmetric decorative lines. No button, animation, sticky overlay, live announcement or extra navigation. Preserve bubble widths and composer space.
+- Derive boundaries from the complete displayed history, including prepended messages and personal clear cutoffs. Preserve stable message identity and reading position. Refresh at local midnight and after focus/resume/time-zone changes; release timers/listeners when the conversation closes.
+- See [date-label verification](docs/audits/2026-09-15-message-days.md). Midnight/calendar coverage is automated; physical-device and screen-reader checks remain separate.
+
 ## Group receiver clarity and mentions
 
 - Reuse `AvatarCropEditor` for group and personal profile images. Begin from a centered crop; expose a real circular preview, drag and labeled native position/zoom sliders. The preview stays local until **Use avatar**, and that action still requires the parent's explicit Save before upload. Cancel must preserve the prior selection and return keyboard focus. Keep 44px minimum targets, auto-growing buttons, narrow-screen reflow, and no decorative motion.

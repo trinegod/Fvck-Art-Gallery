@@ -1,0 +1,490 @@
+{
+  "version": 1,
+  "sourceFolderId": "1EwDyc7mxucKfEERMAuA5P__wnmcc8GKK",
+  "sourceSnapshot": "2026-09-16T04:55:14.570Z",
+  "ownerId": "75df596f-cfa3-42ce-a335-a3580ce6172b",
+  "collection": {
+    "key": "aspects-of-the-moon",
+    "title": "Aspects of the Moon",
+    "prefix": "moon",
+    "worldCode": "World 019",
+    "sortOrder": 19,
+    "summary": "Moonlit folklore, travelers, spirits and quiet encounters, with full compositions connected to their close-up studies.",
+    "mood": "Moonlit folklore and character studies",
+    "category": "Folklore World",
+    "tags": [
+      "aspects-of-the-moon",
+      "moonlight",
+      "folklore",
+      "character-study",
+      "ai-art"
+    ]
+  },
+  "pairingMethod": "Human-reviewed subject, garments, props and setting. Curated related studies, not claims of exact pixel crops or chronological canon. Descriptive catalog labels are editorial, not translations of inscriptions.",
+  "duplicateReview": {
+    "sourceFiles": 32,
+    "uniqueByteHashes": 32,
+    "uniqueNormalizedPixelHashes": 32,
+    "skipped": [],
+    "notes": "All source images visually reviewed; distinctive close-ups and two-panel studies retained."
+  },
+  "groups": [
+    {
+      "key": "moon-companions",
+      "title": "Moon Companions",
+      "note": "The monkey and white rabbit share the moonlit scene. Separate portraits and the two-panel companion study keep those subjects together.",
+      "items": [
+        {
+          "index": 30,
+          "driveId": "1t-zQNc1ulTmqm1rhp6p5F31xLngcp8wM",
+          "sourceName": "60881D9A-ED14-41EA-BE1F-79BDCFA76784.PNG",
+          "size": 2969490,
+          "sha256": "9f07b9eac228b5daaaffe7e938ebdc164cea43a405d34d58c71feeed9e2b5e92",
+          "pixelSha256": "0da4d16c884c195e458d703f5fd3db613c45cfd7820d15474af355c98f100ae6",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 31,
+          "driveId": "1m7HB2ACH-Za386OR9zMemQGamNnD1l9E",
+          "sourceName": "62DE40DE-E9C3-4C92-B8E9-ADB0A0D94A66.PNG",
+          "size": 2963276,
+          "sha256": "b726a87ede2ba3fb7c62aeed04d55f9432dfb701d60f4679f1309fb6adeae509",
+          "pixelSha256": "aab0019d1ec37b7783552aa3c1b63616f6659b96af6a069485de25d56c660a74",
+          "width": 941,
+          "height": 1672,
+          "role": "Monkey portrait"
+        },
+        {
+          "index": 26,
+          "driveId": "1u-XcXFaxxANNd-8h8LCzE-TB2DlxcpzR",
+          "sourceName": "A21D3E8E-816B-4EF6-B135-F7C704268C23.PNG",
+          "size": 3064762,
+          "sha256": "32ab6615b2d0c6de7477e264be38b3d7df67e3b7358f6526a5c9978b88026c7e",
+          "pixelSha256": "db5d40637c66277e3d33d1a8f4292c896728c9b2e55714125cbadcecf2e96409",
+          "width": 941,
+          "height": 1672,
+          "role": "Rabbit portrait"
+        },
+        {
+          "index": 32,
+          "driveId": "1LkhSRwbH4_41ajZF2VpC_vQ3aBfq46KY",
+          "sourceName": "F65BD4B4-0FF6-42CC-B07B-A050980C256E.PNG",
+          "size": 2753892,
+          "sha256": "a9b78586dc3eb529fa336ff49dc2e202e4a736c3fe0c44875d43baf7433dfc88",
+          "pixelSha256": "d2e48d5f047a37f021c2d0497a5b9292e314d4e605bf62781ca0dc0e0478a735",
+          "width": 853,
+          "height": 1844,
+          "role": "Companion diptych"
+        }
+      ]
+    },
+    {
+      "key": "balcony-smoke",
+      "title": "Smoke over the Balcony",
+      "note": "The orange floral robe, smoking gesture and balcony scene connect this full composition with its portrait study.",
+      "items": [
+        {
+          "index": 8,
+          "driveId": "1pgrudkXPLvNu2O_-68lvNjIKkvQSdwPq",
+          "sourceName": "E6BBB3BC-34C8-4F75-B6AF-EB240C50A5AA.PNG",
+          "size": 3449005,
+          "sha256": "474853bb70c36306b7614594ef99771f749eeb114f7de6b604364a7ddb5ddd13",
+          "pixelSha256": "88d7320b94683309eb0fbd1e8b4f841ea55085c9402b5dd9de48be5daceb2983",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 1,
+          "driveId": "1tGQqXUYoiOfjZhsHE13ecCjDP5B8ghf5",
+          "sourceName": "47E6E54A-9D55-4425-A662-84E09C368B53.PNG",
+          "size": 3741953,
+          "sha256": "45bfe5e361b8b92038b1b76713e6206a111d9fbbb3eda89ac54e88e1c2dc6961",
+          "pixelSha256": "f313972c75e2e31af35af45d2e87019c03f99202f46043260360ee88a57f0fb3",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "flight-over-water",
+      "title": "Flight over the Water",
+      "note": "The airborne figure and distinctive red-and-purple checked garments connect the full scene and close-up.",
+      "items": [
+        {
+          "index": 4,
+          "driveId": "1AFSYcLg8r1gRWmwcegQOj1htmDmUXGEF",
+          "sourceName": "6ACE0A36-56E7-4C99-BC90-3CA3025CFC79.PNG",
+          "size": 3822694,
+          "sha256": "38783c105d861a9dd457845010729f40f60315c494f789e3b52c08b022ab6662",
+          "pixelSha256": "a63df2088bc1bd328206fe5a54a9295fd093839e1e05853d8a31e06f8017944f",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 2,
+          "driveId": "1bBkt9Cef7D6miRKb4_pSmriGXHybFgW0",
+          "sourceName": "8909CDCF-993F-4DEA-92F4-6DA6EFC67DB1.PNG",
+          "size": 2528742,
+          "sha256": "86c5931701d0e3e79a347752f0ba2f15814e824a730a3c59f7157589bf724461",
+          "pixelSha256": "c0935daa79b63178431d1758fc1f4e72b36018b9e357b9807ac9b736d2a01d08",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "crescent-fox",
+      "title": "Crescent Fox",
+      "note": "The orange fox, teal headcloth and pale patterned robe connect the reed-filled scene and portrait.",
+      "items": [
+        {
+          "index": 7,
+          "driveId": "1lH23l0q6k6leBFrVdsMp3uE2wxpAOHYG",
+          "sourceName": "EF7B1E9E-2127-4850-93F4-7F7C848C7F4E.PNG",
+          "size": 3466764,
+          "sha256": "d462bac154c78e56b3c3bcb6e6bb45a490c1f8b910bd057c1ad835c973dc0e47",
+          "pixelSha256": "16d42a7289921459298ca1ec9765915c6af31894b5da809bb0a0876be2317f31",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 3,
+          "driveId": "180PLlZ_-xSFhf12ZMehj-LbhObdJfcuR",
+          "sourceName": "ACDA430C-D5B5-4D6E-BD58-A31F9F940B62.PNG",
+          "size": 3620419,
+          "sha256": "173868c0aff7bfc1506d24b5833ef621becfdd7634d35a785be8cf5c735974b0",
+          "pixelSha256": "b9c99fdce70956760f468c03032c3226a479a081ce3bd3ee93f77c4d0542d762",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "blossom-moon",
+      "title": "Blossom Moon",
+      "note": "The blue floral robe, indigo headwrap and green fan connect the blossom scene and portrait.",
+      "items": [
+        {
+          "index": 5,
+          "driveId": "1fFRdBeTtY0n9qPJjmIyWx1VqrRi-eK_F",
+          "sourceName": "9B5E4A69-432E-49EA-AA8B-B55DC6E6B251.PNG",
+          "size": 3809666,
+          "sha256": "108b34237edcaee16ce01a44b5938ed59746fa8a82f9852e2b183fc74b6b1125",
+          "pixelSha256": "3e8985c55901b976272ece96cbcafb4772af13b7d90b63e756d4ffa7070c2ead",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 6,
+          "driveId": "1gr4SH95Nku1DI5SmEGue4end1dTgfIXL",
+          "sourceName": "40CBD62E-CFB4-4086-BDED-AECF01CAD0EB.PNG",
+          "size": 2598204,
+          "sha256": "a4200c3169dd8fdeed0e61ec9c52cba92e26024853227535b27436b098f07ef7",
+          "pixelSha256": "3d56068d86883cd686bfc23637badbc084d6a1e2912f058d3dae3f5fbb7914e6",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "moonlit-court",
+      "title": "Moonlit Court",
+      "note": "The layered court robes, pinned hair and large full moon connect this scene and portrait study.",
+      "items": [
+        {
+          "index": 10,
+          "driveId": "1V81skTwV8V7CFYGFR_X92_MbtDNLmx5r",
+          "sourceName": "A5A6E6DE-75A1-4D91-934F-05375DF0A4DB.PNG",
+          "size": 3122758,
+          "sha256": "0913e9059777fb2f5380097ecc7217d65a90a207fcfbe3d09b2d82631a45c816",
+          "pixelSha256": "92cd6ead8637859284f6b52c5d3d9e96339ee92df3d6db8f4d7a74bbee6bf7f3",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 9,
+          "driveId": "10PMsldWL1B0lUH5AfL-0MfpgiUqvGQs_",
+          "sourceName": "49F78F00-94BF-4C25-83D8-50EB8C3FCC23.PNG",
+          "size": 2234136,
+          "sha256": "41b3d4197e7ed2611ff1f83581aaeb39c5d3295bca11ba5a14f3056cee66e5c7",
+          "pixelSha256": "3878152281547b7e324117ecfc2b6412d216a968d10326d1f2744279cb05c902",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "mountain-flute",
+      "title": "Mountain Flute",
+      "note": "The bearded flute player, pale robes and dark headpiece connect the mountain scene and close-up.",
+      "items": [
+        {
+          "index": 12,
+          "driveId": "193ih8c9q8m1JgNmdl_c9szvUWkntKWgH",
+          "sourceName": "CCE712BC-6622-4E33-9246-040313092A09.PNG",
+          "size": 3074464,
+          "sha256": "d726c248416b721a8bbbf5294ac0b4e6ff730d8f6bc46d56fb44530ca5aeb82b",
+          "pixelSha256": "01a03b481afe9557d3cd04bce1a369c8ad3c42dda89fbea310df1fe775e235d5",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 11,
+          "driveId": "1JuoRWOtUZcN0Mf_4Pz-HZBIOcGoCyWDD",
+          "sourceName": "3F6BB7FB-9139-469C-870D-2BC8FEBBA9B5.PNG",
+          "size": 2867621,
+          "sha256": "aa785e7203ec03cba06ba699a200942947b616b1612e1428fdf5b30df7e8f4b6",
+          "pixelSha256": "06271889c72ff7f8d03403846cc150a489e7576274c388e274ecc2f6c0fff74b",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "reed-warrior",
+      "title": "Reed Warrior",
+      "note": "The warrior's striped sleeves and back-mounted equipment connect the reed scene and portrait.",
+      "items": [
+        {
+          "index": 14,
+          "driveId": "1sMUOeZm57cE4jAbCe7rTYYuqq4DPzn7Z",
+          "sourceName": "A4476C76-00C4-47A5-BCAB-C2FF04A20E61.PNG",
+          "size": 3490454,
+          "sha256": "1e14d740badd9c0a3ee94cfc8ae7469f629b87843dd1c67108ad4a232d244da3",
+          "pixelSha256": "b9a5f6b71848b20cf53b51e2abc238f70a6710e2f11ed9f5e6c3b8b481688a15",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 13,
+          "driveId": "10va1SWX_FSDQpUNOQI5YWORqN7bYLMUY",
+          "sourceName": "C076095F-A989-43C4-8E68-AA051A24B735.PNG",
+          "size": 2577554,
+          "sha256": "047d622c1d6e989ccaa8013c203ed485636ac5f3d8b397b69c947fc7e3f5f9ae",
+          "pixelSha256": "62d746a689a6e5ceff28ecb1ca69686c71533aea9ea80cb2137070dc6ccaefd8",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "archer-and-deer",
+      "title": "Archer and Deer",
+      "note": "The pale-robed archer and deer from the hillside composition reappear together in the split close-up study.",
+      "items": [
+        {
+          "index": 15,
+          "driveId": "1evtjCm-TfY7dqAmnoebhoNyUVqUy4seT",
+          "sourceName": "C5089B6B-108A-4CE9-8F58-0CB45646EF6A.PNG",
+          "size": 2817020,
+          "sha256": "dfea26ac7ae2ae8e5765e3aa81e160c04b149055f0f9b540dc5e7d1945e64403",
+          "pixelSha256": "7aca05289a2768818205a6af0dc22234813ab817a2e732ec5d59ab5eb43a47b2",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 16,
+          "driveId": "1Ym2PkGg9qTTMgphWRdTtClR-b1ZCRJoe",
+          "sourceName": "86791885-04AA-4FC4-92A3-016D0A762587.PNG",
+          "size": 2472327,
+          "sha256": "e850bbb1b8ac1342c894b11b5bb70313dcacba52d7799b988ab1bddf938dbac9",
+          "pixelSha256": "4d588d091595526fa289323163ef541d993830ed7a775d415d2d6d8af5e1e179",
+          "width": 941,
+          "height": 1672,
+          "role": "Archer and deer detail"
+        }
+      ]
+    },
+    {
+      "key": "mountain-reader",
+      "title": "Mountain Reader",
+      "note": "The wrapped headcloth, weathered travel clothes and open text connect the mountain scene and reader portrait.",
+      "items": [
+        {
+          "index": 28,
+          "driveId": "1qXz0jFALw8yD6cMBMqTSR6SDBz-r7UBp",
+          "sourceName": "69F265C2-DC2F-4FF5-9E72-752EBA3A6480.PNG",
+          "size": 2984897,
+          "sha256": "7194c065e48135db6c79dc0c5add4118aeb44eaf85c281392ac0ce2f252a62ba",
+          "pixelSha256": "dddbc4d9e45273b2e00c0be897ec38813ba8a137210afa141d9b6f5ba7fca052",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 17,
+          "driveId": "1o8ULcaHob1lUko3md6dgdwrefhD6Nfo4",
+          "sourceName": "EF0AB9E3-AD1D-422A-8AE8-A121BB2F45D9.PNG",
+          "size": 3619730,
+          "sha256": "73aaf6f3ac28188925b43c568c6bef7336cfb7134c603e4bbb0705aaafdf03c7",
+          "pixelSha256": "91788621f777acda3b5127d841ac2a77213c346d1fa623a0bc9e6477281a3f4a",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "wave-rider",
+      "title": "Wave Rider",
+      "note": "The silver-haired figure, black-and-gold cloak and cresting wave connect the boat scene and close-up.",
+      "items": [
+        {
+          "index": 18,
+          "driveId": "1xiA3t7FiuFLacxGpqt1fSUno8RoYGtkM",
+          "sourceName": "D4E6618E-990D-4DD4-80DE-836A84B1A390.PNG",
+          "size": 3618876,
+          "sha256": "1104e460fd90807648c94cd69cf5114f5fdaf0aa058003c49b72e5b8f10b8216",
+          "pixelSha256": "e5732157e8fecf236edace9fd2064abb1f488749d9f013bd864479a6668050dc",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 25,
+          "driveId": "1dIyU2aGmxkXUNjfxaBdLgSN0tFPeYpk-",
+          "sourceName": "CA5127EC-CD0A-4440-8FB8-95B8328DC4DF.PNG",
+          "size": 3634435,
+          "sha256": "48f4949f127175567d91964f04431a0168630c66b1c60965c9c0ca8b45ad0a89",
+          "pixelSha256": "aa1af5cc616e2750580dbd060b5c78e8751ce900a2eba5955c4e9ad85fe51300",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "eclipse-encounter",
+      "title": "Eclipse Encounter",
+      "note": "The red-robed woman and winged figure beneath an eclipse connect the full encounter and face-to-face detail.",
+      "items": [
+        {
+          "index": 20,
+          "driveId": "1Nx0cuYt8uJGJdJU1Ii2m5uzhH7kPo_NK",
+          "sourceName": "881710E3-C955-4DAA-A28C-8D0FB61C40CF.PNG",
+          "size": 2871990,
+          "sha256": "307b0a3bd519ff2af2fc12f1a51ea9f539cc5e6e766e9c48a36d5e1094869d22",
+          "pixelSha256": "7ff2919d0c15727ed41384c2b745cf36a3f77f12d1da5ec63dfc3b7ec2cda75a",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 19,
+          "driveId": "1Fi4YBppZ77A60t6uFf8HWx0nB9jq8dJ0",
+          "sourceName": "8E333B39-9890-4239-9764-40E3D9C54ACE.PNG",
+          "size": 2766857,
+          "sha256": "6805abf78f7c7ca0a193b93283b6502feedb81ebd49dcd71baed7771ac6eec96",
+          "pixelSha256": "67ad4efc944f4b681ab722ba765dc4ab5fd6e72d1885162e69d656340f52d9b1",
+          "width": 941,
+          "height": 1672,
+          "role": "Encounter detail"
+        }
+      ]
+    },
+    {
+      "key": "pointing-to-the-moon",
+      "title": "Pointing to the Moon",
+      "note": "The green-robed traveler and raised finger connect the wide composition and gesture close-up.",
+      "items": [
+        {
+          "index": 21,
+          "driveId": "13ga4Plaro2TxZFZ-6MHcLYUG2Zi6lupA",
+          "sourceName": "B9125A23-B8EC-4073-BE9F-0139E91AD270.PNG",
+          "size": 2883889,
+          "sha256": "09968fe609cc17b0af52ce55d79489203f29482ee9cd7a478ea91f5d397d114a",
+          "pixelSha256": "52adf345706b28b767d87bf65d1425a4fff99b2074943fe388bea8784be4cd3e",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 22,
+          "driveId": "1XXkGLm0LGsJl2j-_osddt5KhMce1ex1d",
+          "sourceName": "9B32DFF8-6D55-47A0-B109-E94F6AF9B5CF.PNG",
+          "size": 2630036,
+          "sha256": "41388273595b9017dd659cc32a9faf2b81fc59b4391b76d2ed0c340767cbf885",
+          "pixelSha256": "595a85aa68f4bf11d61db7b956c74d7f509794e3fd100ac052a70b7ed63348cc",
+          "width": 941,
+          "height": 1672,
+          "role": "Gesture detail"
+        }
+      ]
+    },
+    {
+      "key": "white-fox",
+      "title": "White Fox",
+      "note": "The white fox, gold pendant and moonlit reeds connect the full animal study and frontal portrait.",
+      "items": [
+        {
+          "index": 23,
+          "driveId": "1r2JUX6FjNKGdSqMuPWPr3_iq97tqrHcf",
+          "sourceName": "AE6AAE07-DA44-43E9-9255-73AE406171FE.PNG",
+          "size": 3406549,
+          "sha256": "542a848a0072faad992fcea035a83930f3c7439f5eb6289217f1d90dbecad618",
+          "pixelSha256": "5107e4e90bc5ef344f82b23ea297b11c1d9d75d903a285adc9bcfab227bb0d6f",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 29,
+          "driveId": "1OCifQSaB05eszKgqNo2dzX0atZgU9bAS",
+          "sourceName": "AFDD9752-517D-4955-B4DA-F0C046113E8C.PNG",
+          "size": 3045021,
+          "sha256": "d75e0c7eb1aa03b47521afa9fa8dfa48712c7fb875d06d83f9881ddac50e8a37",
+          "pixelSha256": "e26d5785c445e575c80998532d019e7d5ebd75142872cbc92d5123381e64b2fc",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    },
+    {
+      "key": "red-robed-meditation",
+      "title": "Red-Robed Meditation",
+      "note": "The bearded figure's red hood and robe connect the seated woodland scene and close-up.",
+      "items": [
+        {
+          "index": 24,
+          "driveId": "1Rr_VlF6nnX8MWK9JjCCk6BxFAVtFmiws",
+          "sourceName": "08850D51-A74A-4BDB-9ED0-6C8165EDCB3D.PNG",
+          "size": 2748288,
+          "sha256": "6a2fc49573c5a262c12bf41df2857f2534257cf46812bf73f7891f4484d6fec2",
+          "pixelSha256": "23dad5cf32265b0c5ec91090127be095fc86557ed5aa9d37882f2a418b67f04b",
+          "width": 941,
+          "height": 1672,
+          "role": "Full composition"
+        },
+        {
+          "index": 27,
+          "driveId": "1GUfWl3ApvDi8sgqS478byy4r5B8AcEzJ",
+          "sourceName": "436D3187-F4BF-474B-A234-78DCE2D868E1.PNG",
+          "size": 2369816,
+          "sha256": "5c01748ca5865ca71f25c9b6ad726227ae330358fa7c2233c42b5d85e89e984a",
+          "pixelSha256": "b0d9f362de8e7ac283c42798ac1c3adefd984d7a4294a0ff575128111bd89ecc",
+          "width": 941,
+          "height": 1672,
+          "role": "Portrait detail"
+        }
+      ]
+    }
+  ]
+}

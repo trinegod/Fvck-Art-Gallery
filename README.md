@@ -2,9 +2,16 @@
 
 **The TRINE Archive — an interactive platform for AI-generated visual worlds.**
 
-NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It currently organizes 399 images and short-form videos across 18 cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding.
+NODEINE is a responsive digital art archive and creator network built by Steven Adkins. It organizes images and short-form videos into cinematic collections spanning Japanese folklore, cyberpunk, fashion, character design, landscapes, urban storytelling, and original worldbuilding. The live catalog and source fallback are separate inventories; release audits record verified import counts.
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
+
+## September 15, 2026 — quiet chat dates and Aspects of the Moon
+
+- Chats have small, centered **Today / Yesterday / calendar-date** dividers, based on the viewer's local day. Loading older messages does not duplicate a same-day label; midnight and returning to a sleeping tab refresh the labels without polling.
+- **Aspects of the Moon** adds 32 individually reviewed images in 15 composition/detail groups. Full scenes precede their close-ups, and public World Threads connect each group. Distinct portraits and diptychs are retained; byte and normalized-pixel duplicate checks found no repeated source images.
+- Optimized image and thumbnail derivatives preserve complete compositions. Source fingerprints, reviewed pairings, deterministic IDs and additive, rerunnable import SQL make the new world reproducible. Existing artwork, permissions and chat data are unchanged.
+- Evidence and remaining checks: [chat dates](docs/audits/2026-09-15-message-days.md), [artwork import](docs/audits/2026-09-15-aspects-of-the-moon.md). The [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1) records actual deployment, database activation and iCloud-folder backup verification separately.
 
 ## September 14, 2026 — pick up your conversation drafts
 
@@ -145,7 +152,7 @@ Deployment and recovery boundaries are documented in [Release and backup notes](
 
 Visitors can:
 
-- Explore 18 themed visual-world collections containing 399 pieces
+- Explore themed visual-world collections containing images and short-form films
 - Browse the connected Feed, enter a World or Chronicle, and return to the originating artwork in the feed
 - Open individual pieces in an immersive lightbox
 - Navigate artwork with buttons or keyboard controls
