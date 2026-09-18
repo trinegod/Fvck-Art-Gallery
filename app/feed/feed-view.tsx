@@ -62,7 +62,7 @@ const modeCopy: Record<FeedMode, { eyebrow: string; title: string; body: string 
   discover: {
     eyebrow: "Across the archive",
     title: "Discover",
-    body: "Move between Worlds, films, and public Chronicles without flattening them into disconnected posts.",
+    body: "Move between Worlds, films, and public Threads without flattening them into disconnected posts.",
   },
   following: {
     eyebrow: "Your creative orbit",
@@ -469,7 +469,7 @@ export default function FeedView({
           {feedMode !== "following" && signalState === "loading" ? (
             <FeedStatus
               title={feedMode === "for-you" ? "Tuning your living signal…" : "Reading the public signal…"}
-              body={feedMode === "for-you" ? "Reading your follows, likes, saves, and the public archive before the order settles." : "Measuring public momentum and Chronicle crossings before the order settles."}
+              body={feedMode === "for-you" ? "Reading your follows, likes, saves, and the public archive before the order settles." : "Measuring public momentum and Thread connections before the order settles."}
             />
           ) : feedMode === "following" && followingState === "loading" ? (
             <FeedStatus
@@ -598,7 +598,7 @@ export default function FeedView({
                     {firstThread(activeEntry) && (
                       <ContextLink
                         href={withFeedContext(`/threads/${firstThread(activeEntry)?.slug}#piece-${activeEntry.id}`, feedMode, activeEntry.id)}
-                        label="Open Chronicle"
+                        label="Open Thread"
                         icon={<Network />}
                       />
                     )}
@@ -971,7 +971,7 @@ function WorldInterlude({
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
             {entry.collection.summary ||
-              "Enter the World to see its complete gallery, films, public Chronicles, and neighboring signals."}
+              "Enter the World to see its complete gallery, films, public Threads, and neighboring signals."}
           </p>
         </div>
         <Link
@@ -1003,7 +1003,7 @@ function ChronicleInterlude({
         </span>
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-violet-200">
-            Chronicle crossing
+            Thread connection
           </p>
           <h2 className="mt-2 text-2xl font-medium text-white">{thread.title}</h2>
           <p className="mt-3 text-sm leading-6 text-zinc-400">

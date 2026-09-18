@@ -12,6 +12,8 @@ type ArtworkFocusViewProps = {
   onBack: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
+  backLabel?: string;
+  contextLabel?: string;
 };
 
 export default function ArtworkFocusView({
@@ -22,26 +24,39 @@ export default function ArtworkFocusView({
   onBack,
   onPrevious,
   onNext,
+  backLabel = "Back to details",
+  contextLabel,
 }: ArtworkFocusViewProps) {
   const [actualSize, setActualSize] = useState(false);
   const isVideo = isVideoArtwork(mediaType, src);
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden bg-black">
-      <div className="absolute left-3 right-3 top-3 z-20 flex items-center justify-between gap-3 sm:left-5 sm:right-5 sm:top-5">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-black"
+      onKeyDown={event => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        // Native video seeking and enlarged-image panning keep their arrow keys.
+        event.stopPropagation();
+        if (actualSize || isVideo) return;
+        const move = event.key === "ArrowLeft" ? onPrevious : onNext;
+        if (move) { event.preventDefault(); move(); }
+      }}>
+      <div className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-zinc-950 px-3 pb-3 pt-[max(.75rem,env(safe-area-inset-top))] sm:px-5">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/80 px-3.5 py-2 text-sm text-zinc-100 backdrop-blur transition hover:border-cyan-300"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/80 px-3.5 py-2 text-sm text-zinc-100 hover:border-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
         >
           <span aria-hidden="true">←</span>
-          Back to details
+          {backLabel}
         </button>
+        {contextLabel && <p role="status" className="order-last w-full min-w-0 text-center text-xs text-zinc-400 sm:order-none sm:w-auto sm:flex-1">
+          <span className="block truncate text-zinc-100">{alt}</span><span>{contextLabel}</span>
+        </p>}
         {!isVideo && (
           <button
             type="button"
             onClick={() => setActualSize((current) => !current)}
-            className="inline-flex min-h-11 items-center rounded-lg border border-white/15 bg-black/80 px-3.5 py-2 text-sm text-zinc-100 backdrop-blur transition hover:border-cyan-300"
+            className="inline-flex min-h-11 items-center rounded-lg border border-white/15 bg-black/80 px-3.5 py-2 text-sm text-zinc-100 hover:border-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-300"
             aria-pressed={actualSize}
           >
             {actualSize ? "Fit image" : "Actual size"}
@@ -49,6 +64,7 @@ export default function ArtworkFocusView({
         )}
       </div>
 
+      <div className="relative min-h-0 flex-1">
       {isVideo ? (
         <ArtworkMedia
           key={src}
@@ -56,17 +72,19 @@ export default function ArtworkFocusView({
           posterSrc={posterSrc}
           mediaType={mediaType}
           alt={alt}
-          autoPlay
-          wrapperClassName="absolute inset-0 bg-black px-4 pb-4 pt-20 sm:px-8 sm:pb-8 sm:pt-24"
+          wrapperClassName="absolute inset-0 bg-black p-4 sm:p-8"
           className="max-h-full max-w-full"
         />
       ) : (
         <div
           className={
             actualSize
-              ? "h-full w-full overflow-auto overscroll-contain px-5 pb-8 pt-20 sm:px-8 sm:pt-24"
-              : "relative h-full w-full overflow-hidden"
+                ? "h-full w-full overflow-auto overscroll-contain p-4 sm:p-8"
+                : "relative h-full w-full overflow-hidden"
           }
+          tabIndex={actualSize ? 0 : undefined}
+          role={actualSize ? "region" : undefined}
+          aria-label={actualSize ? "Enlarged artwork; scroll to inspect" : undefined}
         >
           <PolishedImage
             key={src}
@@ -76,19 +94,19 @@ export default function ArtworkFocusView({
             onClick={() => setActualSize((current) => !current)}
             wrapperClassName={
               actualSize
-                ? "relative min-h-full min-w-full bg-black"
+                ? "relative block h-fit w-max min-h-full min-w-full overflow-visible! bg-black"
                 : "absolute inset-0 bg-black"
             }
             className={
               actualSize
                 ? "mx-auto block h-auto w-auto max-w-none cursor-zoom-out select-none"
-                : "absolute inset-0 h-full w-full cursor-zoom-in select-none object-contain p-4 pt-20 sm:p-8 sm:pt-24"
+                : "absolute inset-0 h-full w-full cursor-zoom-in select-none object-contain p-4 sm:p-8"
             }
           />
         </div>
       )}
 
-      {onPrevious && onNext && (
+      {onPrevious && onNext && !actualSize && (
         <>
           <button
             type="button"
@@ -110,6 +128,7 @@ export default function ArtworkFocusView({
           </button>
         </>
       )}
+      </div>
     </div>
   );
 }

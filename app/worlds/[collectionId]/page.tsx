@@ -136,7 +136,7 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
   return (
     <main className="min-h-screen bg-zinc-950 pb-[calc(7rem+env(safe-area-inset-bottom))] text-zinc-100 lg:pb-0">
       <header className="border-b border-white/10 px-5 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <Link
             href="/feed"
             className="inline-flex min-h-11 items-center text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
@@ -156,7 +156,7 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
         </div>
       </header>
 
-      <section className="relative isolate overflow-hidden border-b border-white/10 px-5 py-16 sm:px-8 sm:py-24">
+      <section className="relative isolate overflow-hidden border-b border-white/10 px-5 py-7 sm:px-8 sm:py-10">
         {hero && (
           <div className="pointer-events-none absolute inset-0 -z-20 opacity-30">
             <PolishedImage
@@ -169,20 +169,20 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
         )}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,#09090b_18%,rgba(9,9,11,.80)_54%,#09090b_100%)]" />
 
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+        <div className="mx-auto max-w-7xl">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-cyan-300">
               {world.worldCode || "Visual World"} · World Portal
             </p>
-            <h1 className="mt-4 text-5xl font-light tracking-[-0.05em] text-white sm:text-7xl lg:text-8xl">
+            <h1 className="mt-3 text-4xl font-light leading-tight tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
               {world.title}
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg sm:leading-8">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300 sm:text-base sm:leading-7">
               {world.summary ||
-                "A connected visual World of artwork, films, Chronicles, and neighboring signals."}
+                "A connected visual World of artwork, films, Threads, and neighboring signals."}
             </p>
             {world.creator && (
-              <p className="mt-5 text-sm text-zinc-500">
+              <p className="mt-3 text-sm text-zinc-400">
                 Created by{" "}
                 {world.creator.username ? (
                   <Link
@@ -198,29 +198,12 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-white/10 bg-black/35 p-3 backdrop-blur-xl">
-            {(
-              [
-                ["gallery", "Pieces"],
-                ["threads", "Chronicles"],
-                ["film", "Films"],
-                ["signals", "Signals"],
-              ] as const
-            ).map(([key, label]) => (
-              <div key={key} className="rounded-2xl border border-white/8 p-3">
-                <p className="text-xl font-medium text-white">{layerCounts[key]}</p>
-                <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.18em] text-zinc-500">
-                  {label}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       <div className="sticky top-0 z-30 border-b border-white/10 bg-zinc-950/88 px-3 py-2 backdrop-blur-2xl sm:px-8">
         <nav
-          className="mx-auto grid max-w-4xl grid-cols-4 gap-1"
+          className="mx-auto grid max-w-4xl grid-cols-[repeat(auto-fit,minmax(min(100%,3.9rem),1fr))] gap-1"
           aria-label={`${world.title} layers`}
         >
           <LayerTab collectionId={world.id} layer="gallery" active={layer === "gallery"} icon={<Grid3X3 />} count={layerCounts.gallery} feedReturn={feedReturn}>
@@ -238,7 +221,7 @@ export default async function WorldPage({ params, searchParams }: WorldPageProps
         </nav>
       </div>
 
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+      <section className="mx-auto max-w-7xl px-4 py-5 sm:px-8 sm:py-7">
         {layer === "gallery" && <GalleryLayer artworks={world.artworks} feedReturn={feedReturn} />}
         {layer === "film" && <FilmLayer films={films} feedReturn={feedReturn} />}
         {layer === "threads" && <ThreadLayer threads={world.threads} feedReturn={feedReturn} />}
@@ -271,17 +254,17 @@ function LayerTab({
     <Link
       href={layerHref(collectionId, layer, feedReturn)}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl px-2 text-[10px] font-medium sm:gap-2 sm:text-sm ${
+      className={`flex min-h-12 min-w-0 flex-wrap items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium sm:gap-2 sm:px-2 sm:text-sm ${
         active
           ? "bg-cyan-300/12 text-cyan-100"
-          : "text-zinc-500 hover:bg-white/5 hover:text-white"
+          : "text-zinc-400 hover:bg-white/5 hover:text-white"
       }`}
     >
-      <span className="[&>svg]:size-4" aria-hidden="true">
+      <span className="hidden sm:inline [&>svg]:size-4" aria-hidden="true">
         {icon}
       </span>
       <span>{children}</span>
-      <span className="hidden font-mono text-[9px] text-zinc-600 sm:inline">{count}</span>
+      <span className="font-mono text-[10px] text-zinc-400">{count}</span>
     </Link>
   );
 }
@@ -298,12 +281,8 @@ function GalleryLayer({ artworks, feedReturn }: { artworks: FeedInventoryItem[];
   }
   return (
     <div>
-      <LayerHeading
-        eyebrow="Complete World"
-        title="Gallery"
-        body="Every published piece remains attached to its World and maker."
-      />
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+      <h2 className="sr-only">Gallery</h2>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
         {artworks.map((artwork, index) => (
           <ArtworkTile key={artwork.id} artwork={artwork} eager={index < 2} feedReturn={feedReturn} />
         ))}
@@ -364,7 +343,7 @@ function ThreadLayer({ threads, feedReturn }: { threads: WorldThread[]; feedRetu
     return (
       <EmptyLayer
         icon={<Network />}
-        title="No public Chronicles cross this World yet."
+        title="No public Threads connect this World yet."
         body="Create a World Thread from two or more pieces to reveal a credit-preserving path here."
         actionHref="/threads/new"
         actionLabel="Create a Thread"
@@ -375,7 +354,7 @@ function ThreadLayer({ threads, feedReturn }: { threads: WorldThread[]; feedRetu
     <div>
       <LayerHeading
         eyebrow="Connected paths"
-        title="Chronicles"
+        title="Threads"
         body="Ordered visual relationships curated from real published pieces."
       />
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
@@ -409,7 +388,7 @@ function ThreadLayer({ threads, feedReturn }: { threads: WorldThread[]; feedRetu
                   <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-500">{thread.summary}</p>
                 )}
                 <span className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm text-violet-100">
-                  Open Chronicle
+                  Open Thread
                   <ArrowUpRight className="size-4" aria-hidden="true" />
                 </span>
               </div>

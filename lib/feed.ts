@@ -169,11 +169,11 @@ export function composeFeed(
       } else if (mode === "for-you") {
         if (followsCreator) reason = "From a creator you follow";
         else if (strongestTag?.score) reason = `Because you connect with ${strongestTag.tag}`;
-        else if (artwork.threadContexts.length) reason = "Part of a living Chronicle";
+        else if (artwork.threadContexts.length) reason = "Part of a World Thread";
         else if (popularity > 0) reason = "Moving across NODEINE";
         else reason = "A fresh signal from NODEINE";
       } else if (artwork.threadContexts.length) {
-        reason = "Connected through a public Chronicle";
+        reason = "Connected through a public Thread";
       } else if (popularity > 0) {
         reason = "Trending in the archive";
       }

@@ -53,6 +53,13 @@ The earlier visual refinement also considered [Linear's March 2026 refresh](http
 
 For the latest conversation pass, official [Instagram messaging guidance](https://about.fb.com/news/2024/03/instagram-dm-updates/) provides a familiar reference for contextual themes and message actions. This is a feature-pattern comparison, not a live visual inspection of Instagram. NODEINE keeps its own artwork-first styling, opaque readable bubbles, explicit scope labels, and permission boundaries; no external UI assets were copied.
 
+## Artwork viewing and World introductions — September 17
+
+- Reuse the existing artwork focus component; expose fit/actual-size and previous/next only after the viewer opens. Keep one labeled entry control on canonical artwork pages, native image panning and video controls, no autoplay, and focus restored to the opener on close. Browsing within the viewer does not change the underlying detail page.
+- Show a compact creator-connected strip only for a complete public Thread authored by the World's creator, containing the current work and at least one other piece in that World. Do not infer this connection from tags, colors or pixels. Keep full titles accessible when shortening repeated title prefixes visually. Exclude these pieces from the separate suggested Signal Trail.
+- Let artwork appear earlier in Worlds: compact introduction, creator credit, one set of counts inside the existing layer links, no repeated Gallery title or counter panel. Use Threads consistently across live World/feed copy. At enlarged text, allow the header, layer links and artwork grid to reflow rather than squeezing labels.
+- Preserve the existing Saved destination and actions. No extra toolbar, global navigation destination, database migration or generation service belongs to this viewing pass. See [verification](docs/audits/2026-09-17-artwork-viewing.md).
+
 ## World artwork picker — September 15
 
 - Keep the viewer in the current conversation, but give browsing a near-full-height modal surface on phones. Do not move the global navigation or shrink the composer to accommodate the picker.

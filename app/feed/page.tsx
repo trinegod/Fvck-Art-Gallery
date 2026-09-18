@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Feed — NODEINE",
   description:
-    "Follow visual signals across artwork, Worlds, and connected Chronicles on NODEINE.",
+    "Follow visual signals across artwork, Worlds, and connected Threads on NODEINE.",
 };
 
 export default async function FeedPage() {

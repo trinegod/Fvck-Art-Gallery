@@ -81,7 +81,7 @@ test("for-you ranking explains tag affinity and is deterministic", () => {
   assert.equal(first[0]?.reason, "Because you connect with cyberpunk");
 });
 
-test("discover mode exposes Chronicle context in its reason", () => {
+test("discover mode exposes Thread context in its reason", () => {
   const connected = artwork("connected", "world-a", "creator-a");
   connected.threadContexts = [
     {
@@ -100,7 +100,7 @@ test("discover mode exposes Chronicle context in its reason", () => {
   );
 
   assert.equal(result[0]?.id, "connected");
-  assert.equal(result[0]?.reason, "Connected through a public Chronicle");
+  assert.equal(result[0]?.reason, "Connected through a public Thread");
 });
 
 test("the opening feed cannot be swallowed by a single World", () => {

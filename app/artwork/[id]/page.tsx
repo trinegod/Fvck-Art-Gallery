@@ -4,7 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Waypoints } from "lucide-react";
+import { loadWorldViewingSequence, selectCreatorThread, type ViewingArtwork } from "@/lib/artwork-viewing";
+import { getPublicWorldThreadsForArtworkIds, type WorldThread } from "@/lib/world-threads";
 import {
+  appendFeedReturnContext,
   buildFeedReturnHref,
   parseFeedReturn,
   type FeedReturnQuery,
@@ -18,7 +21,8 @@ import ArtworkSignalTrail, {
 } from "../../components/artwork-signal-trail";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkLikeButton from "../../components/artwork-like-button";
-import ArtworkMedia from "../../components/artwork-media";
+import ArtworkPageViewer from "../../components/artwork-page-viewer";
+import ArtworkThreadStrip from "../../components/artwork-thread-strip";
 import ArtworkSaveButton from "../../components/artwork-save-button";
 import ArtworkShareButton from "../../components/artwork-share-button";
 import DesktopAppNavigation from "../../components/desktop-app-navigation";
@@ -63,6 +67,8 @@ type ArtworkPageData = {
   collection: CollectionRecord;
   creator: CreatorRecord | null;
   signalTrail: ArtworkSignalTrailItem[];
+  viewingSequence: ViewingArtwork[];
+  creatorThread: WorldThread | null;
 };
 
 const uuidPattern =
@@ -158,7 +164,17 @@ const getArtworkPageData = cache(
       );
     }
 
-    const candidateResults = await Promise.all(candidateRequests);
+    const [candidateResults, viewingSequence, publicThreads] = await Promise.all([
+      Promise.all(candidateRequests),
+      loadWorldViewingSequence((from, to) => database.from("artworks")
+        .select("id, title, src, thumb_src, media_type")
+        .eq("collection_id", artwork.collection_id)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true }).range(from, to)).catch(() => [artwork]),
+      getPublicWorldThreadsForArtworkIds([artwork.id]).catch(() => []),
+    ]);
+    const creatorThread = selectCreatorThread(publicThreads, artwork.id, collection.id, collection.owner_id);
+    const connectedIds = new Set(creatorThread?.items.map(item => item.artwork.id) ?? []);
     const candidateRows = candidateResults.flatMap((result) =>
       result.error ? [] : ((result.data ?? []) as ArtworkRecord[])
     );
@@ -174,7 +190,7 @@ const getArtworkPageData = cache(
     };
     const rankedSignalTrail = rankSignalTrail(
       currentSignalArtwork,
-      candidateRows.map((candidate) => ({
+      candidateRows.filter(candidate => !connectedIds.has(candidate.id)).map((candidate) => ({
         id: candidate.id,
         collectionId: candidate.collection_id,
         title: candidate.title,
@@ -204,6 +220,8 @@ const getArtworkPageData = cache(
     return {
       artwork,
       collection,
+      viewingSequence,
+      creatorThread,
       creator: (creatorData as CreatorRecord | null) ?? null,
       signalTrail: rankedSignalTrail.map((candidate) => ({
         ...candidate,
@@ -270,7 +288,7 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
   const data = await getArtworkPageData(id);
   if (!data) notFound();
 
-  const { artwork, collection, creator, signalTrail } = data;
+  const { artwork, collection, creator, signalTrail, viewingSequence, creatorThread } = data;
   const feedReturn = parseFeedReturn(query);
   const backHref = feedReturn ? buildFeedReturnHref(feedReturn) : "/";
   const backLabel = feedReturn ? "Back to feed" : "Back to archive";
@@ -289,19 +307,12 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-0 lg:min-h-[calc(100svh-73px)] lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-0 lg:min-h-[calc(100svh-73px)] lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="relative grid min-h-[58svh] place-items-center overflow-hidden bg-black p-4 sm:min-h-[70svh] sm:p-8 lg:min-h-0">
-          <ArtworkMedia
-            src={artwork.src}
-            posterSrc={artwork.thumb_src}
-            mediaType={artwork.media_type}
-            alt={artwork.title}
-            wrapperClassName="absolute inset-0"
-            className="absolute inset-0 size-full object-contain p-4 sm:p-8"
-          />
+          <ArtworkPageViewer key={artwork.id} artwork={artwork} sequence={viewingSequence} worldTitle={collection.title} />
           <Link
             href={backHref}
-            className="absolute left-4 top-4 z-10 inline-flex min-h-10 items-center rounded-lg border border-white/15 bg-black/70 px-3 py-2 text-xs text-zinc-200 backdrop-blur hover:border-cyan-300 hover:text-white"
+            className="absolute left-4 top-4 z-10 inline-flex min-h-11 items-center rounded-lg border border-white/15 bg-black/85 px-3 py-2 text-xs text-zinc-200 hover:border-cyan-300 hover:text-white"
           >
             ← {backLabel}
           </Link>
@@ -311,7 +322,7 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
           <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
             {collection.world_code || "Visual world"}
           </p>
-          <p className="mt-2 text-sm text-zinc-500">{collection.title}</p>
+          <Link href={feedReturn ? appendFeedReturnContext(`/worlds/${collection.id}`, feedReturn) : `/worlds/${collection.id}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-zinc-400 hover:text-cyan-200">{collection.title}</Link>
           <h1 className="mt-6 text-3xl font-light text-white">
             {artwork.title}
           </h1>
@@ -350,6 +361,8 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
               />
             </div>
           )}
+
+          {creatorThread && <ArtworkThreadStrip thread={creatorThread} artworkId={artwork.id} feedReturn={feedReturn} />}
 
           {artwork.mood && (
             <div className="mt-7">

@@ -6,6 +6,13 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 17, 2026 — artwork-first World browsing
+
+- Canonical artwork pages now reuse the full-size viewer with fit/actual-size inspection, previous/next through the current World, keyboard navigation, and focus restored on close. Videos retain native controls and do not autoplay.
+- A small **Connected by the creator** strip appears only for an eligible public, same-World Thread authored by that World's creator. Scene/detail thumbnails retain their original titles and credits; those pieces are not repeated in the suggested Signal Trail. No visual similarity is presented as an authored relationship.
+- World introductions are shorter, with counts only in the layer navigation, no duplicate Gallery heading, and consistent **Threads** wording in the World and feed. Small screens and enlarged text reflow without adding a menu.
+- Saved artwork remains at **You → Saved**; this release does not create another saved collection feature. [Viewing verification](docs/audits/2026-09-17-artwork-viewing.md) records checks and remaining device limitations; actual publication/backup evidence belongs in the [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
+
 ## September 15, 2026 — room to browse and share world artwork
 
 - The chat artwork picker now uses a near-full-height mobile dialog with its own scrolling gallery, a visible scroll hint, and a separate Share footer. Whole artwork tiles select; nothing sends until **Share artwork** is pressed.

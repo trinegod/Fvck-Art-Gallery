@@ -1,0 +1,15 @@
+.viewer {
+  top: 0;
+  left: 0;
+  translate: none;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  display: block;
+  padding: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #09090b;
+  animation: none;
+}
