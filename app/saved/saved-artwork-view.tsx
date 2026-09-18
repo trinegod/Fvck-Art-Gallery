@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
 import { createAccountScope, observeAccount } from "@/lib/activity-session";
+import { fetchSavedArtwork, filterSavedArtworks, savedWorlds, type SavedArtwork, type SavedProfile } from "@/lib/saved-artwork";
+import SavedFilters from "./saved-filters";
 import DesktopAppNavigation from "../components/desktop-app-navigation";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
@@ -16,41 +18,6 @@ import ArtworkSaveButton from "../components/artwork-save-button";
 import ArtworkShareButton from "../components/artwork-share-button";
 import MobileAppNavigation from "../components/mobile-app-navigation";
 import PolishedImage from "../components/polished-image";
-
-type SavedRow = {
-  artwork_id: string;
-  created_at: string;
-};
-
-type ArtworkRow = {
-  id: string;
-  collection_id: string;
-  title: string;
-  src: string;
-  thumb_src: string | null;
-  media_type: string | null;
-  mood: string | null;
-  tags: string[] | null;
-};
-
-type CollectionRow = {
-  id: string;
-  owner_id: string;
-  title: string;
-  world_code: string | null;
-};
-
-type ProfileRow = {
-  id: string;
-  username: string;
-  display_name: string;
-};
-
-type SavedArtwork = ArtworkRow & {
-  saved_at: string;
-  collection: CollectionRow | null;
-  creator: ProfileRow | null;
-};
 
 type LoadState = "loading" | "ready" | "signed-out" | "unavailable";
 
@@ -68,13 +35,16 @@ function isMissingTableError(code?: string) {
 
 export default function SavedArtworkView() {
   const [savedArtworks, setSavedArtworks] = useState<SavedArtwork[]>([]);
-  const [viewerProfile, setViewerProfile] = useState<ProfileRow | null>(null);
+  const [viewerProfile, setViewerProfile] = useState<SavedProfile | null>(null);
   const [loadState, setLoadState] = useState<LoadState>(
     supabase ? "loading" : "unavailable"
   );
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [search, setSearch] = useState("");
+  const [worldId, setWorldId] = useState("all");
+  const retryLoad = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const client = supabase;
@@ -88,117 +58,24 @@ export default function SavedArtworkView() {
       setLoadState("loading");
       setError(null);
 
-      const [savesResult, viewerProfileResult] = await Promise.all([
-        database
-          .from("artwork_saves")
-          .select("artwork_id, created_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false }),
-        database
-          .from("profiles")
-          .select("id, username, display_name")
-          .eq("id", userId)
-          .maybeSingle(),
-      ]);
-
-      if (!isCurrent()) return;
-
-      if (savesResult.error) {
+      try {
+        const result = await fetchSavedArtwork(database, userId, isCurrent);
+        if (!result || !isCurrent()) return;
+        setSavedArtworks(result.artworks);
+        setViewerProfile(result.viewerProfile);
+        setLoadState("ready");
+      } catch (error) {
+        if (!isCurrent()) return;
+        setSavedArtworks([]);
+        setSelectedId(null);
+        setFocusMode(false);
         setLoadState("unavailable");
         setError(
-          isMissingTableError(savesResult.error.code)
+          isMissingTableError((error as { code?: string })?.code)
             ? "Saved artwork is waiting for its database connection."
-            : savesResult.error.message
+            : "Your saved artwork couldn’t load. Your saves haven’t changed; please try again."
         );
-        return;
       }
-
-      const saves = (savesResult.data ?? []) as SavedRow[];
-      setViewerProfile(
-        (viewerProfileResult.data as ProfileRow | null) ?? null
-      );
-
-      if (!saves.length) {
-        setSavedArtworks([]);
-        setLoadState("ready");
-        return;
-      }
-
-      const artworkIds = saves.map((save) => save.artwork_id);
-      const { data: artworkData, error: artworkError } = await database
-        .from("artworks")
-        .select("id, collection_id, title, src, thumb_src, media_type, mood, tags")
-        .in("id", artworkIds);
-
-      if (!isCurrent()) return;
-      if (artworkError) {
-        setLoadState("unavailable");
-        setError(artworkError.message);
-        return;
-      }
-
-      const artworks = (artworkData ?? []) as ArtworkRow[];
-      const collectionIds = Array.from(
-        new Set(artworks.map((artwork) => artwork.collection_id))
-      );
-      const { data: collectionData, error: collectionError } = await database
-        .from("collections")
-        .select("id, owner_id, title, world_code")
-        .in("id", collectionIds);
-
-      if (!isCurrent()) return;
-      if (collectionError) {
-        setLoadState("unavailable");
-        setError(collectionError.message);
-        return;
-      }
-
-      const collections = (collectionData ?? []) as CollectionRow[];
-      const ownerIds = Array.from(
-        new Set(collections.map((collection) => collection.owner_id))
-      );
-      const { data: profileData, error: profileError } = await database
-        .from("profiles")
-        .select("id, username, display_name")
-        .in("id", ownerIds);
-
-      if (!isCurrent()) return;
-      if (profileError) {
-        setLoadState("unavailable");
-        setError(profileError.message);
-        return;
-      }
-
-      const profiles = (profileData ?? []) as ProfileRow[];
-      const artworkById = new Map(
-        artworks.map((artwork) => [artwork.id, artwork])
-      );
-      const collectionById = new Map(
-        collections.map((collection) => [collection.id, collection])
-      );
-      const profileById = new Map(
-        profiles.map((profile) => [profile.id, profile])
-      );
-
-      const assembledArtwork = saves.flatMap((save) => {
-        const artwork = artworkById.get(save.artwork_id);
-        if (!artwork) return [];
-        const collection = collectionById.get(artwork.collection_id) ?? null;
-
-        return [
-          {
-            ...artwork,
-            saved_at: save.created_at,
-            collection,
-            creator: collection
-              ? profileById.get(collection.owner_id) ?? null
-              : null,
-          },
-        ];
-      });
-
-      setSavedArtworks(assembledArtwork);
-      setLoadState("ready");
     }
 
     const stop = observeAccount(database.auth, userId => {
@@ -209,8 +86,11 @@ export default function SavedArtworkView() {
         setViewerProfile(null);
         setSelectedId(null);
         setFocusMode(false);
+        setSearch("");
+        setWorldId("all");
         setError(null);
       }
+      retryLoad.current = userId ? () => void loadSavedArtwork(userId) : null;
       if (userId) queueMicrotask(() => void loadSavedArtwork(userId));
       else setLoadState("signed-out");
     });
@@ -218,31 +98,34 @@ export default function SavedArtworkView() {
     return () => {
       stop();
       scope.clear();
+      retryLoad.current = null;
     };
   }, []);
 
+  const worlds = useMemo(() => savedWorlds(savedArtworks), [savedArtworks]);
+  const visibleArtworks = useMemo(() => filterSavedArtworks(savedArtworks, worldId, search), [savedArtworks, worldId, search]);
   const selectedArtwork = selectedId
-    ? savedArtworks.find((artwork) => artwork.id === selectedId) ?? null
+    ? visibleArtworks.find((artwork) => artwork.id === selectedId) ?? null
     : null;
   const selectedIndex = selectedArtwork
-    ? savedArtworks.findIndex((artwork) => artwork.id === selectedArtwork.id)
+    ? visibleArtworks.findIndex((artwork) => artwork.id === selectedArtwork.id)
     : -1;
 
   const moveSelection = useCallback(
     (direction: -1 | 1) => {
       setSelectedId((currentId) => {
-        if (!currentId || !savedArtworks.length) return currentId;
-        const currentIndex = savedArtworks.findIndex(
+        if (!currentId || !visibleArtworks.length) return currentId;
+        const currentIndex = visibleArtworks.findIndex(
           (artwork) => artwork.id === currentId
         );
         if (currentIndex < 0) return currentId;
         const nextIndex =
-          (currentIndex + direction + savedArtworks.length) %
-          savedArtworks.length;
-        return savedArtworks[nextIndex].id;
+          (currentIndex + direction + visibleArtworks.length) %
+          visibleArtworks.length;
+        return visibleArtworks[nextIndex].id;
       });
     },
-    [savedArtworks]
+    [visibleArtworks]
   );
 
   useEffect(() => {
@@ -259,6 +142,7 @@ export default function SavedArtworkView() {
           setSelectedId(null);
         }
       }
+      if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable=true]")) return;
       if (event.key === "ArrowLeft") moveSelection(-1);
       if (event.key === "ArrowRight") moveSelection(1);
     }
@@ -297,8 +181,8 @@ export default function SavedArtworkView() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-        <div className="flex flex-col gap-5 border-b border-white/10 pb-8 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10">
+        <div className="border-b border-white/10 pb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
               Private collection
@@ -307,15 +191,9 @@ export default function SavedArtworkView() {
               Saved Artwork
             </h1>
             <p className="mt-3 max-w-2xl leading-7 text-zinc-400">
-              Keep the worlds and visual ideas you want to return to.
+              Find the artwork you’ve saved.
             </p>
           </div>
-          {loadState === "ready" && (
-            <p className="text-sm text-zinc-500">
-              {savedArtworks.length}{" "}
-              {savedArtworks.length === 1 ? "saved piece" : "saved pieces"}
-            </p>
-          )}
         </div>
 
         {loadState === "loading" && (
@@ -347,6 +225,8 @@ export default function SavedArtworkView() {
         {loadState === "unavailable" && (
           <div className="mt-8 border border-rose-300/20 bg-rose-300/5 px-4 py-4 text-sm leading-6 text-rose-200">
             {error ?? "Saved artwork is unavailable right now."}
+            {supabase && <button type="button" onClick={() => retryLoad.current?.()}
+              className="mt-3 block min-h-11 rounded-lg border border-rose-300/30 px-4 focus-visible:outline-2 focus-visible:outline-cyan-300">Try again</button>}
           </div>
         )}
 
@@ -373,8 +253,15 @@ export default function SavedArtworkView() {
         )}
 
         {loadState === "ready" && savedArtworks.length > 0 && (
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {savedArtworks.map((artwork) => (
+          <>
+          <SavedFilters search={search} worldId={worldId} worlds={worlds} shown={visibleArtworks.length} total={savedArtworks.length}
+            onSearch={setSearch} onWorld={setWorldId} />
+          {!visibleArtworks.length && <div className="py-12 text-center">
+            <h2 className="text-xl font-light text-white">No matching saved artwork</h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">Try another search or clear the filters. Your saved artwork is still here.</p>
+          </div>}
+          <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,8.5rem),1fr))] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+            {visibleArtworks.map((artwork) => (
               <article
                 key={artwork.id}
                 className="group overflow-hidden rounded-xl border border-white/10 bg-black sm:rounded-lg"
@@ -411,7 +298,7 @@ export default function SavedArtworkView() {
                     </span>
                   </span>
                 </button>
-                <div className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-2.5 text-xs text-zinc-500">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-3 py-2.5 text-xs text-zinc-500">
                   {artwork.creator ? (
                     <Link
                       href={`/creator/${artwork.creator.username}`}
@@ -429,6 +316,7 @@ export default function SavedArtworkView() {
               </article>
             ))}
           </div>
+          </>
         )}
       </section>
 
@@ -446,12 +334,12 @@ export default function SavedArtworkView() {
           }}
         >
           <div
-            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-950 sm:rounded-lg sm:border sm:border-white/15"
+            className="mx-auto grid h-full max-w-7xl grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-950 sm:rounded-lg sm:border sm:border-white/15"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
               <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
-                Saved {selectedIndex + 1} of {savedArtworks.length}
+                {search.trim() || worldId !== "all" ? "Result" : "Saved"} {selectedIndex + 1} of {visibleArtworks.length}
               </p>
               <button
                 type="button"
@@ -459,7 +347,7 @@ export default function SavedArtworkView() {
                   setFocusMode(false);
                   setSelectedId(null);
                 }}
-                className="grid size-10 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white"
+                className="grid size-11 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
                 aria-label="Close artwork"
                 title="Close"
               >
@@ -469,17 +357,16 @@ export default function SavedArtworkView() {
 
             {focusMode ? (
               <ArtworkFocusView
-                key={selectedArtwork.id}
                 src={selectedArtwork.src}
                 posterSrc={selectedArtwork.thumb_src}
                 mediaType={selectedArtwork.media_type}
                 alt={selectedArtwork.title}
                 onBack={() => setFocusMode(false)}
                 onPrevious={
-                  savedArtworks.length > 1 ? () => moveSelection(-1) : undefined
+                  visibleArtworks.length > 1 ? () => moveSelection(-1) : undefined
                 }
                 onNext={
-                  savedArtworks.length > 1 ? () => moveSelection(1) : undefined
+                  visibleArtworks.length > 1 ? () => moveSelection(1) : undefined
                 }
               />
             ) : (
@@ -495,7 +382,7 @@ export default function SavedArtworkView() {
                     className="absolute inset-0 size-full object-contain p-3 sm:p-6"
                   />
 
-                  {savedArtworks.length > 1 && (
+                  {visibleArtworks.length > 1 && (
                     <>
                       <button
                         type="button"

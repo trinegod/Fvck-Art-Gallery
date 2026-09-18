@@ -122,6 +122,14 @@ The owner approved the artwork-first chat direction and confirmed the name **NOD
 - Highlight valid mention text within the existing opaque message palette. In-app Activity labels come from server metadata; highlighting alone is not evidence of delivery. Muting suppresses mention alerts as well as ordinary alerts, without hiding conversation history. No OS-push claim without its own verified service.
 - The receiver master prompt and current audit in `docs/` separate implemented behavior from the broader roadmap. Preserve these evidence boundaries when reusing patterns in other projects.
 
+## Saved organization — September 17
+
+- The primary task is finding an already-saved piece. Reuse the existing private Saved destination under You; add no extra global action, folder system or parallel save mechanism.
+- Use one visibly labeled local search and a native World selector only when there are multiple Worlds (or an active selection needs clearing). Search metadata, not inferred visual relationships. Keep recent-save order, one truthful result count and one Clear filters action that restores search focus.
+- Empty results explain that saves are intact; an actually empty collection points to the archive. Loading and failed reads must not masquerade as empty saves. Retry preserves the query; changing accounts clears both query and results. Never persist private search text in URLs or browser storage.
+- Keep controls at least 44px, mobile input text at 16px, and controls/counts wrapping on narrow screens and enlarged text. Do not stretch a single result across an otherwise multi-column grid. Filtered previous/next must stay inside the visible set; editing a comment retains its own arrow keys.
+- See [Saved verification](docs/audits/2026-09-17-saved-organization.md) for observed checks and the remaining legacy viewer/accessibility limitations.
+
 ## Loading identity
 
 The original **World Aperture** combines a framed world, geometric portal, and one quiet orbiting point. Keep the familiar map/lens cue small and separate from the optional NODEINE wordmark. Use it only while a route or data region is actually pending; retain informative skeletons and loaded navigation. No forced startup duration, fake progress, imported combat effects, or full-screen overlay on finished content. The 7.2-second orbit becomes static under reduced motion. See `docs/design/loading-screen-concept.md`.

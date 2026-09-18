@@ -6,6 +6,13 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 17, 2026 — find your saved artwork
+
+- **You → Saved** now has local search across artwork titles, Worlds, creators, moods and tags, with recent saves first. A World filter appears only when there is more than one World to choose from.
+- One result count and **Clear filters** action keep recovery simple; opening a piece preserves the filters and previous/next follows the filtered results. No folders, duplicate save system or new navigation destination.
+- Private saves load in stable pages with bounded metadata queries, rather than silently truncating larger collections. Account changes clear previous results and searches; read failures offer retry without changing saves.
+- [Saved organization audit](docs/audits/2026-09-17-saved-organization.md) records verification and limitations. Production revision and backup evidence are tracked separately in the [release checklist](https://github.com/trinegod/Fvck-Art-Gallery/issues/1).
+
 ## September 17, 2026 — artwork-first World browsing
 
 - Canonical artwork pages now reuse the full-size viewer with fit/actual-size inspection, previous/next through the current World, keyboard navigation, and focus restored on close. Videos retain native controls and do not autoplay.
