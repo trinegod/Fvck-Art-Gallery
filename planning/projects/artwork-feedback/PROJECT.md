@@ -1,6 +1,6 @@
 # World revisits and pinpoint feedback
 
-**Status:** pinpoint-feedback implementation and verification; owner explicitly approved completing the full feedback feature and demo on September 20. World revisit indicators remain a separate future slice.
+**Status:** pinpoint feedback released on both public hosts; owner phone QA remains. World revisit indicators remain a separate future slice.
 
 ## Outcome
 
@@ -16,7 +16,7 @@ Show meaningful new artwork on a return to a World, and let people discuss a pre
 
 ## Current frontier
 
-Complete the approved image-feedback release through existing Discussion. The additive database migration is activated; 29 rollback-only behavior checks and 530 automated tests pass. Real browser demo notes use the already-signed-in Founder account and explicit QA labels. Sakura's separate-origin session is signed out; no credentials were recovered or account reset performed. Publication evidence and remaining checks live in the [feature audit](../../../docs/audits/2026-09-20-pinpoint-feedback.md).
+The additive database migration is activated; 29 rollback-only behavior checks and 530 automated tests pass. Both Vercel production builds passed and both public aliases expose the three labeled Founder QA notes on Moon Companions. Sakura's separate-origin session is signed out; no credentials were recovered or account reset performed. Publication evidence and remaining phone/accessibility checks live in the [feature audit](../../../docs/audits/2026-09-20-pinpoint-feedback.md). Recovery verification is recorded in issue #2 after artifacts are copied and checked.
 
 ## Agent work
 

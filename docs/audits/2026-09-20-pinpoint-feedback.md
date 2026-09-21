@@ -31,14 +31,25 @@ Catalog verification and the complete rollback-only behavioral script passed **2
 
 ## Release and remaining checks
 
-Publication pending. Local production build first failed to fetch the existing Google Fonts; an approved network-enabled retry hit a Turbopack subprocess port-permission restriction. No sandbox settings were weakened. Hosted production build must pass before a live completion claim.
+Release code **a2d4a036e806a31fd082809d4b12cd19fa57b96f** is pushed to GitHub `main` and `codex/slim-navigation-audit-repairs`. Both hosted Turbopack production builds passed compilation, TypeScript and route generation, then reached READY with their public aliases:
+
+- NODEINE: `dpl_2Sbw51Gw7zxmwf8xoRh9uFrDdsfg`, https://nodeine-5qa0moc1k-satur-n.vercel.app → https://nodeine.vercel.app.
+- Gallery: `dpl_3WKGCZ3VHVfE5gPABRmR6vicVSUP`, https://fvck-art-gallery-9udsstkwy-satur-n.vercel.app → https://fvck-art-gallery.vercel.app.
+
+Local production build first failed to fetch the existing Google Fonts; an approved network-enabled retry hit a Turbopack subprocess port-permission restriction. No sandbox settings were weakened. The successful hosted builds supply the production-build gate.
 
 The normal local app is signed into Founder; the separate gallery test-account origin is signed out. No test credential was extracted or reset. Following the owner's instruction to finish and publish, the demonstration uses clearly labeled **QA demo** notes through the normal Founder session. **No Sakura demo comment is claimed.**
 
 Three real public QA notes are saved on **Moon Companions** (`f364b74b-0b3c-5dc2-88bd-5a5863308a00`): moon lighting/palette, rabbit silhouette and fabric/armor texture. The normal app confirmed all three and the full-screen view shows three distinct numbered positions. The test-posting flow also exercises ordinary comments and confirmed own-comment removal; only the temporary removal-check text is deleted, not the three demonstration notes.
 
-Remaining: real authenticated post/read on both public hosts; actual phone/touch and screen-reader checks; long/dense note overlap; all three legacy gallery modal integrations keyboard-tested in browser. Interface and transport tests do not replace these checks.
+Both public hosts show **3 pins** and all three public Founder notes while signed out. Live NODEINE desktop pin selection focuses the corresponding note. Live gallery mobile uses a full-screen dialog with no competing global dock. Real posting and own-comment deletion were verified through the authenticated local app against the same live database, not by a privileged SQL write.
+
+Remaining: authenticated posting on each production origin; actual phone/touch and screen-reader checks; long/dense note overlap; all three legacy gallery modal integrations keyboard-tested in browser. Interface and transport tests do not replace these checks.
+
+The final coordinate-serialization fix was independently reviewed; all 17 feedback tests passed on the reviewer's rerun. README and this audit document the actual behavior rather than claiming Sakura access or complete device coverage.
 
 ## Recovery
 
 Prior release is d7931b0. Roll back the UI to that version if necessary and retain additive nullable columns; old comments readers remain compatible. Do not rerun legacy comments.sql after activation without reviewing its broader grant statement. Source backup is not a Supabase data/auth/storage backup.
+
+The recovery package follows the existing flattened incremental method: retain full checkpoint `2026-09-15-a911926-moon-and-chat-dates`, then apply the new history bundle/source delta. It also exports only the three public QA demo notes. GitHub issue #2 records the final artifact hashes, independent restore result and iCloud-folder copy verification after completion; local integrity is not proof of Apple's remote synchronization.

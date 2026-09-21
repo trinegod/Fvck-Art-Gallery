@@ -48,14 +48,20 @@ Existing Next.js server/client boundaries and Supabase policies/migration are ac
 ## Acceptance criteria
 
 - [ ] Public feedback view and all discussion entry points verified.
-- [ ] Normal artwork has no markers.
-- [ ] Mobile/desktop and keyboard placement verified.
-- [ ] Draft lifetime, unknown retry and author-only mutation verified.
-- [ ] Additive migration and rollback-only SQL checks pass.
-- [ ] Real test notes posted through the authorized account; direct public link verified.
-- [ ] Tests, typecheck, lint and hosted production build pass.
+- [x] Normal artwork has no markers.
+- [x] Mobile/desktop browser viewports and keyboard placement verified; physical-phone QA remains.
+- [x] Draft close/reopen, immutable unknown retry and author-only mutation verified at documented UI/transport/SQL seams.
+- [x] Additive migration and rollback-only SQL checks pass.
+- [x] Three labeled Founder QA notes posted through the normal authorized account; direct public link verified without sign-in.
+- [x] 530 tests, typecheck, lint and both hosted production builds pass (five existing lint warnings).
 - [ ] Release evidence, README, GitHub and recoverable backup recorded.
 
 ## Blocked by
 
-None for implementation. Posting as the designated test user depends on restoring its ordinary sign-in; do not impersonate it with a privileged database write.
+None for the released public feedback feature. Sakura's normal session is unavailable; the owner-directed completed release uses clearly labeled Founder QA notes, not impersonation. Production-origin authenticated posting, physical phone/screen reader, dense pins and legacy gallery keyboard flows remain explicit QA checks, not claimed successes.
+
+## Public demo
+
+https://nodeine.vercel.app/artwork/f364b74b-0b3c-5dc2-88bd-5a5863308a00
+
+Choose **Feedback on the image · 3 pins**. Source/release evidence: `docs/audits/2026-09-20-pinpoint-feedback.md`. Recovery artifacts and final remote revisions are recorded below in issue comments after verification.
