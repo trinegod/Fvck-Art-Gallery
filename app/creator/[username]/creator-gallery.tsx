@@ -407,6 +407,7 @@ export default function CreatorGallery({
                 <ArtworkComments
                   key={selectedArtwork.id}
                   artworkId={selectedArtwork.id}
+                  artwork={{ src: selectedArtwork.src, title: selectedArtwork.title, mediaType: selectedArtwork.media_type }}
                 />
                 </aside>
               </div>

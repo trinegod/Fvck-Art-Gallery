@@ -410,7 +410,7 @@ export default async function ArtworkPage({ params, searchParams }: ArtworkPageP
             </Link>
           </div>
 
-          <ArtworkComments artworkId={artwork.id} />
+          <ArtworkComments artworkId={artwork.id} artwork={{ src: artwork.src, title: artwork.title, mediaType: artwork.media_type }} />
         </aside>
       </div>
       <ArtworkSignalTrail items={signalTrail} feedReturn={feedReturn} />

@@ -484,6 +484,7 @@ export default function SavedArtworkView() {
                   <ArtworkComments
                     key={selectedArtwork.id}
                     artworkId={selectedArtwork.id}
+                    artwork={{ src: selectedArtwork.src, title: selectedArtwork.title, mediaType: selectedArtwork.media_type }}
                   />
                 </aside>
               </div>

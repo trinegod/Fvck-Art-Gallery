@@ -804,7 +804,7 @@ function FeedCard({
             type="button"
             onClick={onToggleDiscussion}
             aria-expanded={discussionOpen}
-            aria-controls={`discussion-${entry.id}`}
+            aria-controls={`feed-discussion-${entry.id}`}
             className={`nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
               discussionOpen
                 ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
@@ -846,8 +846,8 @@ function FeedCard({
         </div>
 
         {discussionOpen && (
-          <div id={`discussion-${entry.id}`}>
-            <ArtworkComments artworkId={entry.id} />
+          <div id={`feed-discussion-${entry.id}`}>
+            <ArtworkComments artworkId={entry.id} artwork={{ src: entry.src, title: entry.title, mediaType: entry.mediaType }} />
           </div>
         )}
       </div>

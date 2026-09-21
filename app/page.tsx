@@ -938,6 +938,7 @@ export default function Home() {
               <ArtworkComments
                 key={selectedItem.id}
                 artworkId={selectedItem.id}
+                artwork={{ src: selectedItem.src, title: selectedItem.title, mediaType: selectedItem.type }}
               />
 
               <div className="mt-8 grid grid-cols-2 gap-3">

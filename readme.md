@@ -6,6 +6,12 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## September 20, 2026 — pinpoint image feedback
+
+- Artwork Discussion now offers **Feedback on the image**: a separate, full-screen view with numbered notes, deliberate point placement, keyboard position controls and public comments. Normal artwork viewing remains free of markers.
+- Feed, Archive, creator galleries, Saved and canonical artwork pages share the feature. Notes stay bound to the original image source; changed-source markers are hidden rather than silently moved. Video annotations are not included.
+- The additive `supabase/artwork_feedback.sql` migration is activated. Ordinary comments and owner Activity notifications retain their identities. See [feedback verification](docs/audits/2026-09-20-pinpoint-feedback.md) and the [release tracker](https://github.com/trinegod/Fvck-Art-Gallery/issues/2) for observed tests, publication evidence and remaining device checks.
+
 ## September 17, 2026 — find your saved artwork
 
 - **You → Saved** now has local search across artwork titles, Worlds, creators, moods and tags, with recent saves first. A World filter appears only when there is more than one World to choose from.
