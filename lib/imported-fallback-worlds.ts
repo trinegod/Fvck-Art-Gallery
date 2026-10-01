@@ -1,4 +1,5 @@
 import { moonFallbackItems } from "./moon-fallback-world";
+import { ghostsFallbackItems } from "./ghosts-fallback-world";
 
 export type ImportedFallbackItem = {
   id: string;
@@ -346,12 +347,17 @@ export const importedFallbackItems: ImportedFallbackItem[] = [
   ...ashigaraFallbackItems,
   ...newWorldFallbackItems,
   ...moonFallbackItems,
+  ...ghostsFallbackItems,
 ];
 
 export const importedCollectionDetails: Record<
   string,
   { order: number; summary: string }
 > = {
+  "(36) Ghosts": {
+    order: 20,
+    summary: "Ghostly encounters, spirits and folklore, told through full compositions and close-up studies.",
+  },
   "Aspects of the Moon": {
     order: 19,
     summary: "Moonlit folklore, travelers, spirits and quiet encounters, with full compositions connected to their close-up studies.",

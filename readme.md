@@ -6,6 +6,12 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## October 1, 2026 — (36) Ghosts
+
+- **(36) Ghosts** brings in all 78 PNG images from the founder's Google Drive folder, including distinct close-ups and alternate compositions. The World name is not an image-count limit; simple numbered titles keep the original artwork central.
+- Byte and normalized-pixel checks found no exact duplicates. Full-size WebP derivatives and thumbnails preserve the complete compositions; the untouched originals are included in the release backup.
+- Deterministic IDs, source fingerprints, additive import SQL and matching fallback data keep the import reproducible without changing existing Worlds, chat data or permissions. See the [import and release record](docs/audits/2026-10-01-36-ghosts.md) for actual verification, publication and backup status.
+
 ## September 20, 2026 — pinpoint image feedback
 
 - Artwork Discussion now offers **Feedback on the image**: a separate, full-screen view with numbered notes, deliberate point placement, keyboard position controls and public comments. Normal artwork viewing remains free of markers.
