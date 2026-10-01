@@ -11,6 +11,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - **(36) Ghosts** brings in all 78 PNG images from the founder's Google Drive folder, including distinct close-ups and alternate compositions. The World name is not an image-count limit; simple numbered titles keep the original artwork central.
 - Byte and normalized-pixel checks found no exact duplicates. Full-size WebP derivatives and thumbnails preserve the complete compositions; the untouched originals are included in the release backup.
 - Deterministic IDs, source fingerprints, additive import SQL and matching fallback data keep the import reproducible without changing existing Worlds, chat data or permissions. See the [import and release record](docs/audits/2026-10-01-36-ghosts.md) for actual verification, publication and backup status.
+- A three-agent [viewer-flow audit](docs/audits/2026-10-01-viewer-flow-audit.md) checked browsing, creation/account entry and chat seams, with separate compact-screen checks. Existing modal-focus, tap-target and chat-recovery findings are tracked in [QA issue #3](https://github.com/trinegod/Fvck-Art-Gallery/issues/3); signed-in and physical-device gaps remain explicit.
 
 ## September 20, 2026 — pinpoint image feedback
 
