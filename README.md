@@ -11,7 +11,7 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 - Archive, creator-profile and Saved artwork viewers now share managed keyboard focus: Tab stays inside the viewer, closing returns to the original tile, and Escape dismisses nested feedback/full-size views one layer at a time. Text fields and media controls retain their arrow keys.
 - Chat history failures have an inline **Retry messages** or **Retry older messages** state instead of looking like an empty conversation. Retries preserve drafts, existing messages, clear cutoffs and account boundaries. The attachment menu remains the only keyboard entry to the hidden file picker.
 - Existing World chips, close buttons, Forge selectors/actions, account tabs and Activity controls meet the 44px target baseline without adding navigation or permanent controls.
-- 549 tests and TypeScript pass; lint has zero errors/five existing warnings. [Verification and release status](docs/audits/2026-10-01-viewer-flow-audit.md#repair-pass--local-review) distinguish observed browser behavior, automated coverage and remaining device checks. Publication is approved; Vercel's standard cloud build must pass before either live address is promoted.
+- Published on both maintained app addresses after both standard Vercel production builds passed. All 549 tests and TypeScript pass; lint has zero errors/five existing warnings. [Verification and release status](docs/audits/2026-10-01-viewer-flow-audit.md#october-2--approved-publication) distinguish live browser observations, automated coverage, recovery records and remaining device checks.
 
 ## October 1, 2026 — (36) Ghosts
 

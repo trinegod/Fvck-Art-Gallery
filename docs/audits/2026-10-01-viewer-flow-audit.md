@@ -2,12 +2,12 @@
 
 Public production code: `2d82023e5ca055e008c65de455ed2d085d368bae`. Three independent audits plus root compact-screen checks; signed-out session, not a claim of complete authenticated/device coverage.
 
-## Confirmed priorities
+## Confirmed priorities (repaired in the October 2 release)
 
-- [ ] **P2: contain and restore focus in both legacy artwork pop-ups.** Archive `/` and `/creator/founder`: open Ghosts 001, Tab reaches obscured Ghosts 002; on profile Enter activates that hidden card. Close returns focus to BODY. Reuse the existing dialog/viewer behavior (not an additional control). Source: `app/page.tsx:480,803` legacy selected-artwork dialog and `app/creator/[username]/creator-gallery.tsx:211,255,276`.
-- [ ] **P2: distinguish failed history from empty chat.** Actual loadPage callback fixture twice reproduced failed fetch → loading false + zero messages → “beginning of this conversation”, while error is below composer. Add a clearly separate inline Retry messages state preserving drafts. Source: `app/messages/messages-view.tsx:872,2059`. Not tested in a live private conversation.
-- [ ] **P3: correct existing tap targets.** Creator World chips measure 34 px high; profile and Archive close controls 40×40. Project minimum 44 px. Source: `app/creator/[username]/creator-gallery.tsx:164,280` and `app/page.tsx:828`.
-- [ ] **P3: remove invisible attachment-input keyboard stop.** `app/messages/messages-view.tsx:2087` has an unnamed sr-only file input with no negative tabIndex, alongside the intended Add attachment menu. Source-confirmed; assistive-technology test still needed.
+- [x] **P2: contain and restore focus in legacy artwork pop-ups.** The original audit found Tab reaching obscured thumbnails and Close returning to BODY. Archive, creator gallery and Saved now share managed focus containment and original-opener restoration; live creator-viewer behavior verified after release.
+- [x] **P2: distinguish failed history from empty chat.** The original callback fixture reproduced a failed fetch falling through to “beginning of this conversation.” A separate retry state now preserves drafts and loaded messages, verified through the actual effect/JSX fixtures. Forced network failure in a real private conversation remains untested.
+- [x] **P3: correct existing tap targets.** Creator World chips were 34px and viewer Close was 40px. These and the other identified controls now meet the 44px baseline; live creator-chip geometry verified.
+- [x] **P3: remove invisible attachment-input keyboard stop.** The native attachment input is hidden and the existing labeled menu remains. Real local keyboard traversal confirmed Add attachment → Record voice note → message field; assistive-technology testing remains separate.
 
 ## Reliability test still needed (not a proven production bug)
 
@@ -27,7 +27,7 @@ No private messages, microphone sessions or new public test content were created
 
 ## Repair pass — local review
 
-The owner subsequently authorized fixing the findings without adding clutter. Three agents split artwork viewers, chat recovery and independent regression review; root handled remaining tap targets and browser verification. The unchecked findings above describe the **previous public release**, not the working-tree implementation below. No database changes, new packages, menus or model services were added.
+The owner subsequently authorized fixing the findings without adding clutter. Three agents split artwork viewers, chat recovery and independent regression review; root handled remaining tap targets and browser verification. This section records the local repair evidence before the October 2 publication below. No database changes, new packages, menus or model services were added.
 
 ### Implemented
 
@@ -50,10 +50,20 @@ The owner subsequently authorized fixing the findings without adding clutter. Th
 
 ### Release boundary and remaining checks
 
-**Local review only; not pushed or deployed, and no new iCloud release backup is claimed.** The prior Ghosts release backup remains unchanged. The normal build first failed downloading the existing Geist fonts. A permission-escalated retry reached compilation but Turbopack's PostCSS worker was denied binding a local port (`Operation not permitted`). Production build completion needs that OS permission resolved; no alternate build or permission bypass was attempted.
+**Status at the end of the October 1 repair turn: local review only, not pushed/deployed, with no new iCloud backup claimed.** This is superseded by the October 2 release record below. The normal local build first failed downloading Geist fonts. A permission-escalated retry reached compilation but Turbopack's PostCSS worker was denied binding a local port (`Operation not permitted`); no alternate compiler or permission bypass was attempted.
 
 Still untested: real-browser forced history failure/retry, physical phone keyboard/safe areas, screen reader and enlarged-text interaction; Saved unsave-to-heading focus; full signed-out auth-tab geometry; two-client reconnect/catch-up and expired secure media links. The existing checks above are not a claim that every app flow or device works perfectly. No new production QA issue was closed based only on local source changes.
 
 ## October 2 — approved publication
 
 The owner approved publishing the reviewed repairs to both maintained production hosts, pushing GitHub and creating a new iCloud-folder recovery checkpoint. All 549 tests, TypeScript and lint (zero errors/five pre-existing warnings) passed again. The local Turbopack worker remains blocked by an OS port-binding restriction, including the permission-requested retry. No local permission workaround or alternate compiler was used. The approved release uses Vercel's normal remote production build, with domain promotion withheld until each build is READY. Deployment IDs, live checks and backup results will be recorded after verification.
+
+- Application commit: `ee849997093ff33c9fc35b25ddb6438abc78ec07`, pushed atomically to `main` and `codex/slim-navigation-audit-repairs`. Later documentation-only commit(s) do not change the deployed application.
+- Both standard Next.js/Turbopack cloud builds completed successfully, including TypeScript and route generation, before promotion. No security settings, paid services or database records were changed.
+- NODEINE: `dpl_FfNVziPLHEcbj5iUWcqmWZXdaMXN`, https://nodeine-ilrmulwdg-satur-n.vercel.app. Promotion completed; inspecting https://nodeine.vercel.app resolves to that READY deployment.
+- Original gallery: `dpl_B1ofiZEW3amBvFdGCLKnyTe59XEV`, https://fvck-art-gallery-3t2ae3ffz-satur-n.vercel.app. Promotion completed; inspecting https://fvck-art-gallery.vercel.app resolves to that READY deployment.
+- Live NODEINE creator profile at desktop: all 18 World chips are at least 44px. Opening artwork focuses Close, Tab remains inside, and browsing before closing restores the original artwork tile. On the live original gallery at 320×568, both sign-in/account tabs measure 44px with no document overflow. This confirms the new UI, not merely successful HTTP responses.
+- Recovery destination: iCloud Drive / Steven Project Backups / Releases / NODEINE / `2026-10-02-interaction-polish`. The package is created after this final documentation checkpoint; its `verification.json` records the exact restored SHA, and `checksums.sha256` plus the release-tracker comment record the actual post-copy result.
+- Recovery retains the full base `2026-09-15-a911926-moon-and-chat-dates` (`a9119260181ee63b9beb0e7fae31f65ff7503105`). The new flattened increment includes all source changes since that base, normal Git history, and the verified Ghosts originals/public snapshot. Existing releases are preserved. This is not a full Supabase/auth/private-storage backup or proof of Apple's remote iCloud synchronization.
+
+The QA issue stays open for the explicit physical-device, forced-network-failure, screen-reader and reconnect checks; publication does not erase those verification boundaries.
