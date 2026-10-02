@@ -974,7 +974,7 @@ export default function AdminPage() {
           <section className="relative mx-auto max-w-md">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-cyan-300 transition hover:text-cyan-100"
+              className="nodeine-action inline-flex min-h-11 items-center gap-2 rounded-lg text-xs uppercase tracking-[0.24em] text-cyan-300 transition hover:text-cyan-100"
             >
               <ArrowLeft className="size-3.5" />
               NODEINE archive
@@ -1015,16 +1015,16 @@ export default function AdminPage() {
                   }}
                   className="gap-6"
                 >
-                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl border border-white/8 bg-black/45 p-1 group-data-horizontal/tabs:h-11">
+                  <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-white/8 bg-black/45 p-1 group-data-horizontal/tabs:h-auto">
                     <TabsTrigger
                       value="signin"
-                      className="h-full rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
+                      className="h-auto min-h-11 rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
                     >
                       Sign in
                     </TabsTrigger>
                     <TabsTrigger
                       value="signup"
-                      className="h-full rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
+                      className="h-auto min-h-11 rounded-lg data-active:bg-cyan-300 data-active:text-zinc-950 dark:data-active:bg-cyan-300 dark:data-active:text-zinc-950"
                     >
                       Create account
                     </TabsTrigger>

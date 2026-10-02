@@ -6,6 +6,13 @@ NODEINE is a responsive digital art archive and creator network built by Steven 
 
 **Public app:** [Open NODEINE](https://nodeine.vercel.app/feed), on the app host linked from Trinefield. The [original gallery address](https://fvck-art-gallery.vercel.app/feed) is maintained too. Individual Vercel preview URLs are for testing.
 
+## October 2, 2026 — interaction polish
+
+- Archive, creator-profile and Saved artwork viewers now share managed keyboard focus: Tab stays inside the viewer, closing returns to the original tile, and Escape dismisses nested feedback/full-size views one layer at a time. Text fields and media controls retain their arrow keys.
+- Chat history failures have an inline **Retry messages** or **Retry older messages** state instead of looking like an empty conversation. Retries preserve drafts, existing messages, clear cutoffs and account boundaries. The attachment menu remains the only keyboard entry to the hidden file picker.
+- Existing World chips, close buttons, Forge selectors/actions, account tabs and Activity controls meet the 44px target baseline without adding navigation or permanent controls.
+- 549 tests and TypeScript pass; lint has zero errors/five existing warnings. [Verification and release status](docs/audits/2026-10-01-viewer-flow-audit.md#repair-pass--local-review) distinguish observed browser behavior, automated coverage and remaining device checks. Publication is approved; Vercel's standard cloud build must pass before either live address is promoted.
+
 ## October 1, 2026 — (36) Ghosts
 
 - **(36) Ghosts** brings in all 78 PNG images from the founder's Google Drive folder, including distinct close-ups and alternate compositions. The World name is not an image-count limit; simple numbered titles keep the original artwork central.

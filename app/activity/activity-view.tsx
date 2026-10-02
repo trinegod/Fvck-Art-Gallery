@@ -223,7 +223,7 @@ export default function ActivityView() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
+            className="nodeine-action inline-flex min-h-11 items-center rounded-lg text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
           >
             NODEINE
           </Link>
@@ -296,7 +296,7 @@ export default function ActivityView() {
                 variant="outline"
                 disabled={!unreadCount || markingAll}
                 onClick={markAllRead}
-                className="border-white/12 bg-black/30 text-zinc-300"
+                className="min-h-11 border-white/12 bg-black/30 text-zinc-300"
               >
                 {markingAll ? (
                   <LoaderCircle className="animate-spin" data-icon="inline-start" />
@@ -313,7 +313,7 @@ export default function ActivityView() {
                   key={option}
                   type="button"
                   onClick={() => setFilter(option)}
-                  className={`nodeine-action min-h-9 rounded-lg px-4 text-sm capitalize ${
+                  className={`nodeine-action min-h-11 rounded-lg px-4 text-sm capitalize ${
                     filter === option
                       ? "bg-cyan-300 text-zinc-950"
                       : "text-zinc-500 hover:text-white"
@@ -428,7 +428,7 @@ export default function ActivityView() {
                 {filter === "all" && (
                   <Link
                     href="/discover"
-                    className="nodeine-action mt-6 inline-flex min-h-10 items-center rounded-lg border border-white/12 px-4 py-2 text-sm text-zinc-300 hover:border-cyan-300/50 hover:text-white"
+                    className="nodeine-action mt-6 inline-flex min-h-11 items-center rounded-lg border border-white/12 px-4 py-2 text-sm text-zinc-300 hover:border-cyan-300/50 hover:text-white"
                   >
                     Discover creators
                   </Link>

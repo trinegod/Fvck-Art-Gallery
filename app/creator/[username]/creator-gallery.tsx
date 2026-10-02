@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import ArtworkComments from "../../components/artwork-comments";
 import ArtworkFocusView from "../../components/artwork-focus-view";
+import ArtworkGalleryDialog from "../../components/artwork-gallery-dialog";
 import ArtworkLikeButton from "../../components/artwork-like-button";
 import ArtworkMedia, {
   ArtworkMediaBadge,
@@ -42,6 +43,7 @@ export default function CreatorGallery({
 }: CreatorGalleryProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const artworkOpenerRef = useRef<HTMLButtonElement>(null);
 
   const collectionsById = useMemo(
     () => new Map(collections.map((collection) => [collection.id, collection])),
@@ -107,32 +109,6 @@ export default function CreatorGallery({
     [artworks, artworksByCollection]
   );
 
-  useEffect(() => {
-    if (!selectedId) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (focusMode) {
-          setFocusMode(false);
-        } else {
-          setSelectedId(null);
-        }
-      }
-      if (event.key === "ArrowLeft") moveSelection(-1);
-      if (event.key === "ArrowRight") moveSelection(1);
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [focusMode, moveSelection, selectedId]);
-
   if (!collections.length) {
     return (
       <div className="border-y border-white/10 py-20 text-center">
@@ -161,7 +137,7 @@ export default function CreatorGallery({
             <a
               key={collection.id}
               href={`#world-${collection.id}`}
-              className="inline-flex shrink-0 items-center gap-2 border border-white/15 px-3 py-2 text-xs text-zinc-300 transition hover:border-cyan-300 hover:text-white"
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 border border-white/15 px-3 py-2 text-xs text-zinc-300 transition hover:border-cyan-300 hover:text-white"
             >
               <span className="text-cyan-300">
                 {collection.world_code || "World"}
@@ -208,7 +184,8 @@ export default function CreatorGallery({
                     <button
                       key={artwork.id}
                       type="button"
-                      onClick={() => {
+                      onClick={(event) => {
+                        artworkOpenerRef.current = event.currentTarget;
                         setFocusMode(false);
                         setSelectedId(artwork.id);
                       }}
@@ -252,40 +229,12 @@ export default function CreatorGallery({
         })}
       </div>
 
-      {selectedArtwork && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 p-0 sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={selectedArtwork.title}
-          onClick={() => {
-            setFocusMode(false);
-            setSelectedId(null);
-          }}
-        >
-          <div
-            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-950 sm:border sm:border-white/15"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
-              <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
-                {selectedIndex + 1} / {selectedCollectionArtworks.length}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setFocusMode(false);
-                  setSelectedId(null);
-                }}
-                className="grid h-10 w-10 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white"
-                aria-label="Close artwork"
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            {focusMode ? (
+      <ArtworkGalleryDialog open={Boolean(selectedArtwork)} title={selectedArtwork?.title ?? "Artwork"}
+        position={`${selectedIndex + 1} / ${selectedCollectionArtworks.length}`}
+        focusMode={focusMode} onBackToDetails={() => setFocusMode(false)}
+        onClose={() => { setFocusMode(false); setSelectedId(null); }}
+        returnFocus={artworkOpenerRef} onPrevious={() => moveSelection(-1)} onNext={() => moveSelection(1)}>
+            {selectedArtwork && (focusMode ? (
               <ArtworkFocusView
                 key={selectedArtwork.id}
                 src={selectedArtwork.src}
@@ -411,10 +360,8 @@ export default function CreatorGallery({
                 />
                 </aside>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            ))}
+      </ArtworkGalleryDialog>
     </>
   );
 }

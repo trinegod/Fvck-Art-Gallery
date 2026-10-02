@@ -54,7 +54,7 @@ function lifecycle(initialViewer: string | null, boundAccount = initialViewer) {
     activeConversationId: "group", activeClearedBefore: null, MESSAGE_FIELDS, VOICE_NOTE_BUCKET,
     fetchMessagePage, fetchViewerMemberships, getMessageControls, mergeMessageHistory, compareMessageTimestamps,
   };
-  for (const name of ["historyAnchor", "lastHandledMessage", "followingMessages", "unseenMessageCount", "messagesScrollerRef", "loadOlderRef", "voiceSendLock", "startedProfileRef"]) bindings[name] = { current: null };
+  for (const name of ["historyAnchor", "lastHandledMessage", "followingMessages", "unseenMessageCount", "messagesScrollerRef", "loadOlderRef", "retryHistoryRef", "voiceSendLock", "startedProfileRef"]) bindings[name] = { current: null };
   for (const match of source.text.matchAll(/\b(set[A-Z]\w*)\(/g)) {
     const key = match[1][3].toLowerCase() + match[1].slice(4);
     bindings[match[1]] = (value: unknown) => { state[key] = typeof value === "function" ? value(state[key]) : value; };

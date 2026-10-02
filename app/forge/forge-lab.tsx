@@ -428,7 +428,7 @@ export default function ForgeLab({
               <Button
                 render={<Link href="/admin" />}
                 nativeButton={false}
-                className="h-10 bg-cyan-300 px-5 text-zinc-950 hover:bg-cyan-200"
+                className="min-h-11 bg-cyan-300 px-5 text-zinc-950 hover:bg-cyan-200"
               >
                 Open creator access
               </Button>
@@ -451,7 +451,7 @@ export default function ForgeLab({
                       value={worldId}
                       onChange={(event) => selectWorld(event.target.value)}
                       disabled={loadingLibrary || !worlds.length}
-                      className="mt-2 w-full"
+                      className="mt-2 w-full [&_select]:min-h-11 [&_select]:text-base"
                     >
                       {worlds.map((world) => (
                         <NativeSelectOption key={world.id} value={world.id}>
@@ -468,7 +468,7 @@ export default function ForgeLab({
                       value={artworkId}
                       onChange={(event) => selectArtwork(event.target.value)}
                       disabled={loadingLibrary || !worldArtworks.length}
-                      className="mt-2 w-full"
+                      className="mt-2 w-full [&_select]:min-h-11 [&_select]:text-base"
                     >
                       {worldArtworks.map((artwork) => (
                         <NativeSelectOption key={artwork.id} value={artwork.id}>
@@ -773,7 +773,7 @@ export default function ForgeLab({
                             type="button"
                             variant="outline"
                             onClick={copyPrompt}
-                            className="border-white/12 bg-black/30 text-zinc-200"
+                            className="min-h-11 border-white/12 bg-black/30 text-zinc-200"
                           >
                             {copied ? (
                               <Check data-icon="inline-start" />

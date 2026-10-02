@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CircleHelp } from "lucide-react";
 import { supabase } from "@/lib/supabase-browser";
@@ -10,6 +10,7 @@ import {
 } from "@/lib/imported-fallback-worlds";
 import ArtworkComments from "./components/artwork-comments";
 import ArtworkFocusView from "./components/artwork-focus-view";
+import ArtworkGalleryDialog from "./components/artwork-gallery-dialog";
 import ArtworkLikeButton from "./components/artwork-like-button";
 import ArtworkMedia, {
   ArtworkMediaBadge,
@@ -252,6 +253,7 @@ export default function Home() {
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const artworkOpenerRef = useRef<HTMLButtonElement>(null);
   const [galleryItems, setGalleryItems] =
     useState<GalleryItem[]>(fallbackGalleryItems);
   const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -477,39 +479,6 @@ export default function Home() {
     });
   }
 
-  useEffect(() => {
-    if (!selectedItem || !filteredItems.length) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (focusMode) {
-          setFocusMode(false);
-        } else {
-          setSelectedId(null);
-        }
-      }
-      if (event.key === "ArrowLeft") {
-        const previousIndex =
-          selectedIndex > 0 ? selectedIndex - 1 : filteredItems.length - 1;
-        setSelectedId(filteredItems[previousIndex].id);
-      }
-      if (event.key === "ArrowRight") {
-        const nextIndex =
-          selectedIndex >= 0 ? (selectedIndex + 1) % filteredItems.length : 0;
-        setSelectedId(filteredItems[nextIndex].id);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [focusMode, selectedItem, selectedIndex, filteredItems]);
-
   return (
     <main
       id="archive-home"
@@ -554,7 +523,7 @@ export default function Home() {
                   setActiveSeries(null);
                   setSelectedId(null);
                 }}
-                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-zinc-300 hover:border-cyan-300 hover:text-white"
+                className="min-h-11 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-zinc-300 hover:border-cyan-300 hover:text-white"
               >
                 Back to collections
               </button>
@@ -565,7 +534,7 @@ export default function Home() {
                     key={series}
                     type="button"
                     onClick={() => openCollection(series)}
-                    className={`shrink-0 snap-start rounded-lg border px-4 py-2.5 text-center text-sm transition ${
+                    className={`min-h-11 shrink-0 snap-start rounded-lg border px-4 py-2.5 text-center text-sm transition ${
                       activeSeries === series
                         ? "border-cyan-300 bg-cyan-300 text-zinc-950"
                         : "border-white/15 bg-white/5 text-zinc-300 hover:border-cyan-300/70 hover:text-white"
@@ -740,7 +709,8 @@ export default function Home() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
+                  onClick={(event) => {
+                    artworkOpenerRef.current = event.currentTarget;
                     setFocusMode(false);
                     setSelectedId(item.id);
                   }}
@@ -800,40 +770,12 @@ export default function Home() {
           and generative AI workflows.
         </p>
       </footer>
-      {selectedItem && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 p-0 backdrop-blur-sm sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={selectedItem.title}
-          onClick={() => {
-            setFocusMode(false);
-            setSelectedId(null);
-          }}
-        >
-          <div
-            className="mx-auto grid h-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-white/10 bg-zinc-950 sm:rounded-lg sm:border"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
-              <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
-                Artwork {selectedIndex + 1} of {filteredItems.length} · {selectedItem.series}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setFocusMode(false);
-                  setSelectedId(null);
-                }}
-                className="grid h-10 w-10 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white"
-                aria-label="Close artwork"
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            {focusMode ? (
+      <ArtworkGalleryDialog open={Boolean(selectedItem)} title={selectedItem?.title ?? "Artwork"}
+        position={`Artwork ${selectedIndex + 1} of ${filteredItems.length} · ${selectedItem?.series ?? ""}`}
+        focusMode={focusMode} onBackToDetails={() => setFocusMode(false)}
+        onClose={() => { setFocusMode(false); setSelectedId(null); }}
+        returnFocus={artworkOpenerRef} onPrevious={showPrevious} onNext={showNext}>
+            {selectedItem && (focusMode ? (
               <ArtworkFocusView
                 key={selectedItem.id}
                 src={selectedItem.src}
@@ -962,10 +904,8 @@ export default function Home() {
               </p>
                 </aside>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            ))}
+      </ArtworkGalleryDialog>
     </main>
   );
 }

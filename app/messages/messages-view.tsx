@@ -216,6 +216,8 @@ export default function MessagesView({
   const [olderCursor, setOlderCursor] = useState<MessageCursor | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loadOlderRef = useRef<(() => Promise<void>) | null>(null);
+  const retryHistoryRef = useRef<(() => Promise<void>) | null>(null);
+  const [historyError, setHistoryError] = useState<{ key: string; stage: "initial" | "older" } | null>(null);
   const messagesScrollerRef = useRef<HTMLDivElement | null>(null);
   const latestMessageContentRef = useRef<HTMLDivElement | null>(null);
   const readAcknowledgementRef = useRef<ReturnType<typeof createReadAcknowledgement> | null>(null);
@@ -692,6 +694,7 @@ export default function MessagesView({
         setError(null);
         setOlderCursor(null);
         setLoadingOlder(false);
+        setHistoryError(null);
         setSending(false);
         setUploadingMedia(false);
         setVoiceActiveKey(null);
@@ -829,6 +832,7 @@ export default function MessagesView({
     const isCurrent = () => !cancelled && isAccountCurrent() && conversationVersion.current === version;
     let nextCursor: MessageCursor | null = null;
     let pagePending = false;
+    let failedPage: { before: MessageCursor | null } | null = null;
     let clearedBefore = activeClearedBefore;
     const controlsRequest = getMessageControls(database, currentConversationId).then(controls => {
       if (!isCurrent()) return controls;
@@ -866,11 +870,16 @@ export default function MessagesView({
         setMessages(current => mergeMessageHistory(current, messageRows));
         nextCursor = page.olderCursor;
         setOlderCursor(nextCursor);
+        failedPage = null;
+        setHistoryError(null);
         if (!before) {
           setConversationLoading(false);
         }
       } catch {
-        if (isCurrent()) setError(before ? "Older messages could not be loaded. Please try again." : "Messages could not be loaded. Reopen the conversation to retry.");
+        if (isCurrent()) {
+          failedPage = { before };
+          setHistoryError({ key: `${currentViewerId}:${currentConversationId}`, stage: before ? "older" : "initial" });
+        }
       } finally {
         pagePending = false;
         if (isCurrent()) {
@@ -882,6 +891,9 @@ export default function MessagesView({
     loadOlderRef.current = async () => {
       if (nextCursor) await loadPage(nextCursor);
     };
+    retryHistoryRef.current = async () => {
+      if (failedPage) await loadPage(failedPage.before);
+    };
     queueMicrotask(() => {
       if (!isCurrent()) return;
       setMessages([]);
@@ -889,6 +901,7 @@ export default function MessagesView({
       setSavedArtworkIds(new Set());
       setOlderCursor(null);
       setLoadingOlder(false);
+      setHistoryError(null);
       setNewMessageCount(0);
       void loadPage(null);
     });
@@ -922,6 +935,7 @@ export default function MessagesView({
     return () => {
       cancelled = true;
       loadOlderRef.current = null;
+      retryHistoryRef.current = null;
       database.removeChannel(channel);
     };
   }, [
@@ -1026,6 +1040,7 @@ export default function MessagesView({
     setArtworkShareOpen(false);
     setGroupSettingsOpen(false);
     setError(null);
+    setHistoryError(null);
     followingMessages.current = true;
     unseenMessageCount.current = 0;
     setNewMessageCount(0);
@@ -1612,6 +1627,20 @@ export default function MessagesView({
     setCreatingGroup(false);
   }
 
+  const activeHistoryError = historyError?.key === currentVoiceKey ? historyError : null;
+  const historyRecovery = activeHistoryError ? (
+    <div className="self-center rounded-xl bg-zinc-950 px-4 py-3 text-center">
+      <p role="alert" className="text-sm leading-6 text-zinc-300">
+        {activeHistoryError.stage === "older" ? "Older messages couldn’t be loaded." : "Messages couldn’t be loaded."}
+      </p>
+      <Button type="button" variant="outline" className="mt-2 min-h-11 h-auto whitespace-normal border-white/15 text-zinc-100"
+        disabled={conversationLoading || loadingOlder} onClick={() => void retryHistoryRef.current?.()}>
+        {conversationLoading || loadingOlder ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />Retrying messages…</>
+          : activeHistoryError.stage === "older" ? "Retry older messages" : "Retry messages"}
+      </Button>
+    </div>
+  ) : null;
+
   return (
     <main
       data-chat-shell={shellMode}
@@ -1922,11 +1951,12 @@ export default function MessagesView({
                       </div>
                     </div>
                   )}
-                  {conversationLoading ? (
+                  {conversationLoading && !activeHistoryError ? (
                     <WorldLoadingScreen variant="panel" label="Opening your conversation…" />
                   ) : messages.length ? (
                     <div className="flex min-w-0 flex-col gap-3">
-                      {olderCursor && (
+                      {historyRecovery}
+                      {olderCursor && !activeHistoryError && (
                         <Button type="button" variant="outline" className="min-h-11 self-center border-white/15 text-zinc-300" disabled={loadingOlder} onClick={() => void loadOlderRef.current?.()}>
                           {loadingOlder ? <><LoaderCircle className="size-4 animate-spin" /> Loading older messages…</> : "Load older messages"}
                         </Button>
@@ -2056,6 +2086,8 @@ export default function MessagesView({
                         );
                       })}
                     </div>
+                  ) : activeHistoryError ? (
+                    <div className="grid min-h-full place-items-center">{historyRecovery}</div>
                   ) : (
                     <div className="grid min-h-full place-items-center text-center">
                       <div className="max-w-sm rounded-2xl bg-zinc-950 p-4">
@@ -2088,7 +2120,7 @@ export default function MessagesView({
                       ref={attachmentInputRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,video/x-m4v,.mov,.m4v"
-                      className="sr-only"
+                      hidden
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (file) sendAttachment(file);

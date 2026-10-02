@@ -10,6 +10,7 @@ import SavedFilters from "./saved-filters";
 import DesktopAppNavigation from "../components/desktop-app-navigation";
 import ArtworkComments from "../components/artwork-comments";
 import ArtworkFocusView from "../components/artwork-focus-view";
+import ArtworkGalleryDialog from "../components/artwork-gallery-dialog";
 import ArtworkLikeButton from "../components/artwork-like-button";
 import ArtworkMedia, {
   ArtworkMediaBadge,
@@ -42,6 +43,8 @@ export default function SavedArtworkView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const artworkOpenerRef = useRef<HTMLButtonElement>(null);
+  const savedHeadingRef = useRef<HTMLHeadingElement>(null);
   const [search, setSearch] = useState("");
   const [worldId, setWorldId] = useState("all");
   const retryLoad = useRef<(() => void) | null>(null);
@@ -128,33 +131,6 @@ export default function SavedArtworkView() {
     [visibleArtworks]
   );
 
-  useEffect(() => {
-    if (!selectedArtwork) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (focusMode) {
-          setFocusMode(false);
-        } else {
-          setSelectedId(null);
-        }
-      }
-      if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable=true]")) return;
-      if (event.key === "ArrowLeft") moveSelection(-1);
-      if (event.key === "ArrowRight") moveSelection(1);
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [focusMode, moveSelection, selectedArtwork]);
-
   function removeFromView(artworkId: string) {
     setSavedArtworks((current) =>
       current.filter((artwork) => artwork.id !== artworkId)
@@ -173,7 +149,7 @@ export default function SavedArtworkView() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
+            className="nodeine-action inline-flex min-h-11 items-center rounded-lg text-lg font-light tracking-[0.24em] text-white hover:text-cyan-200"
           >
             NODEINE
           </Link>
@@ -187,7 +163,7 @@ export default function SavedArtworkView() {
             <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">
               Private collection
             </p>
-            <h1 className="mt-3 text-4xl font-light text-white sm:text-5xl">
+            <h1 ref={savedHeadingRef} tabIndex={-1} className="mt-3 text-4xl font-light text-white outline-none sm:text-5xl">
               Saved Artwork
             </h1>
             <p className="mt-3 max-w-2xl leading-7 text-zinc-400">
@@ -268,7 +244,8 @@ export default function SavedArtworkView() {
               >
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(event) => {
+                    artworkOpenerRef.current = event.currentTarget;
                     setFocusMode(false);
                     setSelectedId(artwork.id);
                   }}
@@ -322,40 +299,13 @@ export default function SavedArtworkView() {
 
       <MobileAppNavigation profileHref={profileHref} />
 
-      {selectedArtwork && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 p-0 backdrop-blur-sm sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={selectedArtwork.title}
-          onClick={() => {
-            setFocusMode(false);
-            setSelectedId(null);
-          }}
-        >
-          <div
-            className="mx-auto grid h-full max-w-7xl grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-950 sm:rounded-lg sm:border sm:border-white/15"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex min-h-14 items-center justify-between gap-4 border-b border-white/10 px-4 sm:px-5">
-              <p className="min-w-0 truncate text-xs uppercase tracking-[0.18em] text-zinc-500">
-                {search.trim() || worldId !== "all" ? "Result" : "Saved"} {selectedIndex + 1} of {visibleArtworks.length}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setFocusMode(false);
-                  setSelectedId(null);
-                }}
-                className="grid size-11 shrink-0 place-items-center text-2xl text-zinc-400 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
-                aria-label="Close artwork"
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            {focusMode ? (
+      <ArtworkGalleryDialog open={Boolean(selectedArtwork)} title={selectedArtwork?.title ?? "Saved artwork"}
+        position={`${search.trim() || worldId !== "all" ? "Result" : "Saved"} ${selectedIndex + 1} of ${visibleArtworks.length}`}
+        focusMode={focusMode} onBackToDetails={() => setFocusMode(false)}
+        onClose={() => { setFocusMode(false); setSelectedId(null); }}
+        returnFocus={artworkOpenerRef} fallbackFocus={savedHeadingRef}
+        onPrevious={() => moveSelection(-1)} onNext={() => moveSelection(1)}>
+            {selectedArtwork && (focusMode ? (
               <ArtworkFocusView
                 src={selectedArtwork.src}
                 posterSrc={selectedArtwork.thumb_src}
@@ -488,10 +438,8 @@ export default function SavedArtworkView() {
                   />
                 </aside>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            ))}
+      </ArtworkGalleryDialog>
     </main>
   );
 }
